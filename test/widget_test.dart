@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualyou/features/female_body/female_body.dart';
 
 import 'package:visualyou/main.dart';
 
@@ -15,12 +16,13 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const VisualYouApp());
+    await tester.pumpAndSettle();
 
     expect(find.text("Let's build a better you"), findsOneWidget);
     expect(find.text('Quick add'), findsOneWidget);
     expect(find.text('Water'), findsOneWidget);
     expect(find.byType(VisualYouNavigationBar), findsOneWidget);
-    expect(find.byType(AnatomyIcon), findsNWidgets(2));
+    expect(find.byType(AnatomyIcon), findsOneWidget);
 
     await tester.tap(find.byTooltip('Body statistics'));
     await tester.pumpAndSettle();
@@ -32,29 +34,52 @@ void main() {
     await tester.tap(find.byKey(const Key('addHabitButton')));
     await tester.pump(const Duration(milliseconds: 100));
     final reveal = tester.widget<ClipPath>(find.byType(ClipPath).last);
-    expect(reveal.clipper, isNotNull);
+    expect(reveal.clipper == null, false);
     await tester.pumpAndSettle();
     expect(find.text('Add a habit'), findsOneWidget);
-    expect(find.text('Good habits'), findsOneWidget);
+    expect(find.text('Good habits ✨'), findsOneWidget);
     expect(find.text('Drinking water'), findsOneWidget);
     expect(find.text('Exercises'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Bad habits'), 300);
-    expect(find.text('Bad habits'), findsOneWidget);
-    await tester.pageBack();
+    await tester.tap(find.byTooltip('Close'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('profileButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Profile'), findsOneWidget);
+    expect(find.text('Your Name'), findsOneWidget);
+    expect(find.text('Edit profile'), findsOneWidget);
 
-    await tester.pageBack();
+    await tester.tap(find.text('Edit profile'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Alex');
+    await tester.enterText(find.byType(TextFormField).at(1), '25');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Alex'), findsOneWidget);
+    expect(find.text('25'), findsOneWidget);
+    expect(tester.takeException(), null);
+
+    await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('settingsButton')));
     await tester.pumpAndSettle();
     expect(find.text('Settings'), findsOneWidget);
-    expect(find.byIcon(Icons.light_mode_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.brightness_auto_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.dark_mode_rounded), findsOneWidget);
+    expect(find.text('English'), findsOneWidget);
+
+    await tester.tap(find.text('English'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Spanish').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Ajustes'), findsOneWidget);
+    expect(find.text('Idioma'), findsOneWidget);
+    expect(find.text('Español'), findsOneWidget);
+
+    await tester.tap(find.text('Español'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Inglés').last);
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -420));
+    await tester.pumpAndSettle();
     expect(find.text('Blue'), findsOneWidget);
     expect(find.text('Pink'), findsOneWidget);
 
@@ -73,6 +98,17 @@ void main() {
     await tester.tap(find.text('Pink'));
     await tester.pumpAndSettle();
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
-    expect(app.theme!.colorScheme.primary, isNot(bluePrimary));
+    expect(app.theme!.colorScheme.primary == bluePrimary, false);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -420));
+    await tester.pumpAndSettle();
+    expect(find.text('Male'), findsOneWidget);
+    expect(find.text('Female'), findsOneWidget);
+    await tester.tap(find.text('Female'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(FemaleBodyFrame), findsOneWidget);
   });
 }

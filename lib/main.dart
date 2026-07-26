@@ -1,7 +1,10 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:visualyou/features/body/body.dart';
+import 'package:visualyou/features/female_body/female_body.dart';
+import 'package:visualyou/l10n/app_strings.dart';
 
 void main() => runApp(const VisualYouApp());
 
@@ -28,6 +31,14 @@ class _VisualYouAppState extends State<VisualYouApp> {
       builder: (context, _) => MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'VisualYou',
+        locale: Locale(_themeController.language.code),
+        supportedLocales: AppStrings.supportedLocales,
+        localizationsDelegates: const [
+          AppStrings.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         themeMode: _themeController.mode,
         theme: _buildTheme(_themeController.seedColor, Brightness.light),
         darkTheme: _buildTheme(_themeController.seedColor, Brightness.dark),
@@ -54,9 +65,7 @@ class _VisualYouAppState extends State<VisualYouApp> {
       cardTheme: CardThemeData(
         color: colorScheme.surfaceContainer,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
     );
   }
@@ -64,12 +73,42 @@ class _VisualYouAppState extends State<VisualYouApp> {
 
 enum AppAccent { blue, pink }
 
+enum AppGender { male, female }
+
+enum AppLanguage { english, spanish, russian, french, uzbek }
+
+extension AppLanguageCode on AppLanguage {
+  String get code => switch (this) {
+    AppLanguage.english => 'en',
+    AppLanguage.spanish => 'es',
+    AppLanguage.russian => 'ru',
+    AppLanguage.french => 'fr',
+    AppLanguage.uzbek => 'uz',
+  };
+
+  String get labelKey => switch (this) {
+    AppLanguage.english => 'English',
+    AppLanguage.spanish => 'Spanish',
+    AppLanguage.russian => 'Russian',
+    AppLanguage.french => 'French',
+    AppLanguage.uzbek => 'Uzbek',
+  };
+}
+
 class ThemeController extends ChangeNotifier {
   ThemeMode _mode = ThemeMode.system;
   AppAccent _accent = AppAccent.blue;
+  AppGender _gender = AppGender.male;
+  AppLanguage _language = AppLanguage.english;
+  String _profileName = '';
+  int? _profileAge;
 
   ThemeMode get mode => _mode;
   AppAccent get accent => _accent;
+  AppGender get gender => _gender;
+  AppLanguage get language => _language;
+  String get profileName => _profileName;
+  int? get profileAge => _profileAge;
   Color get seedColor => switch (_accent) {
     AppAccent.blue => const Color(0xFF526DFF),
     AppAccent.pink => const Color(0xFFE5478D),
@@ -84,6 +123,30 @@ class ThemeController extends ChangeNotifier {
   void setAccent(AppAccent value) {
     if (_accent == value) return;
     _accent = value;
+    notifyListeners();
+  }
+
+  void setGender(AppGender value) {
+    if (_gender == value) return;
+    _gender = value;
+    notifyListeners();
+  }
+
+  void setLanguage(AppLanguage value) {
+    if (_language == value) return;
+    _language = value;
+    notifyListeners();
+  }
+
+  void updateProfile({
+    required String name,
+    required int? age,
+    AppGender? gender,
+  }) {
+    final trimmedName = name.trim();
+    _profileName = trimmedName;
+    _profileAge = age;
+    if (gender != null) _gender = gender;
     notifyListeners();
   }
 }
@@ -112,20 +175,22 @@ class _HomePageState extends State<HomePage> {
               children: [
                 _HomeContent(themeController: widget.themeController),
                 _NavigationPage(
-                  title: 'Body statistics',
+                  title: context.tr('Body statistics'),
                   icon: const AnatomyIcon(size: 72),
                   themeController: widget.themeController,
-                  content: const BodyFrame(),
+                  content: _GenderBodyFrame(
+                    themeController: widget.themeController,
+                  ),
                   showIcon: false,
                   topAligned: true,
                 ),
                 _NavigationPage(
-                  title: 'Calendar',
+                  title: context.tr('Calendar'),
                   icon: const Icon(Icons.calendar_month_rounded, size: 68),
                   themeController: widget.themeController,
                 ),
                 _NavigationPage(
-                  title: 'AI coach',
+                  title: context.tr('AI coach'),
                   icon: const Icon(Icons.auto_awesome_rounded, size: 68),
                   themeController: widget.themeController,
                 ),
@@ -155,12 +220,9 @@ class _HomePageState extends State<HomePage> {
         _addButtonKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
     final origin = renderBox.localToGlobal(renderBox.size.center(Offset.zero));
-    Navigator.of(context).push(
-      _CircularRevealRoute(
-        origin: origin,
-        page: const AddHabitPage(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(_CircularRevealRoute(origin: origin, page: const AddHabitPage()));
   }
 }
 
@@ -188,13 +250,14 @@ class _HomeContent extends StatelessWidget {
                 children: [
                   Semantics(
                     button: true,
-                    label: 'Open profile',
+                    label: context.tr('Open profile'),
                     child: InkWell(
                       key: const Key('profileButton'),
                       customBorder: const CircleBorder(),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const ProfilePage(),
+                          builder: (_) =>
+                              ProfilePage(themeController: themeController),
                         ),
                       ),
                       child: Container(
@@ -203,10 +266,7 @@ class _HomeContent extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
-                            colors: [
-                              colors.primaryContainer,
-                              colors.primary,
-                            ],
+                            colors: [colors.primaryContainer, colors.primary],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -225,13 +285,12 @@ class _HomeContent extends StatelessWidget {
                   ),
                   IconButton.filledTonal(
                     key: const Key('settingsButton'),
-                    tooltip: 'Settings',
+                    tooltip: context.tr('Settings'),
                     icon: const Icon(Icons.settings_rounded),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => SettingsPage(
-                          themeController: themeController,
-                        ),
+                        builder: (_) =>
+                            SettingsPage(themeController: themeController),
                       ),
                     ),
                   ),
@@ -239,7 +298,7 @@ class _HomeContent extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                'Hi!',
+                context.tr('Hi!'),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
@@ -259,7 +318,7 @@ class _HomeContent extends StatelessWidget {
                   stops: const [0, .34, .68, 1],
                 ).createShader(bounds),
                 child: Text(
-                  'Let\'s build a better you',
+                  context.tr('Let\'s build a better you'),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -287,9 +346,9 @@ class _HomeContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Quick add',
-                        style: TextStyle(
+                      Text(
+                        context.tr('Quick add'),
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                         ),
@@ -300,33 +359,31 @@ class _HomeContent extends StatelessWidget {
                         runSpacing: 7,
                         children: [
                           _QuickAddPill(
-                            label: 'Water',
+                            label: context.tr('Water'),
                             onTap: () => _showQuickAdded(context, 'Water'),
                           ),
                           _QuickAddPill(
-                            label: 'Healthy meal',
+                            label: context.tr('Healthy meal'),
                             onTap: () =>
                                 _showQuickAdded(context, 'Healthy meal'),
                           ),
                           _QuickAddPill(
-                            label: 'Arm workout',
+                            label: context.tr('Arm workout'),
                             onTap: () =>
                                 _showQuickAdded(context, 'Arm workout'),
                           ),
                           _QuickAddPill(
-                            label: 'Abs workout',
+                            label: context.tr('Abs workout'),
                             onTap: () =>
                                 _showQuickAdded(context, 'Abs workout'),
                           ),
                           _QuickAddPill(
-                            label: 'Smoke-free',
-                            onTap: () =>
-                                _showQuickAdded(context, 'Smoke-free'),
+                            label: context.tr('Smoke-free'),
+                            onTap: () => _showQuickAdded(context, 'Smoke-free'),
                           ),
                           _QuickAddPill(
-                            label: 'Alcohol',
-                            onTap: () =>
-                                _showQuickAdded(context, 'Alcohol'),
+                            label: context.tr('Alcohol'),
+                            onTap: () => _showQuickAdded(context, 'Alcohol'),
                           ),
                         ],
                       ),
@@ -335,7 +392,7 @@ class _HomeContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              const BodyFrame(),
+              _GenderBodyFrame(themeController: themeController),
             ],
           ),
         ),
@@ -344,6 +401,7 @@ class _HomeContent extends StatelessWidget {
   }
 
   void _showQuickAdded(BuildContext context, String habit) {
+    _recordWorkout(habit);
     if (habit == 'Alcohol') {
       BodyVisualState.addAlcoholHabit();
     }
@@ -354,7 +412,7 @@ class _HomeContent extends StatelessWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('$habit added'),
+          content: Text(context.habitAdded(context.tr(habit))),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -372,12 +430,12 @@ class _QuickAddPill extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final pillColor = isDark ? colors.surfaceContainerHighest : Colors.white;
+    final pillColor = isDark ? const Color(0xFFE8EAF0) : Colors.white;
     final contentColor = isDark
-    ? const Color.fromARGB(255, 85, 85, 85) // Dark-mode text and Plus color
-    : colors.primary;         // Keep Light mode unchanged
+        ? const Color(0xFF30323A) // Dark-mode text and Plus color
+        : colors.primary; // Keep Light mode unchanged
     return Material(
-      color: Colors.white,
+      color: pillColor,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -401,6 +459,55 @@ class _QuickAddPill extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+void _recordWorkout(String habit) {
+  const workoutGroups = {
+    'Arm': MuscleGroup.arms,
+    'Arm workout': MuscleGroup.arms,
+    'Shoulder / Back': MuscleGroup.shouldersBack,
+    'Chest': MuscleGroup.chest,
+    'Abs': MuscleGroup.abs,
+    'Abs workout': MuscleGroup.abs,
+    'Legs': MuscleGroup.legs,
+  };
+  final group = workoutGroups[habit];
+  if (group != null) {
+    BodyVisualState.addWorkout(group);
+  }
+}
+
+class _GenderBodyFrame extends StatelessWidget {
+  const _GenderBodyFrame({required this.themeController});
+
+  final ThemeController themeController;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: themeController,
+      builder: (context, _) {
+        final body = themeController.gender == AppGender.male
+            ? const BodyFrame(key: ValueKey('maleBody'))
+            : const FemaleBodyFrame(key: ValueKey('femaleBody'));
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 320),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: .98, end: 1).animate(animation),
+                child: child,
+              ),
+            );
+          },
+          child: body,
+        );
+      },
     );
   }
 }
@@ -455,12 +562,13 @@ class _NavigationPage extends StatelessWidget {
               children: [
                 Semantics(
                   button: true,
-                  label: 'Open profile',
+                  label: context.tr('Open profile'),
                   child: InkWell(
                     customBorder: const CircleBorder(),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const ProfilePage(),
+                        builder: (_) =>
+                            ProfilePage(themeController: themeController),
                       ),
                     ),
                     child: Container(
@@ -487,13 +595,12 @@ class _NavigationPage extends StatelessWidget {
                   ),
                 ),
                 IconButton.filledTonal(
-                  tooltip: 'Settings',
+                  tooltip: context.tr('Settings'),
                   icon: const Icon(Icons.settings_rounded),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => SettingsPage(
-                        themeController: themeController,
-                      ),
+                      builder: (_) =>
+                          SettingsPage(themeController: themeController),
                     ),
                   ),
                 ),
@@ -545,25 +652,25 @@ class VisualYouNavigationBar extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _NavButton(
-                      tooltip: 'Home',
+                      tooltip: context.tr('Home'),
                       icon: const Icon(Icons.home_rounded),
                       selected: selectedIndex == 0,
                       onTap: () => onDestinationSelected(0),
                     ),
                     _NavButton(
-                      tooltip: 'Body statistics',
+                      tooltip: context.tr('Body statistics'),
                       icon: const AnatomyIcon(),
                       selected: selectedIndex == 1,
                       onTap: () => onDestinationSelected(1),
                     ),
                     _NavButton(
-                      tooltip: 'Calendar',
+                      tooltip: context.tr('Calendar'),
                       icon: const Icon(Icons.calendar_month_rounded),
                       selected: selectedIndex == 2,
                       onTap: () => onDestinationSelected(2),
                     ),
                     _NavButton(
-                      tooltip: 'AI coach',
+                      tooltip: context.tr('AI coach'),
                       icon: const Icon(Icons.auto_awesome_rounded),
                       selected: selectedIndex == 3,
                       onTap: () => onDestinationSelected(3),
@@ -581,7 +688,7 @@ class VisualYouNavigationBar extends StatelessWidget {
             colors: colors,
             child: IconButton(
               key: const Key('addHabitButton'),
-              tooltip: 'Add habit',
+              tooltip: context.tr('Add habit'),
               onPressed: onAddPressed,
               icon: const Icon(Icons.add_rounded, size: 28),
               color: colors.primary,
@@ -662,20 +769,20 @@ class AddHabitPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Close',
+          tooltip: context.tr('Close'),
           onPressed: () => Navigator.of(context).pop(),
           icon: const Icon(Icons.close_rounded),
         ),
-        title: const Text('Add a habit'),
+        title: Text(context.tr('Add a habit')),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
         children: [
           Text(
-            'Good habits ✨',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            context.tr('Good habits'),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           GridView.count(
@@ -687,12 +794,12 @@ class AddHabitPage extends StatelessWidget {
             childAspectRatio: 3.2,
             children: [
               _HabitTile(
-                label: 'Drinking water',
+                label: context.tr('Drinking water'),
                 icon: Icons.water_drop_rounded,
                 onAdd: () => _showAdded(context, 'Drinking water'),
               ),
               _HabitTile(
-                label: 'Eating healthy',
+                label: context.tr('Eating healthy'),
                 icon: Icons.eco_rounded,
                 onAdd: () => _showAdded(context, 'Eating healthy'),
               ),
@@ -707,7 +814,7 @@ class AddHabitPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Exercises',
+                    context.tr('Exercises'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -723,7 +830,7 @@ class AddHabitPage extends StatelessWidget {
                     children: [
                       for (final exercise in _exercises)
                         _ExerciseRow(
-                          label: exercise.$1,
+                          label: context.tr(exercise.$1),
                           icon: exercise.$2,
                           onAdd: () => _showAdded(context, exercise.$1),
                         ),
@@ -735,10 +842,10 @@ class AddHabitPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Bad habits ❌',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            context.tr('Bad habits'),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           GridView.count(
@@ -751,7 +858,7 @@ class AddHabitPage extends StatelessWidget {
             children: [
               for (final habit in _badHabits)
                 _HabitTile(
-                  label: habit.$1,
+                  label: context.tr(habit.$1),
                   icon: habit.$2,
                   onAdd: () => _showAdded(context, habit.$1),
                 ),
@@ -763,6 +870,7 @@ class AddHabitPage extends StatelessWidget {
   }
 
   void _showAdded(BuildContext context, String habit) {
+    _recordWorkout(habit);
     if (habit == 'Alcohol') {
       BodyVisualState.addAlcoholHabit();
     }
@@ -773,7 +881,7 @@ class AddHabitPage extends StatelessWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('$habit added'),
+          content: Text(context.habitAdded(context.tr(habit))),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -830,7 +938,7 @@ class _HabitTile extends StatelessWidget {
           Expanded(
             flex: 25,
             child: Tooltip(
-              message: 'I did $label',
+              message: '${context.tr('I did')} $label',
               child: InkWell(
                 borderRadius: const BorderRadius.horizontal(
                   right: Radius.circular(24),
@@ -902,7 +1010,7 @@ class _ExerciseRow extends StatelessWidget {
           Expanded(
             flex: 25,
             child: Tooltip(
-              message: 'I did $label exercise',
+              message: '${context.tr('I did')} $label',
               child: InkWell(
                 borderRadius: const BorderRadius.horizontal(
                   right: Radius.circular(18),
@@ -956,10 +1064,7 @@ class _CircularRevealRoute extends PageRouteBuilder<void> {
 }
 
 class _CircularRevealClipper extends CustomClipper<Path> {
-  const _CircularRevealClipper({
-    required this.origin,
-    required this.progress,
-  });
+  const _CircularRevealClipper({required this.origin, required this.progress});
 
   final Offset origin;
   final double progress;
@@ -1057,17 +1162,59 @@ class _AnatomyIconPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
     final path = Path()
       ..moveTo(17 * scale, 4 * scale)
-      ..cubicTo(12 * scale, 3 * scale, 9 * scale, 6 * scale, 9 * scale, 10 * scale)
+      ..cubicTo(
+        12 * scale,
+        3 * scale,
+        9 * scale,
+        6 * scale,
+        9 * scale,
+        10 * scale,
+      )
       ..lineTo(6 * scale, 13 * scale)
       ..lineTo(9 * scale, 14 * scale)
-      ..cubicTo(9 * scale, 18 * scale, 11 * scale, 19 * scale, 12 * scale, 19 * scale)
+      ..cubicTo(
+        9 * scale,
+        18 * scale,
+        11 * scale,
+        19 * scale,
+        12 * scale,
+        19 * scale,
+      )
       ..lineTo(12 * scale, 22 * scale)
-      ..cubicTo(9 * scale, 22.5 * scale, 5 * scale, 24 * scale, 3 * scale, 27 * scale)
+      ..cubicTo(
+        9 * scale,
+        22.5 * scale,
+        5 * scale,
+        24 * scale,
+        3 * scale,
+        27 * scale,
+      )
       ..moveTo(17 * scale, 4 * scale)
-      ..cubicTo(21 * scale, 6 * scale, 22 * scale, 11 * scale, 20 * scale, 15 * scale)
-      ..cubicTo(19 * scale, 17 * scale, 17 * scale, 18.5 * scale, 16 * scale, 19 * scale)
+      ..cubicTo(
+        21 * scale,
+        6 * scale,
+        22 * scale,
+        11 * scale,
+        20 * scale,
+        15 * scale,
+      )
+      ..cubicTo(
+        19 * scale,
+        17 * scale,
+        17 * scale,
+        18.5 * scale,
+        16 * scale,
+        19 * scale,
+      )
       ..lineTo(16 * scale, 22 * scale)
-      ..cubicTo(19 * scale, 22.5 * scale, 23 * scale, 24 * scale, 25 * scale, 27 * scale);
+      ..cubicTo(
+        19 * scale,
+        22.5 * scale,
+        23 * scale,
+        24 * scale,
+        25 * scale,
+        27 * scale,
+      );
     canvas.drawPath(path, paint);
   }
 
@@ -1078,14 +1225,287 @@ class _AnatomyIconPainter extends CustomPainter {
 }
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({required this.themeController, super.key});
+
+  final ThemeController themeController;
 
   @override
-  Widget build(BuildContext context) => const _DestinationPage(
-    title: 'Profile',
-    icon: Icons.person_rounded,
-    description: 'Your identity, goals, and progress will live here.',
-  );
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: AnimatedBuilder(
+        animation: themeController,
+        builder: (context, _) => DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                colors.primary.withValues(alpha: isDark ? .48 : .42),
+                colors.primaryContainer.withValues(alpha: isDark ? .28 : .38),
+                colors.surface.withValues(alpha: .96),
+                colors.surface,
+              ],
+              stops: const [0, .27, .62, 1],
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton.filledTonal(
+                        tooltip: context.tr('Back'),
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _showEditProfileDialog(context),
+                        icon: const Icon(Icons.edit_rounded, size: 19),
+                        label: Text(context.tr('Edit profile')),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 104,
+                        height: 104,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [colors.primaryContainer, colors.primary],
+                          ),
+                          boxShadow: isDark
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: colors.primary.withValues(alpha: .2),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                        ),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colors.surfaceContainer,
+                          ),
+                          child: Icon(
+                            Icons.person_rounded,
+                            size: 58,
+                            color: colors.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              themeController.profileName.isEmpty
+                                  ? context.tr('Your Name')
+                                  : themeController.profileName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.1,
+                                  ),
+                            ),
+                            const SizedBox(height: 18),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _ProfileFact(
+                                    label: context.tr('Gender'),
+                                    value: switch (themeController.gender) {
+                                      AppGender.male => context.tr('Male'),
+                                      AppGender.female => context.tr('Female'),
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: _ProfileFact(
+                                    label: context.tr('Age'),
+                                    value:
+                                        themeController.profileAge
+                                            ?.toString() ??
+                                        context.tr('Not set'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditProfileDialog(BuildContext context) async {
+    var draftName = themeController.profileName;
+    var draftAge = themeController.profileAge?.toString() ?? '';
+    var selectedGender = themeController.gender;
+    String? ageError;
+
+    final result = await showDialog<_ProfileEditResult>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(context.tr('Edit profile')),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  initialValue: draftName,
+                  onChanged: (value) => draftName = value,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.person_outline_rounded),
+                  ).copyWith(labelText: context.tr('Name')),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  initialValue: draftAge,
+                  onChanged: (value) => draftAge = value,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: context.tr('Age'),
+                    errorText: ageError,
+                    prefixIcon: const Icon(Icons.cake_outlined),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<AppGender>(
+                    showSelectedIcon: true,
+                    segments: [
+                      ButtonSegment(
+                        value: AppGender.male,
+                        icon: const Icon(Icons.male_rounded),
+                        label: Text(context.tr('Male')),
+                      ),
+                      ButtonSegment(
+                        value: AppGender.female,
+                        icon: const Icon(Icons.female_rounded),
+                        label: Text(context.tr('Female')),
+                      ),
+                    ],
+                    selected: {selectedGender},
+                    onSelectionChanged: (selection) {
+                      setDialogState(() => selectedGender = selection.first);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(context.tr('Cancel')),
+            ),
+            FilledButton(
+              onPressed: () {
+                final rawAge = draftAge.trim();
+                final parsedAge = rawAge.isEmpty ? null : int.tryParse(rawAge);
+                if (rawAge.isNotEmpty &&
+                    (parsedAge == null || parsedAge < 1 || parsedAge > 120)) {
+                  setDialogState(() {
+                    ageError = context.tr('Enter an age from 1 to 120');
+                  });
+                  return;
+                }
+                Navigator.of(dialogContext).pop(
+                  _ProfileEditResult(
+                    name: draftName,
+                    age: parsedAge,
+                    gender: selectedGender,
+                  ),
+                );
+              },
+              child: Text(context.tr('Save')),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
+    themeController.updateProfile(
+      name: result.name,
+      age: result.age,
+      gender: result.gender,
+    );
+  }
+}
+
+class _ProfileEditResult {
+  const _ProfileEditResult({
+    required this.name,
+    required this.age,
+    required this.gender,
+  });
+
+  final String name;
+  final int? age;
+  final AppGender gender;
+}
+
+class _ProfileFact extends StatelessWidget {
+  const _ProfileFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(color: colors.onSurfaceVariant),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
+  }
 }
 
 class SettingsPage extends StatelessWidget {
@@ -1096,19 +1516,59 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(context.tr('Settings'))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
           Text(
-            'Appearance',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            context.tr('Language'),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose how VisualYou looks. Your choice applies throughout the app.',
+            context.tr('Choose the language used throughout VisualYou.'),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          AnimatedBuilder(
+            animation: themeController,
+            builder: (context, _) => DropdownButtonFormField<AppLanguage>(
+              key: ValueKey(themeController.language),
+              initialValue: themeController.language,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.language_rounded),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              items: [
+                for (final language in AppLanguage.values)
+                  DropdownMenuItem(
+                    value: language,
+                    child: Text(context.tr(language.labelKey)),
+                  ),
+              ],
+              onChanged: (language) {
+                if (language != null) themeController.setLanguage(language);
+              },
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            context.tr('Appearance'),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.tr(
+              'Choose how VisualYou looks. Your choice applies throughout the app.',
+            ),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
               height: 1.4,
@@ -1122,21 +1582,21 @@ class SettingsPage extends StatelessWidget {
               child: SegmentedButton<ThemeMode>(
                 key: const Key('themeSelector'),
                 showSelectedIcon: true,
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: ThemeMode.light,
-                    icon: Icon(Icons.light_mode_rounded),
-                    label: Text('Light'),
+                    icon: const Icon(Icons.light_mode_rounded),
+                    label: Text(context.tr('Light')),
                   ),
                   ButtonSegment(
                     value: ThemeMode.system,
-                    icon: Icon(Icons.brightness_auto_rounded),
-                    label: Text('System'),
+                    icon: const Icon(Icons.brightness_auto_rounded),
+                    label: Text(context.tr('System')),
                   ),
                   ButtonSegment(
                     value: ThemeMode.dark,
-                    icon: Icon(Icons.dark_mode_rounded),
-                    label: Text('Dark'),
+                    icon: const Icon(Icons.dark_mode_rounded),
+                    label: Text(context.tr('Dark')),
                   ),
                 ],
                 selected: {themeController.mode},
@@ -1148,14 +1608,14 @@ class SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           Text(
-            'Color theme',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            context.tr('Color theme'),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
-            'This accent color is used across VisualYou.',
+            context.tr('This accent color is used across VisualYou.'),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -1166,19 +1626,22 @@ class SettingsPage extends StatelessWidget {
             builder: (context, _) => SegmentedButton<AppAccent>(
               key: const Key('accentSelector'),
               showSelectedIcon: true,
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: AppAccent.blue,
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.water_drop_rounded,
                     color: Color(0xFF526DFF),
                   ),
-                  label: Text('Blue'),
+                  label: Text(context.tr('Blue')),
                 ),
                 ButtonSegment(
                   value: AppAccent.pink,
-                  icon: Icon(Icons.favorite_rounded, color: Color(0xFFE5478D)),
-                  label: Text('Pink'),
+                  icon: const Icon(
+                    Icons.favorite_rounded,
+                    color: Color(0xFFE5478D),
+                  ),
+                  label: Text(context.tr('Pink')),
                 ),
               ],
               selected: {themeController.accent},
@@ -1187,46 +1650,47 @@ class SettingsPage extends StatelessWidget {
               },
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DestinationPage extends StatelessWidget {
-  const _DestinationPage({
-    required this.title,
-    required this.icon,
-    required this.description,
-  });
-
-  final String title;
-  final IconData icon;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 64, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: 20),
-              Text(
-                description,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  height: 1.5,
-                ),
-              ),
-            ],
+          const SizedBox(height: 32),
+          Text(
+            context.tr('Gender'),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            context.tr(
+              'Choose the body displayed on Home and Body Statistics.',
+            ),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          AnimatedBuilder(
+            animation: themeController,
+            builder: (context, _) => SegmentedButton<AppGender>(
+              key: const Key('genderSelector'),
+              showSelectedIcon: true,
+              segments: [
+                ButtonSegment(
+                  value: AppGender.male,
+                  icon: const Icon(Icons.male_rounded),
+                  label: Text(context.tr('Male')),
+                ),
+                ButtonSegment(
+                  value: AppGender.female,
+                  icon: const Icon(Icons.female_rounded),
+                  label: Text(context.tr('Female')),
+                ),
+              ],
+              selected: {themeController.gender},
+              onSelectionChanged: (selection) {
+                themeController.setGender(selection.first);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
