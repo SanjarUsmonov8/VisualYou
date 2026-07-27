@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:visualyou/data/habits/drift_habit_repository.dart';
+import 'package:visualyou/data/habits/habit_repository.dart';
+import 'package:visualyou/data/local/app_database.dart';
 import 'package:visualyou/features/body/body.dart';
 import 'package:visualyou/features/female_body/female_body.dart';
 import 'package:visualyou/l10n/app_strings.dart';
@@ -9,7 +13,9 @@ import 'package:visualyou/l10n/app_strings.dart';
 void main() => runApp(const VisualYouApp());
 
 class VisualYouApp extends StatefulWidget {
-  const VisualYouApp({super.key});
+  const VisualYouApp({this.habitRepository, super.key});
+
+  final HabitRepository? habitRepository;
 
   @override
   State<VisualYouApp> createState() => _VisualYouAppState();
@@ -17,9 +23,47 @@ class VisualYouApp extends StatefulWidget {
 
 class _VisualYouAppState extends State<VisualYouApp> {
   final ThemeController _themeController = ThemeController();
+  AppDatabase? _ownedDatabase;
+  late final HabitRepository _habitRepository;
+  bool _storageReady = false;
+  Object? _storageError;
+
+  @override
+  void initState() {
+    super.initState();
+    final injectedRepository = widget.habitRepository;
+    if (injectedRepository != null) {
+      _habitRepository = injectedRepository;
+    } else {
+      final database = AppDatabase.defaults();
+      _ownedDatabase = database;
+      _habitRepository = DriftHabitRepository(database);
+    }
+    unawaited(_initializeStorage());
+  }
+
+  Future<void> _initializeStorage() async {
+    try {
+      await _habitRepository.initialize();
+      BodyVisualState.restore(await _habitRepository.loadBodyState());
+      if (!mounted) return;
+      setState(() {
+        _storageReady = true;
+        _storageError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _storageReady = true;
+        _storageError = error;
+      });
+    }
+  }
 
   @override
   void dispose() {
+    final database = _ownedDatabase;
+    if (database != null) unawaited(database.close());
     _themeController.dispose();
     super.dispose();
   }
@@ -42,7 +86,22 @@ class _VisualYouAppState extends State<VisualYouApp> {
         themeMode: _themeController.mode,
         theme: _buildTheme(_themeController.seedColor, Brightness.light),
         darkTheme: _buildTheme(_themeController.seedColor, Brightness.dark),
-        home: HomePage(themeController: _themeController),
+        home: !_storageReady
+            ? const _StorageLoadingPage()
+            : _storageError != null
+            ? _StorageErrorPage(
+                onRetry: () {
+                  setState(() {
+                    _storageReady = false;
+                    _storageError = null;
+                  });
+                  unawaited(_initializeStorage());
+                },
+              )
+            : HomePage(
+                themeController: _themeController,
+                habitRepository: _habitRepository,
+              ),
       ),
     );
   }
@@ -66,6 +125,53 @@ class _VisualYouAppState extends State<VisualYouApp> {
         color: colorScheme.surfaceContainer,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      ),
+    );
+  }
+}
+
+class _StorageLoadingPage extends StatelessWidget {
+  const _StorageLoadingPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
+}
+
+class _StorageErrorPage extends StatelessWidget {
+  const _StorageErrorPage({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.storage_rounded, size: 52, color: colors.error),
+                const SizedBox(height: 16),
+                Text(
+                  context.tr('Could not open offline storage'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(context.tr('Retry')),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -152,9 +258,14 @@ class ThemeController extends ChangeNotifier {
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({required this.themeController, super.key});
+  const HomePage({
+    required this.themeController,
+    required this.habitRepository,
+    super.key,
+  });
 
   final ThemeController themeController;
+  final HabitRepository habitRepository;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -173,7 +284,10 @@ class _HomePageState extends State<HomePage> {
             child: IndexedStack(
               index: _selectedIndex,
               children: [
-                _HomeContent(themeController: widget.themeController),
+                _HomeContent(
+                  themeController: widget.themeController,
+                  habitRepository: widget.habitRepository,
+                ),
                 _NavigationPage(
                   title: context.tr('Body statistics'),
                   icon: const AnatomyIcon(size: 72),
@@ -220,16 +334,23 @@ class _HomePageState extends State<HomePage> {
         _addButtonKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
     final origin = renderBox.localToGlobal(renderBox.size.center(Offset.zero));
-    Navigator.of(
-      context,
-    ).push(_CircularRevealRoute(origin: origin, page: const AddHabitPage()));
+    Navigator.of(context).push(
+      _CircularRevealRoute(
+        origin: origin,
+        page: AddHabitPage(habitRepository: widget.habitRepository),
+      ),
+    );
   }
 }
 
 class _HomeContent extends StatelessWidget {
-  const _HomeContent({required this.themeController});
+  const _HomeContent({
+    required this.themeController,
+    required this.habitRepository,
+  });
 
   final ThemeController themeController;
+  final HabitRepository habitRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -360,30 +481,37 @@ class _HomeContent extends StatelessWidget {
                         children: [
                           _QuickAddPill(
                             label: context.tr('Water'),
-                            onTap: () => _showQuickAdded(context, 'Water'),
+                            onTap: () =>
+                                unawaited(_showQuickAdded(context, 'Water')),
                           ),
                           _QuickAddPill(
                             label: context.tr('Healthy meal'),
-                            onTap: () =>
-                                _showQuickAdded(context, 'Healthy meal'),
+                            onTap: () => unawaited(
+                              _showQuickAdded(context, 'Healthy meal'),
+                            ),
                           ),
                           _QuickAddPill(
                             label: context.tr('Arm workout'),
-                            onTap: () =>
-                                _showQuickAdded(context, 'Arm workout'),
+                            onTap: () => unawaited(
+                              _showQuickAdded(context, 'Arm workout'),
+                            ),
                           ),
                           _QuickAddPill(
                             label: context.tr('Abs workout'),
-                            onTap: () =>
-                                _showQuickAdded(context, 'Abs workout'),
+                            onTap: () => unawaited(
+                              _showQuickAdded(context, 'Abs workout'),
+                            ),
                           ),
                           _QuickAddPill(
                             label: context.tr('Smoke-free'),
-                            onTap: () => _showQuickAdded(context, 'Smoke-free'),
+                            onTap: () => unawaited(
+                              _showQuickAdded(context, 'Smoke-free'),
+                            ),
                           ),
                           _QuickAddPill(
                             label: context.tr('Alcohol'),
-                            onTap: () => _showQuickAdded(context, 'Alcohol'),
+                            onTap: () =>
+                                unawaited(_showQuickAdded(context, 'Alcohol')),
                           ),
                         ],
                       ),
@@ -400,14 +528,16 @@ class _HomeContent extends StatelessWidget {
     );
   }
 
-  void _showQuickAdded(BuildContext context, String habit) {
-    _recordWorkout(habit);
-    if (habit == 'Alcohol') {
-      BodyVisualState.addAlcoholHabit();
+  Future<void> _showQuickAdded(BuildContext context, String habit) async {
+    try {
+      final bodyState = await habitRepository.recordHabit(habit);
+      BodyVisualState.restore(bodyState);
+    } catch (_) {
+      if (!context.mounted) return;
+      _showStorageFailure(context);
+      return;
     }
-    if (habit == 'Healthy meal') {
-      BodyVisualState.addHealthyEatingHabit();
-    }
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -463,20 +593,15 @@ class _QuickAddPill extends StatelessWidget {
   }
 }
 
-void _recordWorkout(String habit) {
-  const workoutGroups = {
-    'Arm': MuscleGroup.arms,
-    'Arm workout': MuscleGroup.arms,
-    'Shoulder / Back': MuscleGroup.shouldersBack,
-    'Chest': MuscleGroup.chest,
-    'Abs': MuscleGroup.abs,
-    'Abs workout': MuscleGroup.abs,
-    'Legs': MuscleGroup.legs,
-  };
-  final group = workoutGroups[habit];
-  if (group != null) {
-    BodyVisualState.addWorkout(group);
-  }
+void _showStorageFailure(BuildContext context) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(context.tr('Could not save habit offline')),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
 }
 
 class _GenderBodyFrame extends StatelessWidget {
@@ -745,7 +870,9 @@ class _BlurredCapsule extends StatelessWidget {
 }
 
 class AddHabitPage extends StatelessWidget {
-  const AddHabitPage({super.key});
+  const AddHabitPage({required this.habitRepository, super.key});
+
+  final HabitRepository habitRepository;
 
   static const _badHabits = [
     ('Smoking', Icons.smoke_free_rounded),
@@ -796,12 +923,12 @@ class AddHabitPage extends StatelessWidget {
               _HabitTile(
                 label: context.tr('Drinking water'),
                 icon: Icons.water_drop_rounded,
-                onAdd: () => _showAdded(context, 'Drinking water'),
+                onAdd: () => unawaited(_showAdded(context, 'Drinking water')),
               ),
               _HabitTile(
                 label: context.tr('Eating healthy'),
                 icon: Icons.eco_rounded,
-                onAdd: () => _showAdded(context, 'Eating healthy'),
+                onAdd: () => unawaited(_showAdded(context, 'Eating healthy')),
               ),
             ],
           ),
@@ -832,7 +959,8 @@ class AddHabitPage extends StatelessWidget {
                         _ExerciseRow(
                           label: context.tr(exercise.$1),
                           icon: exercise.$2,
-                          onAdd: () => _showAdded(context, exercise.$1),
+                          onAdd: () =>
+                              unawaited(_showAdded(context, exercise.$1)),
                         ),
                     ],
                   ),
@@ -860,7 +988,7 @@ class AddHabitPage extends StatelessWidget {
                 _HabitTile(
                   label: context.tr(habit.$1),
                   icon: habit.$2,
-                  onAdd: () => _showAdded(context, habit.$1),
+                  onAdd: () => unawaited(_showAdded(context, habit.$1)),
                 ),
             ],
           ),
@@ -869,14 +997,16 @@ class AddHabitPage extends StatelessWidget {
     );
   }
 
-  void _showAdded(BuildContext context, String habit) {
-    _recordWorkout(habit);
-    if (habit == 'Alcohol') {
-      BodyVisualState.addAlcoholHabit();
+  Future<void> _showAdded(BuildContext context, String habit) async {
+    try {
+      final bodyState = await habitRepository.recordHabit(habit);
+      BodyVisualState.restore(bodyState);
+    } catch (_) {
+      if (!context.mounted) return;
+      _showStorageFailure(context);
+      return;
     }
-    if (habit == 'Eating healthy') {
-      BodyVisualState.addHealthyEatingHabit();
-    }
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(

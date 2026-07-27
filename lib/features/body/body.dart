@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:visualyou/data/habits/habit_repository.dart';
 import 'package:visualyou/l10n/app_strings.dart';
 
 enum MaleBodyView { organs, muscles }
@@ -44,6 +45,27 @@ class BodyVisualState {
   static final ValueNotifier<Color?> liverTint = ValueNotifier(null);
   static final ValueNotifier<Map<MuscleGroup, int>> muscleWorkoutCounts =
       ValueNotifier(const {});
+
+  static void restore(PersistedBodyState state) {
+    Color? colorFor(String key) {
+      final value = state.parts[key]?.colorValue;
+      return value == null ? null : Color(value);
+    }
+
+    brainTint.value = colorFor(BodyPartKey.brain);
+    heartTint.value = colorFor(BodyPartKey.heart);
+    gutTint.value = colorFor(BodyPartKey.gut);
+    stomachTint.value = colorFor(BodyPartKey.stomach);
+    liverTint.value = colorFor(BodyPartKey.liver);
+    muscleWorkoutCounts.value = Map.unmodifiable({
+      MuscleGroup.arms: state.parts[BodyPartKey.arms]?.level ?? 0,
+      MuscleGroup.shouldersBack:
+          state.parts[BodyPartKey.shouldersBack]?.level ?? 0,
+      MuscleGroup.chest: state.parts[BodyPartKey.chest]?.level ?? 0,
+      MuscleGroup.abs: state.parts[BodyPartKey.abs]?.level ?? 0,
+      MuscleGroup.legs: state.parts[BodyPartKey.legs]?.level ?? 0,
+    });
+  }
 
   static void showOrgans() {
     maleBodyView.value = MaleBodyView.organs;

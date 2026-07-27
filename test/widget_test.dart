@@ -5,8 +5,11 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualyou/data/habits/drift_habit_repository.dart';
+import 'package:visualyou/data/local/app_database.dart';
 import 'package:visualyou/features/female_body/female_body.dart';
 
 import 'package:visualyou/main.dart';
@@ -15,7 +18,11 @@ void main() {
   testWidgets('home actions navigate to profile and settings', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const VisualYouApp());
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await tester.pumpWidget(
+      VisualYouApp(habitRepository: DriftHabitRepository(database)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text("Let's build a better you"), findsOneWidget);

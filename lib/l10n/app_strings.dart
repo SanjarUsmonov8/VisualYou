@@ -131,6 +131,9 @@ const Map<String, Map<String, String>> _translations = {
     'Uzbek': 'Uzbek',
     'Show organs': 'Show organs',
     'Show muscles': 'Show muscles',
+    'Could not open offline storage': 'Could not open offline storage',
+    'Could not save habit offline': 'Could not save habit offline',
+    'Retry': 'Retry',
   },
   'es': {
     'Body statistics': 'Estadísticas corporales',
@@ -202,6 +205,10 @@ const Map<String, Map<String, String>> _translations = {
     'Uzbek': 'Uzbeko',
     'Show organs': 'Mostrar órganos',
     'Show muscles': 'Mostrar músculos',
+    'Could not open offline storage':
+        'No se pudo abrir el almacenamiento sin conexión',
+    'Could not save habit offline': 'No se pudo guardar el hábito sin conexión',
+    'Retry': 'Reintentar',
   },
   'ru': {
     'Body statistics': 'Статистика тела',
@@ -273,6 +280,9 @@ const Map<String, Map<String, String>> _translations = {
     'Uzbek': 'Узбекский',
     'Show organs': 'Показать органы',
     'Show muscles': 'Показать мышцы',
+    'Could not open offline storage': 'Не удалось открыть автономное хранилище',
+    'Could not save habit offline': 'Не удалось сохранить привычку офлайн',
+    'Retry': 'Повторить',
   },
   'fr': {
     'Body statistics': 'Statistiques corporelles',
@@ -344,6 +354,11 @@ const Map<String, Map<String, String>> _translations = {
     'Uzbek': 'Ouzbek',
     'Show organs': 'Afficher les organes',
     'Show muscles': 'Afficher les muscles',
+    'Could not open offline storage':
+        'Impossible d’ouvrir le stockage hors ligne',
+    'Could not save habit offline':
+        'Impossible d’enregistrer l’habitude hors ligne',
+    'Retry': 'Réessayer',
   },
   'uz': {
     'Body statistics': 'Tana statistikasi',
@@ -415,5 +430,8 @@ const Map<String, Map<String, String>> _translations = {
     'Uzbek': 'O‘zbekcha',
     'Show organs': 'Organlarni ko‘rsatish',
     'Show muscles': 'Mushaklarni ko‘rsatish',
+    'Could not open offline storage': 'Oflayn xotirani ochib bo‘lmadi',
+    'Could not save habit offline': 'Odatni oflayn saqlab bo‘lmadi',
+    'Retry': 'Qayta urinish',
   },
 };
