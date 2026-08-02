@@ -77,7 +77,7 @@ const _femaleMuscleLayers = <MuscleLayerConfig>[
 
   // Underwear is above abs and legs.
   MuscleLayerConfig(
-    assetPath: 'assets/images/body/female underwear.png',
+    assetPath: 'assets/images/body/female underwear(1).png',
     semanticLabel: 'Female underwear',
     top: 0,
     left: 0,

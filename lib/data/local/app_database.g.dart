@@ -55,6 +55,21 @@ class $HabitDefinitionsTable extends HabitDefinitions
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -117,6 +132,7 @@ class $HabitDefinitionsTable extends HabitDefinitions
     nameKey,
     category,
     isActive,
+    isFavorite,
     createdAt,
     updatedAt,
     syncStatus,
@@ -160,6 +176,12 @@ class $HabitDefinitionsTable extends HabitDefinitions
       context.handle(
         _isActiveMeta,
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -221,6 +243,10 @@ class $HabitDefinitionsTable extends HabitDefinitions
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -255,6 +281,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
   final String nameKey;
   final String category;
   final bool isActive;
+  final bool isFavorite;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String syncStatus;
@@ -265,6 +292,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
     required this.nameKey,
     required this.category,
     required this.isActive,
+    required this.isFavorite,
     required this.createdAt,
     required this.updatedAt,
     required this.syncStatus,
@@ -278,6 +306,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
     map['name_key'] = Variable<String>(nameKey);
     map['category'] = Variable<String>(category);
     map['is_active'] = Variable<bool>(isActive);
+    map['is_favorite'] = Variable<bool>(isFavorite);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['sync_status'] = Variable<String>(syncStatus);
@@ -296,6 +325,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
       nameKey: Value(nameKey),
       category: Value(category),
       isActive: Value(isActive),
+      isFavorite: Value(isFavorite),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       syncStatus: Value(syncStatus),
@@ -318,6 +348,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
       nameKey: serializer.fromJson<String>(json['nameKey']),
       category: serializer.fromJson<String>(json['category']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
@@ -333,6 +364,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
       'nameKey': serializer.toJson<String>(nameKey),
       'category': serializer.toJson<String>(category),
       'isActive': serializer.toJson<bool>(isActive),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'syncStatus': serializer.toJson<String>(syncStatus),
@@ -346,6 +378,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
     String? nameKey,
     String? category,
     bool? isActive,
+    bool? isFavorite,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? syncStatus,
@@ -356,6 +389,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
     nameKey: nameKey ?? this.nameKey,
     category: category ?? this.category,
     isActive: isActive ?? this.isActive,
+    isFavorite: isFavorite ?? this.isFavorite,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     syncStatus: syncStatus ?? this.syncStatus,
@@ -368,6 +402,9 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
       nameKey: data.nameKey.present ? data.nameKey.value : this.nameKey,
       category: data.category.present ? data.category.value : this.category,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       syncStatus: data.syncStatus.present
@@ -385,6 +422,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
           ..write('nameKey: $nameKey, ')
           ..write('category: $category, ')
           ..write('isActive: $isActive, ')
+          ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncStatus: $syncStatus, ')
@@ -400,6 +438,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
     nameKey,
     category,
     isActive,
+    isFavorite,
     createdAt,
     updatedAt,
     syncStatus,
@@ -414,6 +453,7 @@ class HabitDefinition extends DataClass implements Insertable<HabitDefinition> {
           other.nameKey == this.nameKey &&
           other.category == this.category &&
           other.isActive == this.isActive &&
+          other.isFavorite == this.isFavorite &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.syncStatus == this.syncStatus &&
@@ -426,6 +466,7 @@ class HabitDefinitionsCompanion extends UpdateCompanion<HabitDefinition> {
   final Value<String> nameKey;
   final Value<String> category;
   final Value<bool> isActive;
+  final Value<bool> isFavorite;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<String> syncStatus;
@@ -437,6 +478,7 @@ class HabitDefinitionsCompanion extends UpdateCompanion<HabitDefinition> {
     this.nameKey = const Value.absent(),
     this.category = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -449,6 +491,7 @@ class HabitDefinitionsCompanion extends UpdateCompanion<HabitDefinition> {
     required String nameKey,
     required String category,
     this.isActive = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.syncStatus = const Value.absent(),
@@ -465,6 +508,7 @@ class HabitDefinitionsCompanion extends UpdateCompanion<HabitDefinition> {
     Expression<String>? nameKey,
     Expression<String>? category,
     Expression<bool>? isActive,
+    Expression<bool>? isFavorite,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? syncStatus,
@@ -477,6 +521,7 @@ class HabitDefinitionsCompanion extends UpdateCompanion<HabitDefinition> {
       if (nameKey != null) 'name_key': nameKey,
       if (category != null) 'category': category,
       if (isActive != null) 'is_active': isActive,
+      if (isFavorite != null) 'is_favorite': isFavorite,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -491,6 +536,7 @@ class HabitDefinitionsCompanion extends UpdateCompanion<HabitDefinition> {
     Value<String>? nameKey,
     Value<String>? category,
     Value<bool>? isActive,
+    Value<bool>? isFavorite,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<String>? syncStatus,
@@ -503,6 +549,7 @@ class HabitDefinitionsCompanion extends UpdateCompanion<HabitDefinition> {
       nameKey: nameKey ?? this.nameKey,
       category: category ?? this.category,
       isActive: isActive ?? this.isActive,
+      isFavorite: isFavorite ?? this.isFavorite,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -526,6 +573,9 @@ class HabitDefinitionsCompanion extends UpdateCompanion<HabitDefinition> {
     }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -555,6 +605,7 @@ class HabitDefinitionsCompanion extends UpdateCompanion<HabitDefinition> {
           ..write('nameKey: $nameKey, ')
           ..write('category: $category, ')
           ..write('isActive: $isActive, ')
+          ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncStatus: $syncStatus, ')
@@ -2207,6 +2258,1445 @@ class GraphHistoryEntriesCompanion extends UpdateCompanion<GraphHistoryEntry> {
   }
 }
 
+class $CustomGraphRulesTable extends CustomGraphRules
+    with TableInfo<$CustomGraphRulesTable, CustomGraphRuleRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CustomGraphRulesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _slotMeta = const VerificationMeta('slot');
+  @override
+  late final GeneratedColumn<int> slot = GeneratedColumn<int>(
+    'slot',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _habitIdMeta = const VerificationMeta(
+    'habitId',
+  );
+  @override
+  late final GeneratedColumn<String> habitId = GeneratedColumn<String>(
+    'habit_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES habit_definitions (id)',
+    ),
+  );
+  static const VerificationMeta _completedPointsMeta = const VerificationMeta(
+    'completedPoints',
+  );
+  @override
+  late final GeneratedColumn<int> completedPoints = GeneratedColumn<int>(
+    'completed_points',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _missedPointsMeta = const VerificationMeta(
+    'missedPoints',
+  );
+  @override
+  late final GeneratedColumn<int> missedPoints = GeneratedColumn<int>(
+    'missed_points',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteId = GeneratedColumn<String>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    slot,
+    habitId,
+    completedPoints,
+    missedPoints,
+    updatedAt,
+    syncStatus,
+    remoteId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'custom_graph_rules';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CustomGraphRuleRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('slot')) {
+      context.handle(
+        _slotMeta,
+        slot.isAcceptableOrUnknown(data['slot']!, _slotMeta),
+      );
+    }
+    if (data.containsKey('habit_id')) {
+      context.handle(
+        _habitIdMeta,
+        habitId.isAcceptableOrUnknown(data['habit_id']!, _habitIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_habitIdMeta);
+    }
+    if (data.containsKey('completed_points')) {
+      context.handle(
+        _completedPointsMeta,
+        completedPoints.isAcceptableOrUnknown(
+          data['completed_points']!,
+          _completedPointsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_completedPointsMeta);
+    }
+    if (data.containsKey('missed_points')) {
+      context.handle(
+        _missedPointsMeta,
+        missedPoints.isAcceptableOrUnknown(
+          data['missed_points']!,
+          _missedPointsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_missedPointsMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {slot};
+  @override
+  CustomGraphRuleRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CustomGraphRuleRow(
+      slot: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}slot'],
+      )!,
+      habitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}habit_id'],
+      )!,
+      completedPoints: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}completed_points'],
+      )!,
+      missedPoints: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}missed_points'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_id'],
+      ),
+    );
+  }
+
+  @override
+  $CustomGraphRulesTable createAlias(String alias) {
+    return $CustomGraphRulesTable(attachedDatabase, alias);
+  }
+}
+
+class CustomGraphRuleRow extends DataClass
+    implements Insertable<CustomGraphRuleRow> {
+  final int slot;
+  final String habitId;
+  final int completedPoints;
+  final int missedPoints;
+  final DateTime updatedAt;
+  final String syncStatus;
+  final String? remoteId;
+  const CustomGraphRuleRow({
+    required this.slot,
+    required this.habitId,
+    required this.completedPoints,
+    required this.missedPoints,
+    required this.updatedAt,
+    required this.syncStatus,
+    this.remoteId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['slot'] = Variable<int>(slot);
+    map['habit_id'] = Variable<String>(habitId);
+    map['completed_points'] = Variable<int>(completedPoints);
+    map['missed_points'] = Variable<int>(missedPoints);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<String>(remoteId);
+    }
+    return map;
+  }
+
+  CustomGraphRulesCompanion toCompanion(bool nullToAbsent) {
+    return CustomGraphRulesCompanion(
+      slot: Value(slot),
+      habitId: Value(habitId),
+      completedPoints: Value(completedPoints),
+      missedPoints: Value(missedPoints),
+      updatedAt: Value(updatedAt),
+      syncStatus: Value(syncStatus),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
+    );
+  }
+
+  factory CustomGraphRuleRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CustomGraphRuleRow(
+      slot: serializer.fromJson<int>(json['slot']),
+      habitId: serializer.fromJson<String>(json['habitId']),
+      completedPoints: serializer.fromJson<int>(json['completedPoints']),
+      missedPoints: serializer.fromJson<int>(json['missedPoints']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      remoteId: serializer.fromJson<String?>(json['remoteId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'slot': serializer.toJson<int>(slot),
+      'habitId': serializer.toJson<String>(habitId),
+      'completedPoints': serializer.toJson<int>(completedPoints),
+      'missedPoints': serializer.toJson<int>(missedPoints),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'remoteId': serializer.toJson<String?>(remoteId),
+    };
+  }
+
+  CustomGraphRuleRow copyWith({
+    int? slot,
+    String? habitId,
+    int? completedPoints,
+    int? missedPoints,
+    DateTime? updatedAt,
+    String? syncStatus,
+    Value<String?> remoteId = const Value.absent(),
+  }) => CustomGraphRuleRow(
+    slot: slot ?? this.slot,
+    habitId: habitId ?? this.habitId,
+    completedPoints: completedPoints ?? this.completedPoints,
+    missedPoints: missedPoints ?? this.missedPoints,
+    updatedAt: updatedAt ?? this.updatedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
+  );
+  CustomGraphRuleRow copyWithCompanion(CustomGraphRulesCompanion data) {
+    return CustomGraphRuleRow(
+      slot: data.slot.present ? data.slot.value : this.slot,
+      habitId: data.habitId.present ? data.habitId.value : this.habitId,
+      completedPoints: data.completedPoints.present
+          ? data.completedPoints.value
+          : this.completedPoints,
+      missedPoints: data.missedPoints.present
+          ? data.missedPoints.value
+          : this.missedPoints,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomGraphRuleRow(')
+          ..write('slot: $slot, ')
+          ..write('habitId: $habitId, ')
+          ..write('completedPoints: $completedPoints, ')
+          ..write('missedPoints: $missedPoints, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('remoteId: $remoteId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    slot,
+    habitId,
+    completedPoints,
+    missedPoints,
+    updatedAt,
+    syncStatus,
+    remoteId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CustomGraphRuleRow &&
+          other.slot == this.slot &&
+          other.habitId == this.habitId &&
+          other.completedPoints == this.completedPoints &&
+          other.missedPoints == this.missedPoints &&
+          other.updatedAt == this.updatedAt &&
+          other.syncStatus == this.syncStatus &&
+          other.remoteId == this.remoteId);
+}
+
+class CustomGraphRulesCompanion extends UpdateCompanion<CustomGraphRuleRow> {
+  final Value<int> slot;
+  final Value<String> habitId;
+  final Value<int> completedPoints;
+  final Value<int> missedPoints;
+  final Value<DateTime> updatedAt;
+  final Value<String> syncStatus;
+  final Value<String?> remoteId;
+  const CustomGraphRulesCompanion({
+    this.slot = const Value.absent(),
+    this.habitId = const Value.absent(),
+    this.completedPoints = const Value.absent(),
+    this.missedPoints = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.remoteId = const Value.absent(),
+  });
+  CustomGraphRulesCompanion.insert({
+    this.slot = const Value.absent(),
+    required String habitId,
+    required int completedPoints,
+    required int missedPoints,
+    required DateTime updatedAt,
+    this.syncStatus = const Value.absent(),
+    this.remoteId = const Value.absent(),
+  }) : habitId = Value(habitId),
+       completedPoints = Value(completedPoints),
+       missedPoints = Value(missedPoints),
+       updatedAt = Value(updatedAt);
+  static Insertable<CustomGraphRuleRow> custom({
+    Expression<int>? slot,
+    Expression<String>? habitId,
+    Expression<int>? completedPoints,
+    Expression<int>? missedPoints,
+    Expression<DateTime>? updatedAt,
+    Expression<String>? syncStatus,
+    Expression<String>? remoteId,
+  }) {
+    return RawValuesInsertable({
+      if (slot != null) 'slot': slot,
+      if (habitId != null) 'habit_id': habitId,
+      if (completedPoints != null) 'completed_points': completedPoints,
+      if (missedPoints != null) 'missed_points': missedPoints,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (remoteId != null) 'remote_id': remoteId,
+    });
+  }
+
+  CustomGraphRulesCompanion copyWith({
+    Value<int>? slot,
+    Value<String>? habitId,
+    Value<int>? completedPoints,
+    Value<int>? missedPoints,
+    Value<DateTime>? updatedAt,
+    Value<String>? syncStatus,
+    Value<String?>? remoteId,
+  }) {
+    return CustomGraphRulesCompanion(
+      slot: slot ?? this.slot,
+      habitId: habitId ?? this.habitId,
+      completedPoints: completedPoints ?? this.completedPoints,
+      missedPoints: missedPoints ?? this.missedPoints,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      remoteId: remoteId ?? this.remoteId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (slot.present) {
+      map['slot'] = Variable<int>(slot.value);
+    }
+    if (habitId.present) {
+      map['habit_id'] = Variable<String>(habitId.value);
+    }
+    if (completedPoints.present) {
+      map['completed_points'] = Variable<int>(completedPoints.value);
+    }
+    if (missedPoints.present) {
+      map['missed_points'] = Variable<int>(missedPoints.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<String>(remoteId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomGraphRulesCompanion(')
+          ..write('slot: $slot, ')
+          ..write('habitId: $habitId, ')
+          ..write('completedPoints: $completedPoints, ')
+          ..write('missedPoints: $missedPoints, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('remoteId: $remoteId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SpecialHabitGraphsTable extends SpecialHabitGraphs
+    with TableInfo<$SpecialHabitGraphsTable, SpecialHabitGraphRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SpecialHabitGraphsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _slotMeta = const VerificationMeta('slot');
+  @override
+  late final GeneratedColumn<int> slot = GeneratedColumn<int>(
+    'slot',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _habitIdMeta = const VerificationMeta(
+    'habitId',
+  );
+  @override
+  late final GeneratedColumn<String> habitId = GeneratedColumn<String>(
+    'habit_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES habit_definitions (id)',
+    ),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteId = GeneratedColumn<String>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    slot,
+    habitId,
+    updatedAt,
+    syncStatus,
+    remoteId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'special_habit_graphs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SpecialHabitGraphRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('slot')) {
+      context.handle(
+        _slotMeta,
+        slot.isAcceptableOrUnknown(data['slot']!, _slotMeta),
+      );
+    }
+    if (data.containsKey('habit_id')) {
+      context.handle(
+        _habitIdMeta,
+        habitId.isAcceptableOrUnknown(data['habit_id']!, _habitIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_habitIdMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {slot};
+  @override
+  SpecialHabitGraphRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SpecialHabitGraphRow(
+      slot: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}slot'],
+      )!,
+      habitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}habit_id'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_id'],
+      ),
+    );
+  }
+
+  @override
+  $SpecialHabitGraphsTable createAlias(String alias) {
+    return $SpecialHabitGraphsTable(attachedDatabase, alias);
+  }
+}
+
+class SpecialHabitGraphRow extends DataClass
+    implements Insertable<SpecialHabitGraphRow> {
+  final int slot;
+  final String habitId;
+  final DateTime updatedAt;
+  final String syncStatus;
+  final String? remoteId;
+  const SpecialHabitGraphRow({
+    required this.slot,
+    required this.habitId,
+    required this.updatedAt,
+    required this.syncStatus,
+    this.remoteId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['slot'] = Variable<int>(slot);
+    map['habit_id'] = Variable<String>(habitId);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<String>(remoteId);
+    }
+    return map;
+  }
+
+  SpecialHabitGraphsCompanion toCompanion(bool nullToAbsent) {
+    return SpecialHabitGraphsCompanion(
+      slot: Value(slot),
+      habitId: Value(habitId),
+      updatedAt: Value(updatedAt),
+      syncStatus: Value(syncStatus),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
+    );
+  }
+
+  factory SpecialHabitGraphRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SpecialHabitGraphRow(
+      slot: serializer.fromJson<int>(json['slot']),
+      habitId: serializer.fromJson<String>(json['habitId']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      remoteId: serializer.fromJson<String?>(json['remoteId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'slot': serializer.toJson<int>(slot),
+      'habitId': serializer.toJson<String>(habitId),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'remoteId': serializer.toJson<String?>(remoteId),
+    };
+  }
+
+  SpecialHabitGraphRow copyWith({
+    int? slot,
+    String? habitId,
+    DateTime? updatedAt,
+    String? syncStatus,
+    Value<String?> remoteId = const Value.absent(),
+  }) => SpecialHabitGraphRow(
+    slot: slot ?? this.slot,
+    habitId: habitId ?? this.habitId,
+    updatedAt: updatedAt ?? this.updatedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
+  );
+  SpecialHabitGraphRow copyWithCompanion(SpecialHabitGraphsCompanion data) {
+    return SpecialHabitGraphRow(
+      slot: data.slot.present ? data.slot.value : this.slot,
+      habitId: data.habitId.present ? data.habitId.value : this.habitId,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpecialHabitGraphRow(')
+          ..write('slot: $slot, ')
+          ..write('habitId: $habitId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('remoteId: $remoteId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(slot, habitId, updatedAt, syncStatus, remoteId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SpecialHabitGraphRow &&
+          other.slot == this.slot &&
+          other.habitId == this.habitId &&
+          other.updatedAt == this.updatedAt &&
+          other.syncStatus == this.syncStatus &&
+          other.remoteId == this.remoteId);
+}
+
+class SpecialHabitGraphsCompanion
+    extends UpdateCompanion<SpecialHabitGraphRow> {
+  final Value<int> slot;
+  final Value<String> habitId;
+  final Value<DateTime> updatedAt;
+  final Value<String> syncStatus;
+  final Value<String?> remoteId;
+  const SpecialHabitGraphsCompanion({
+    this.slot = const Value.absent(),
+    this.habitId = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.remoteId = const Value.absent(),
+  });
+  SpecialHabitGraphsCompanion.insert({
+    this.slot = const Value.absent(),
+    required String habitId,
+    required DateTime updatedAt,
+    this.syncStatus = const Value.absent(),
+    this.remoteId = const Value.absent(),
+  }) : habitId = Value(habitId),
+       updatedAt = Value(updatedAt);
+  static Insertable<SpecialHabitGraphRow> custom({
+    Expression<int>? slot,
+    Expression<String>? habitId,
+    Expression<DateTime>? updatedAt,
+    Expression<String>? syncStatus,
+    Expression<String>? remoteId,
+  }) {
+    return RawValuesInsertable({
+      if (slot != null) 'slot': slot,
+      if (habitId != null) 'habit_id': habitId,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (remoteId != null) 'remote_id': remoteId,
+    });
+  }
+
+  SpecialHabitGraphsCompanion copyWith({
+    Value<int>? slot,
+    Value<String>? habitId,
+    Value<DateTime>? updatedAt,
+    Value<String>? syncStatus,
+    Value<String?>? remoteId,
+  }) {
+    return SpecialHabitGraphsCompanion(
+      slot: slot ?? this.slot,
+      habitId: habitId ?? this.habitId,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      remoteId: remoteId ?? this.remoteId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (slot.present) {
+      map['slot'] = Variable<int>(slot.value);
+    }
+    if (habitId.present) {
+      map['habit_id'] = Variable<String>(habitId.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<String>(remoteId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpecialHabitGraphsCompanion(')
+          ..write('slot: $slot, ')
+          ..write('habitId: $habitId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('remoteId: $remoteId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ReductionPlansTable extends ReductionPlans
+    with TableInfo<$ReductionPlansTable, ReductionPlanRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReductionPlansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _habitIdMeta = const VerificationMeta(
+    'habitId',
+  );
+  @override
+  late final GeneratedColumn<String> habitId = GeneratedColumn<String>(
+    'habit_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES habit_definitions (id)',
+    ),
+  );
+  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
+  @override
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+    'mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startedOnMeta = const VerificationMeta(
+    'startedOn',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedOn = GeneratedColumn<DateTime>(
+    'started_on',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteId = GeneratedColumn<String>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    habitId,
+    mode,
+    startedOn,
+    isActive,
+    createdAt,
+    updatedAt,
+    syncStatus,
+    remoteId,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reduction_plans';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReductionPlanRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('habit_id')) {
+      context.handle(
+        _habitIdMeta,
+        habitId.isAcceptableOrUnknown(data['habit_id']!, _habitIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_habitIdMeta);
+    }
+    if (data.containsKey('mode')) {
+      context.handle(
+        _modeMeta,
+        mode.isAcceptableOrUnknown(data['mode']!, _modeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modeMeta);
+    }
+    if (data.containsKey('started_on')) {
+      context.handle(
+        _startedOnMeta,
+        startedOn.isAcceptableOrUnknown(data['started_on']!, _startedOnMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedOnMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReductionPlanRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReductionPlanRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      habitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}habit_id'],
+      )!,
+      mode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mode'],
+      )!,
+      startedOn: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_on'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_id'],
+      ),
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $ReductionPlansTable createAlias(String alias) {
+    return $ReductionPlansTable(attachedDatabase, alias);
+  }
+}
+
+class ReductionPlanRow extends DataClass
+    implements Insertable<ReductionPlanRow> {
+  final String id;
+  final String habitId;
+  final String mode;
+  final DateTime startedOn;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String syncStatus;
+  final String? remoteId;
+  final DateTime? deletedAt;
+  const ReductionPlanRow({
+    required this.id,
+    required this.habitId,
+    required this.mode,
+    required this.startedOn,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.syncStatus,
+    this.remoteId,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['habit_id'] = Variable<String>(habitId);
+    map['mode'] = Variable<String>(mode);
+    map['started_on'] = Variable<DateTime>(startedOn);
+    map['is_active'] = Variable<bool>(isActive);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sync_status'] = Variable<String>(syncStatus);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<String>(remoteId);
+    }
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  ReductionPlansCompanion toCompanion(bool nullToAbsent) {
+    return ReductionPlansCompanion(
+      id: Value(id),
+      habitId: Value(habitId),
+      mode: Value(mode),
+      startedOn: Value(startedOn),
+      isActive: Value(isActive),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      syncStatus: Value(syncStatus),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory ReductionPlanRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReductionPlanRow(
+      id: serializer.fromJson<String>(json['id']),
+      habitId: serializer.fromJson<String>(json['habitId']),
+      mode: serializer.fromJson<String>(json['mode']),
+      startedOn: serializer.fromJson<DateTime>(json['startedOn']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      remoteId: serializer.fromJson<String?>(json['remoteId']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'habitId': serializer.toJson<String>(habitId),
+      'mode': serializer.toJson<String>(mode),
+      'startedOn': serializer.toJson<DateTime>(startedOn),
+      'isActive': serializer.toJson<bool>(isActive),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncStatus': serializer.toJson<String>(syncStatus),
+      'remoteId': serializer.toJson<String?>(remoteId),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  ReductionPlanRow copyWith({
+    String? id,
+    String? habitId,
+    String? mode,
+    DateTime? startedOn,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? syncStatus,
+    Value<String?> remoteId = const Value.absent(),
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => ReductionPlanRow(
+    id: id ?? this.id,
+    habitId: habitId ?? this.habitId,
+    mode: mode ?? this.mode,
+    startedOn: startedOn ?? this.startedOn,
+    isActive: isActive ?? this.isActive,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  ReductionPlanRow copyWithCompanion(ReductionPlansCompanion data) {
+    return ReductionPlanRow(
+      id: data.id.present ? data.id.value : this.id,
+      habitId: data.habitId.present ? data.habitId.value : this.habitId,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      startedOn: data.startedOn.present ? data.startedOn.value : this.startedOn,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReductionPlanRow(')
+          ..write('id: $id, ')
+          ..write('habitId: $habitId, ')
+          ..write('mode: $mode, ')
+          ..write('startedOn: $startedOn, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    habitId,
+    mode,
+    startedOn,
+    isActive,
+    createdAt,
+    updatedAt,
+    syncStatus,
+    remoteId,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReductionPlanRow &&
+          other.id == this.id &&
+          other.habitId == this.habitId &&
+          other.mode == this.mode &&
+          other.startedOn == this.startedOn &&
+          other.isActive == this.isActive &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.syncStatus == this.syncStatus &&
+          other.remoteId == this.remoteId &&
+          other.deletedAt == this.deletedAt);
+}
+
+class ReductionPlansCompanion extends UpdateCompanion<ReductionPlanRow> {
+  final Value<String> id;
+  final Value<String> habitId;
+  final Value<String> mode;
+  final Value<DateTime> startedOn;
+  final Value<bool> isActive;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<String> syncStatus;
+  final Value<String?> remoteId;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const ReductionPlansCompanion({
+    this.id = const Value.absent(),
+    this.habitId = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.startedOn = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.remoteId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReductionPlansCompanion.insert({
+    required String id,
+    required String habitId,
+    required String mode,
+    required DateTime startedOn,
+    this.isActive = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.syncStatus = const Value.absent(),
+    this.remoteId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       habitId = Value(habitId),
+       mode = Value(mode),
+       startedOn = Value(startedOn),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ReductionPlanRow> custom({
+    Expression<String>? id,
+    Expression<String>? habitId,
+    Expression<String>? mode,
+    Expression<DateTime>? startedOn,
+    Expression<bool>? isActive,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<String>? syncStatus,
+    Expression<String>? remoteId,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (habitId != null) 'habit_id': habitId,
+      if (mode != null) 'mode': mode,
+      if (startedOn != null) 'started_on': startedOn,
+      if (isActive != null) 'is_active': isActive,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (remoteId != null) 'remote_id': remoteId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReductionPlansCompanion copyWith({
+    Value<String>? id,
+    Value<String>? habitId,
+    Value<String>? mode,
+    Value<DateTime>? startedOn,
+    Value<bool>? isActive,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<String>? syncStatus,
+    Value<String?>? remoteId,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return ReductionPlansCompanion(
+      id: id ?? this.id,
+      habitId: habitId ?? this.habitId,
+      mode: mode ?? this.mode,
+      startedOn: startedOn ?? this.startedOn,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      remoteId: remoteId ?? this.remoteId,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (habitId.present) {
+      map['habit_id'] = Variable<String>(habitId.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(mode.value);
+    }
+    if (startedOn.present) {
+      map['started_on'] = Variable<DateTime>(startedOn.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<String>(remoteId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReductionPlansCompanion(')
+          ..write('id: $id, ')
+          ..write('habitId: $habitId, ')
+          ..write('mode: $mode, ')
+          ..write('startedOn: $startedOn, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2219,6 +3709,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BodyPartStatesTable bodyPartStates = $BodyPartStatesTable(this);
   late final $GraphHistoryEntriesTable graphHistoryEntries =
       $GraphHistoryEntriesTable(this);
+  late final $CustomGraphRulesTable customGraphRules = $CustomGraphRulesTable(
+    this,
+  );
+  late final $SpecialHabitGraphsTable specialHabitGraphs =
+      $SpecialHabitGraphsTable(this);
+  late final $ReductionPlansTable reductionPlans = $ReductionPlansTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2228,6 +3724,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     habitLogEntries,
     bodyPartStates,
     graphHistoryEntries,
+    customGraphRules,
+    specialHabitGraphs,
+    reductionPlans,
   ];
 }
 
@@ -2237,6 +3736,7 @@ typedef $$HabitDefinitionsTableCreateCompanionBuilder =
       required String nameKey,
       required String category,
       Value<bool> isActive,
+      Value<bool> isFavorite,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<String> syncStatus,
@@ -2250,6 +3750,7 @@ typedef $$HabitDefinitionsTableUpdateCompanionBuilder =
       Value<String> nameKey,
       Value<String> category,
       Value<bool> isActive,
+      Value<bool> isFavorite,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<String> syncStatus,
@@ -2307,6 +3808,68 @@ final class $$HabitDefinitionsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$CustomGraphRulesTable, List<CustomGraphRuleRow>>
+  _customGraphRulesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.customGraphRules,
+    aliasName: 'habit_definitions__id__custom_graph_rules__habit_id',
+  );
+
+  $$CustomGraphRulesTableProcessedTableManager get customGraphRulesRefs {
+    final manager = $$CustomGraphRulesTableTableManager(
+      $_db,
+      $_db.customGraphRules,
+    ).filter((f) => f.habitId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _customGraphRulesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $SpecialHabitGraphsTable,
+    List<SpecialHabitGraphRow>
+  >
+  _specialHabitGraphsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.specialHabitGraphs,
+        aliasName: 'habit_definitions__id__special_habit_graphs__habit_id',
+      );
+
+  $$SpecialHabitGraphsTableProcessedTableManager get specialHabitGraphsRefs {
+    final manager = $$SpecialHabitGraphsTableTableManager(
+      $_db,
+      $_db.specialHabitGraphs,
+    ).filter((f) => f.habitId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _specialHabitGraphsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ReductionPlansTable, List<ReductionPlanRow>>
+  _reductionPlansRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.reductionPlans,
+    aliasName: 'habit_definitions__id__reduction_plans__habit_id',
+  );
+
+  $$ReductionPlansTableProcessedTableManager get reductionPlansRefs {
+    final manager = $$ReductionPlansTableTableManager(
+      $_db,
+      $_db.reductionPlans,
+    ).filter((f) => f.habitId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_reductionPlansRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$HabitDefinitionsTableFilterComposer
@@ -2335,6 +3898,11 @@ class $$HabitDefinitionsTableFilterComposer
 
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2412,6 +3980,81 @@ class $$HabitDefinitionsTableFilterComposer
     );
     return f(composer);
   }
+
+  Expression<bool> customGraphRulesRefs(
+    Expression<bool> Function($$CustomGraphRulesTableFilterComposer f) f,
+  ) {
+    final $$CustomGraphRulesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.customGraphRules,
+      getReferencedColumn: (t) => t.habitId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomGraphRulesTableFilterComposer(
+            $db: $db,
+            $table: $db.customGraphRules,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> specialHabitGraphsRefs(
+    Expression<bool> Function($$SpecialHabitGraphsTableFilterComposer f) f,
+  ) {
+    final $$SpecialHabitGraphsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.specialHabitGraphs,
+      getReferencedColumn: (t) => t.habitId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SpecialHabitGraphsTableFilterComposer(
+            $db: $db,
+            $table: $db.specialHabitGraphs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> reductionPlansRefs(
+    Expression<bool> Function($$ReductionPlansTableFilterComposer f) f,
+  ) {
+    final $$ReductionPlansTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.reductionPlans,
+      getReferencedColumn: (t) => t.habitId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReductionPlansTableFilterComposer(
+            $db: $db,
+            $table: $db.reductionPlans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$HabitDefinitionsTableOrderingComposer
@@ -2440,6 +4083,11 @@ class $$HabitDefinitionsTableOrderingComposer
 
   ColumnOrderings<bool> get isActive => $composableBuilder(
     column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2489,6 +4137,11 @@ class $$HabitDefinitionsTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2557,6 +4210,82 @@ class $$HabitDefinitionsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> customGraphRulesRefs<T extends Object>(
+    Expression<T> Function($$CustomGraphRulesTableAnnotationComposer a) f,
+  ) {
+    final $$CustomGraphRulesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.customGraphRules,
+      getReferencedColumn: (t) => t.habitId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomGraphRulesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.customGraphRules,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> specialHabitGraphsRefs<T extends Object>(
+    Expression<T> Function($$SpecialHabitGraphsTableAnnotationComposer a) f,
+  ) {
+    final $$SpecialHabitGraphsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.specialHabitGraphs,
+          getReferencedColumn: (t) => t.habitId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SpecialHabitGraphsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.specialHabitGraphs,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> reductionPlansRefs<T extends Object>(
+    Expression<T> Function($$ReductionPlansTableAnnotationComposer a) f,
+  ) {
+    final $$ReductionPlansTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.reductionPlans,
+      getReferencedColumn: (t) => t.habitId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReductionPlansTableAnnotationComposer(
+            $db: $db,
+            $table: $db.reductionPlans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$HabitDefinitionsTableTableManager
@@ -2575,6 +4304,9 @@ class $$HabitDefinitionsTableTableManager
           PrefetchHooks Function({
             bool habitLogEntriesRefs,
             bool graphHistoryEntriesRefs,
+            bool customGraphRulesRefs,
+            bool specialHabitGraphsRefs,
+            bool reductionPlansRefs,
           })
         > {
   $$HabitDefinitionsTableTableManager(
@@ -2596,6 +4328,7 @@ class $$HabitDefinitionsTableTableManager
                 Value<String> nameKey = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
@@ -2607,6 +4340,7 @@ class $$HabitDefinitionsTableTableManager
                 nameKey: nameKey,
                 category: category,
                 isActive: isActive,
+                isFavorite: isFavorite,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 syncStatus: syncStatus,
@@ -2620,6 +4354,7 @@ class $$HabitDefinitionsTableTableManager
                 required String nameKey,
                 required String category,
                 Value<bool> isActive = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<String> syncStatus = const Value.absent(),
@@ -2631,6 +4366,7 @@ class $$HabitDefinitionsTableTableManager
                 nameKey: nameKey,
                 category: category,
                 isActive: isActive,
+                isFavorite: isFavorite,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 syncStatus: syncStatus,
@@ -2647,12 +4383,21 @@ class $$HabitDefinitionsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({habitLogEntriesRefs = false, graphHistoryEntriesRefs = false}) {
+              ({
+                habitLogEntriesRefs = false,
+                graphHistoryEntriesRefs = false,
+                customGraphRulesRefs = false,
+                specialHabitGraphsRefs = false,
+                reductionPlansRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (habitLogEntriesRefs) db.habitLogEntries,
                     if (graphHistoryEntriesRefs) db.graphHistoryEntries,
+                    if (customGraphRulesRefs) db.customGraphRules,
+                    if (specialHabitGraphsRefs) db.specialHabitGraphs,
+                    if (reductionPlansRefs) db.reductionPlans,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -2699,6 +4444,69 @@ class $$HabitDefinitionsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (customGraphRulesRefs)
+                        await $_getPrefetchedData<
+                          HabitDefinition,
+                          $HabitDefinitionsTable,
+                          CustomGraphRuleRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HabitDefinitionsTableReferences
+                              ._customGraphRulesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HabitDefinitionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).customGraphRulesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.habitId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (specialHabitGraphsRefs)
+                        await $_getPrefetchedData<
+                          HabitDefinition,
+                          $HabitDefinitionsTable,
+                          SpecialHabitGraphRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HabitDefinitionsTableReferences
+                              ._specialHabitGraphsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HabitDefinitionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).specialHabitGraphsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.habitId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (reductionPlansRefs)
+                        await $_getPrefetchedData<
+                          HabitDefinition,
+                          $HabitDefinitionsTable,
+                          ReductionPlanRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HabitDefinitionsTableReferences
+                              ._reductionPlansRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HabitDefinitionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).reductionPlansRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.habitId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -2722,6 +4530,9 @@ typedef $$HabitDefinitionsTableProcessedTableManager =
       PrefetchHooks Function({
         bool habitLogEntriesRefs,
         bool graphHistoryEntriesRefs,
+        bool customGraphRulesRefs,
+        bool specialHabitGraphsRefs,
+        bool reductionPlansRefs,
       })
     >;
 typedef $$HabitLogEntriesTableCreateCompanionBuilder =
@@ -3809,6 +5620,1128 @@ typedef $$GraphHistoryEntriesTableProcessedTableManager =
       GraphHistoryEntry,
       PrefetchHooks Function({bool habitId})
     >;
+typedef $$CustomGraphRulesTableCreateCompanionBuilder =
+    CustomGraphRulesCompanion Function({
+      Value<int> slot,
+      required String habitId,
+      required int completedPoints,
+      required int missedPoints,
+      required DateTime updatedAt,
+      Value<String> syncStatus,
+      Value<String?> remoteId,
+    });
+typedef $$CustomGraphRulesTableUpdateCompanionBuilder =
+    CustomGraphRulesCompanion Function({
+      Value<int> slot,
+      Value<String> habitId,
+      Value<int> completedPoints,
+      Value<int> missedPoints,
+      Value<DateTime> updatedAt,
+      Value<String> syncStatus,
+      Value<String?> remoteId,
+    });
+
+final class $$CustomGraphRulesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $CustomGraphRulesTable,
+          CustomGraphRuleRow
+        > {
+  $$CustomGraphRulesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $HabitDefinitionsTable _habitIdTable(_$AppDatabase db) => db
+      .habitDefinitions
+      .createAlias('custom_graph_rules__habit_id__habit_definitions__id');
+
+  $$HabitDefinitionsTableProcessedTableManager get habitId {
+    final $_column = $_itemColumn<String>('habit_id')!;
+
+    final manager = $$HabitDefinitionsTableTableManager(
+      $_db,
+      $_db.habitDefinitions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_habitIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$CustomGraphRulesTableFilterComposer
+    extends Composer<_$AppDatabase, $CustomGraphRulesTable> {
+  $$CustomGraphRulesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get slot => $composableBuilder(
+    column: $table.slot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get completedPoints => $composableBuilder(
+    column: $table.completedPoints,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get missedPoints => $composableBuilder(
+    column: $table.missedPoints,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$HabitDefinitionsTableFilterComposer get habitId {
+    final $$HabitDefinitionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habitDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitDefinitionsTableFilterComposer(
+            $db: $db,
+            $table: $db.habitDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CustomGraphRulesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CustomGraphRulesTable> {
+  $$CustomGraphRulesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get slot => $composableBuilder(
+    column: $table.slot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get completedPoints => $composableBuilder(
+    column: $table.completedPoints,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get missedPoints => $composableBuilder(
+    column: $table.missedPoints,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$HabitDefinitionsTableOrderingComposer get habitId {
+    final $$HabitDefinitionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habitDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitDefinitionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.habitDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CustomGraphRulesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CustomGraphRulesTable> {
+  $$CustomGraphRulesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get slot =>
+      $composableBuilder(column: $table.slot, builder: (column) => column);
+
+  GeneratedColumn<int> get completedPoints => $composableBuilder(
+    column: $table.completedPoints,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get missedPoints => $composableBuilder(
+    column: $table.missedPoints,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
+  $$HabitDefinitionsTableAnnotationComposer get habitId {
+    final $$HabitDefinitionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habitDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitDefinitionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.habitDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CustomGraphRulesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CustomGraphRulesTable,
+          CustomGraphRuleRow,
+          $$CustomGraphRulesTableFilterComposer,
+          $$CustomGraphRulesTableOrderingComposer,
+          $$CustomGraphRulesTableAnnotationComposer,
+          $$CustomGraphRulesTableCreateCompanionBuilder,
+          $$CustomGraphRulesTableUpdateCompanionBuilder,
+          (CustomGraphRuleRow, $$CustomGraphRulesTableReferences),
+          CustomGraphRuleRow,
+          PrefetchHooks Function({bool habitId})
+        > {
+  $$CustomGraphRulesTableTableManager(
+    _$AppDatabase db,
+    $CustomGraphRulesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CustomGraphRulesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CustomGraphRulesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CustomGraphRulesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> slot = const Value.absent(),
+                Value<String> habitId = const Value.absent(),
+                Value<int> completedPoints = const Value.absent(),
+                Value<int> missedPoints = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+              }) => CustomGraphRulesCompanion(
+                slot: slot,
+                habitId: habitId,
+                completedPoints: completedPoints,
+                missedPoints: missedPoints,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                remoteId: remoteId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> slot = const Value.absent(),
+                required String habitId,
+                required int completedPoints,
+                required int missedPoints,
+                required DateTime updatedAt,
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+              }) => CustomGraphRulesCompanion.insert(
+                slot: slot,
+                habitId: habitId,
+                completedPoints: completedPoints,
+                missedPoints: missedPoints,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                remoteId: remoteId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CustomGraphRulesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({habitId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (habitId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.habitId,
+                                referencedTable:
+                                    $$CustomGraphRulesTableReferences
+                                        ._habitIdTable(db),
+                                referencedColumn:
+                                    $$CustomGraphRulesTableReferences
+                                        ._habitIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CustomGraphRulesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CustomGraphRulesTable,
+      CustomGraphRuleRow,
+      $$CustomGraphRulesTableFilterComposer,
+      $$CustomGraphRulesTableOrderingComposer,
+      $$CustomGraphRulesTableAnnotationComposer,
+      $$CustomGraphRulesTableCreateCompanionBuilder,
+      $$CustomGraphRulesTableUpdateCompanionBuilder,
+      (CustomGraphRuleRow, $$CustomGraphRulesTableReferences),
+      CustomGraphRuleRow,
+      PrefetchHooks Function({bool habitId})
+    >;
+typedef $$SpecialHabitGraphsTableCreateCompanionBuilder =
+    SpecialHabitGraphsCompanion Function({
+      Value<int> slot,
+      required String habitId,
+      required DateTime updatedAt,
+      Value<String> syncStatus,
+      Value<String?> remoteId,
+    });
+typedef $$SpecialHabitGraphsTableUpdateCompanionBuilder =
+    SpecialHabitGraphsCompanion Function({
+      Value<int> slot,
+      Value<String> habitId,
+      Value<DateTime> updatedAt,
+      Value<String> syncStatus,
+      Value<String?> remoteId,
+    });
+
+final class $$SpecialHabitGraphsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SpecialHabitGraphsTable,
+          SpecialHabitGraphRow
+        > {
+  $$SpecialHabitGraphsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $HabitDefinitionsTable _habitIdTable(_$AppDatabase db) => db
+      .habitDefinitions
+      .createAlias('special_habit_graphs__habit_id__habit_definitions__id');
+
+  $$HabitDefinitionsTableProcessedTableManager get habitId {
+    final $_column = $_itemColumn<String>('habit_id')!;
+
+    final manager = $$HabitDefinitionsTableTableManager(
+      $_db,
+      $_db.habitDefinitions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_habitIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SpecialHabitGraphsTableFilterComposer
+    extends Composer<_$AppDatabase, $SpecialHabitGraphsTable> {
+  $$SpecialHabitGraphsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get slot => $composableBuilder(
+    column: $table.slot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$HabitDefinitionsTableFilterComposer get habitId {
+    final $$HabitDefinitionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habitDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitDefinitionsTableFilterComposer(
+            $db: $db,
+            $table: $db.habitDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SpecialHabitGraphsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SpecialHabitGraphsTable> {
+  $$SpecialHabitGraphsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get slot => $composableBuilder(
+    column: $table.slot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$HabitDefinitionsTableOrderingComposer get habitId {
+    final $$HabitDefinitionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habitDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitDefinitionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.habitDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SpecialHabitGraphsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SpecialHabitGraphsTable> {
+  $$SpecialHabitGraphsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get slot =>
+      $composableBuilder(column: $table.slot, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
+  $$HabitDefinitionsTableAnnotationComposer get habitId {
+    final $$HabitDefinitionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habitDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitDefinitionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.habitDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SpecialHabitGraphsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SpecialHabitGraphsTable,
+          SpecialHabitGraphRow,
+          $$SpecialHabitGraphsTableFilterComposer,
+          $$SpecialHabitGraphsTableOrderingComposer,
+          $$SpecialHabitGraphsTableAnnotationComposer,
+          $$SpecialHabitGraphsTableCreateCompanionBuilder,
+          $$SpecialHabitGraphsTableUpdateCompanionBuilder,
+          (SpecialHabitGraphRow, $$SpecialHabitGraphsTableReferences),
+          SpecialHabitGraphRow,
+          PrefetchHooks Function({bool habitId})
+        > {
+  $$SpecialHabitGraphsTableTableManager(
+    _$AppDatabase db,
+    $SpecialHabitGraphsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SpecialHabitGraphsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SpecialHabitGraphsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SpecialHabitGraphsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> slot = const Value.absent(),
+                Value<String> habitId = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+              }) => SpecialHabitGraphsCompanion(
+                slot: slot,
+                habitId: habitId,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                remoteId: remoteId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> slot = const Value.absent(),
+                required String habitId,
+                required DateTime updatedAt,
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+              }) => SpecialHabitGraphsCompanion.insert(
+                slot: slot,
+                habitId: habitId,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                remoteId: remoteId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SpecialHabitGraphsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({habitId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (habitId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.habitId,
+                                referencedTable:
+                                    $$SpecialHabitGraphsTableReferences
+                                        ._habitIdTable(db),
+                                referencedColumn:
+                                    $$SpecialHabitGraphsTableReferences
+                                        ._habitIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SpecialHabitGraphsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SpecialHabitGraphsTable,
+      SpecialHabitGraphRow,
+      $$SpecialHabitGraphsTableFilterComposer,
+      $$SpecialHabitGraphsTableOrderingComposer,
+      $$SpecialHabitGraphsTableAnnotationComposer,
+      $$SpecialHabitGraphsTableCreateCompanionBuilder,
+      $$SpecialHabitGraphsTableUpdateCompanionBuilder,
+      (SpecialHabitGraphRow, $$SpecialHabitGraphsTableReferences),
+      SpecialHabitGraphRow,
+      PrefetchHooks Function({bool habitId})
+    >;
+typedef $$ReductionPlansTableCreateCompanionBuilder =
+    ReductionPlansCompanion Function({
+      required String id,
+      required String habitId,
+      required String mode,
+      required DateTime startedOn,
+      Value<bool> isActive,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<String> syncStatus,
+      Value<String?> remoteId,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$ReductionPlansTableUpdateCompanionBuilder =
+    ReductionPlansCompanion Function({
+      Value<String> id,
+      Value<String> habitId,
+      Value<String> mode,
+      Value<DateTime> startedOn,
+      Value<bool> isActive,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<String> syncStatus,
+      Value<String?> remoteId,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+final class $$ReductionPlansTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $ReductionPlansTable, ReductionPlanRow> {
+  $$ReductionPlansTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $HabitDefinitionsTable _habitIdTable(_$AppDatabase db) => db
+      .habitDefinitions
+      .createAlias('reduction_plans__habit_id__habit_definitions__id');
+
+  $$HabitDefinitionsTableProcessedTableManager get habitId {
+    final $_column = $_itemColumn<String>('habit_id')!;
+
+    final manager = $$HabitDefinitionsTableTableManager(
+      $_db,
+      $_db.habitDefinitions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_habitIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ReductionPlansTableFilterComposer
+    extends Composer<_$AppDatabase, $ReductionPlansTable> {
+  $$ReductionPlansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedOn => $composableBuilder(
+    column: $table.startedOn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$HabitDefinitionsTableFilterComposer get habitId {
+    final $$HabitDefinitionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habitDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitDefinitionsTableFilterComposer(
+            $db: $db,
+            $table: $db.habitDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ReductionPlansTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReductionPlansTable> {
+  $$ReductionPlansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedOn => $composableBuilder(
+    column: $table.startedOn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$HabitDefinitionsTableOrderingComposer get habitId {
+    final $$HabitDefinitionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habitDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitDefinitionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.habitDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ReductionPlansTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReductionPlansTable> {
+  $$ReductionPlansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startedOn =>
+      $composableBuilder(column: $table.startedOn, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  $$HabitDefinitionsTableAnnotationComposer get habitId {
+    final $$HabitDefinitionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habitDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitDefinitionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.habitDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ReductionPlansTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReductionPlansTable,
+          ReductionPlanRow,
+          $$ReductionPlansTableFilterComposer,
+          $$ReductionPlansTableOrderingComposer,
+          $$ReductionPlansTableAnnotationComposer,
+          $$ReductionPlansTableCreateCompanionBuilder,
+          $$ReductionPlansTableUpdateCompanionBuilder,
+          (ReductionPlanRow, $$ReductionPlansTableReferences),
+          ReductionPlanRow,
+          PrefetchHooks Function({bool habitId})
+        > {
+  $$ReductionPlansTableTableManager(
+    _$AppDatabase db,
+    $ReductionPlansTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReductionPlansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReductionPlansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReductionPlansTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> habitId = const Value.absent(),
+                Value<String> mode = const Value.absent(),
+                Value<DateTime> startedOn = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReductionPlansCompanion(
+                id: id,
+                habitId: habitId,
+                mode: mode,
+                startedOn: startedOn,
+                isActive: isActive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                remoteId: remoteId,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String habitId,
+                required String mode,
+                required DateTime startedOn,
+                Value<bool> isActive = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<String> syncStatus = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReductionPlansCompanion.insert(
+                id: id,
+                habitId: habitId,
+                mode: mode,
+                startedOn: startedOn,
+                isActive: isActive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                syncStatus: syncStatus,
+                remoteId: remoteId,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ReductionPlansTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({habitId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (habitId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.habitId,
+                                referencedTable: $$ReductionPlansTableReferences
+                                    ._habitIdTable(db),
+                                referencedColumn:
+                                    $$ReductionPlansTableReferences
+                                        ._habitIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ReductionPlansTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReductionPlansTable,
+      ReductionPlanRow,
+      $$ReductionPlansTableFilterComposer,
+      $$ReductionPlansTableOrderingComposer,
+      $$ReductionPlansTableAnnotationComposer,
+      $$ReductionPlansTableCreateCompanionBuilder,
+      $$ReductionPlansTableUpdateCompanionBuilder,
+      (ReductionPlanRow, $$ReductionPlansTableReferences),
+      ReductionPlanRow,
+      PrefetchHooks Function({bool habitId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3821,4 +6754,10 @@ class $AppDatabaseManager {
       $$BodyPartStatesTableTableManager(_db, _db.bodyPartStates);
   $$GraphHistoryEntriesTableTableManager get graphHistoryEntries =>
       $$GraphHistoryEntriesTableTableManager(_db, _db.graphHistoryEntries);
+  $$CustomGraphRulesTableTableManager get customGraphRules =>
+      $$CustomGraphRulesTableTableManager(_db, _db.customGraphRules);
+  $$SpecialHabitGraphsTableTableManager get specialHabitGraphs =>
+      $$SpecialHabitGraphsTableTableManager(_db, _db.specialHabitGraphs);
+  $$ReductionPlansTableTableManager get reductionPlans =>
+      $$ReductionPlansTableTableManager(_db, _db.reductionPlans);
 }

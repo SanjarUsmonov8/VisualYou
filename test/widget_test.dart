@@ -14,20 +14,29 @@ import 'package:visualyou/features/female_body/female_body.dart';
 
 import 'package:visualyou/main.dart';
 
+import 'test_custom_graph_repository.dart';
+import 'test_calendar_repository.dart';
+import 'test_reduction_calendar_repository.dart';
+
 void main() {
   testWidgets('home actions navigate to profile and settings', (
     WidgetTester tester,
   ) async {
     final database = AppDatabase(NativeDatabase.memory());
-    addTearDown(database.close);
     await tester.pumpWidget(
-      VisualYouApp(habitRepository: DriftHabitRepository(database)),
+      VisualYouApp(
+        habitRepository: DriftHabitRepository(database),
+        customGraphRepository: const TestCustomGraphRepository(),
+        calendarRepository: const TestCalendarRepository(),
+        reductionCalendarRepository: const TestReductionCalendarRepository(),
+      ),
     );
     await tester.pumpAndSettle();
 
     expect(find.text("Let's build a better you"), findsOneWidget);
     expect(find.text('Quick add'), findsOneWidget);
     expect(find.text('Water'), findsOneWidget);
+    expect(find.text('Custom graph'), findsOneWidget);
     expect(find.byType(VisualYouNavigationBar), findsOneWidget);
     expect(find.byType(AnatomyIcon), findsOneWidget);
 
@@ -117,5 +126,10 @@ void main() {
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.byType(FemaleBodyFrame), findsOneWidget);
+
+    // Dispose database-backed stream widgets before closing the test database.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await database.close();
   });
 }

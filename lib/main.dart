@@ -7,15 +7,32 @@ import 'package:visualyou/data/habits/drift_habit_repository.dart';
 import 'package:visualyou/data/habits/habit_repository.dart';
 import 'package:visualyou/data/local/app_database.dart';
 import 'package:visualyou/features/body/body.dart';
+import 'package:visualyou/features/breathing/breathing_card.dart';
+import 'package:visualyou/features/calendar/calendar_repository.dart';
+import 'package:visualyou/features/calendar/habit_calendar.dart';
+import 'package:visualyou/features/custom_graph/custom_graph.dart';
+import 'package:visualyou/features/custom_graph/custom_graph_repository.dart';
 import 'package:visualyou/features/female_body/female_body.dart';
+import 'package:visualyou/features/habit_info/habit_info_cards.dart';
+import 'package:visualyou/features/reduction_calendar/reduction_calendar.dart';
+import 'package:visualyou/features/reduction_calendar/reduction_calendar_repository.dart';
 import 'package:visualyou/l10n/app_strings.dart';
 
 void main() => runApp(const VisualYouApp());
 
 class VisualYouApp extends StatefulWidget {
-  const VisualYouApp({this.habitRepository, super.key});
+  const VisualYouApp({
+    this.habitRepository,
+    this.customGraphRepository,
+    this.calendarRepository,
+    this.reductionCalendarRepository,
+    super.key,
+  });
 
   final HabitRepository? habitRepository;
+  final CustomGraphRepository? customGraphRepository;
+  final CalendarRepository? calendarRepository;
+  final ReductionCalendarRepository? reductionCalendarRepository;
 
   @override
   State<VisualYouApp> createState() => _VisualYouAppState();
@@ -25,6 +42,9 @@ class _VisualYouAppState extends State<VisualYouApp> {
   final ThemeController _themeController = ThemeController();
   AppDatabase? _ownedDatabase;
   late final HabitRepository _habitRepository;
+  late final CustomGraphRepository _customGraphRepository;
+  late final CalendarRepository _calendarRepository;
+  late final ReductionCalendarRepository _reductionCalendarRepository;
   bool _storageReady = false;
   Object? _storageError;
 
@@ -34,10 +54,32 @@ class _VisualYouAppState extends State<VisualYouApp> {
     final injectedRepository = widget.habitRepository;
     if (injectedRepository != null) {
       _habitRepository = injectedRepository;
+      _customGraphRepository =
+          widget.customGraphRepository ??
+          DriftCustomGraphRepository(
+            (injectedRepository as DriftHabitRepository).database,
+          );
+      _calendarRepository =
+          widget.calendarRepository ??
+          DriftCalendarRepository(
+            (injectedRepository as DriftHabitRepository).database,
+          );
+      _reductionCalendarRepository =
+          widget.reductionCalendarRepository ??
+          DriftReductionCalendarRepository(
+            (injectedRepository as DriftHabitRepository).database,
+          );
     } else {
       final database = AppDatabase.defaults();
       _ownedDatabase = database;
       _habitRepository = DriftHabitRepository(database);
+      _customGraphRepository =
+          widget.customGraphRepository ?? DriftCustomGraphRepository(database);
+      _calendarRepository =
+          widget.calendarRepository ?? DriftCalendarRepository(database);
+      _reductionCalendarRepository =
+          widget.reductionCalendarRepository ??
+          DriftReductionCalendarRepository(database);
     }
     unawaited(_initializeStorage());
   }
@@ -101,6 +143,9 @@ class _VisualYouAppState extends State<VisualYouApp> {
             : HomePage(
                 themeController: _themeController,
                 habitRepository: _habitRepository,
+                customGraphRepository: _customGraphRepository,
+                calendarRepository: _calendarRepository,
+                reductionCalendarRepository: _reductionCalendarRepository,
               ),
       ),
     );
@@ -261,11 +306,17 @@ class HomePage extends StatefulWidget {
   const HomePage({
     required this.themeController,
     required this.habitRepository,
+    required this.customGraphRepository,
+    required this.calendarRepository,
+    required this.reductionCalendarRepository,
     super.key,
   });
 
   final ThemeController themeController;
   final HabitRepository habitRepository;
+  final CustomGraphRepository customGraphRepository;
+  final CalendarRepository calendarRepository;
+  final ReductionCalendarRepository reductionCalendarRepository;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -287,6 +338,7 @@ class _HomePageState extends State<HomePage> {
                 _HomeContent(
                   themeController: widget.themeController,
                   habitRepository: widget.habitRepository,
+                  customGraphRepository: widget.customGraphRepository,
                 ),
                 _NavigationPage(
                   title: context.tr('Body statistics'),
@@ -294,14 +346,29 @@ class _HomePageState extends State<HomePage> {
                   themeController: widget.themeController,
                   content: _GenderBodyFrame(
                     themeController: widget.themeController,
+                    customGraphRepository: widget.customGraphRepository,
+                    showSpecialHabitGraphs: true,
                   ),
                   showIcon: false,
                   topAligned: true,
+                  gradientTitle: true,
                 ),
                 _NavigationPage(
                   title: context.tr('Calendar'),
                   icon: const Icon(Icons.calendar_month_rounded, size: 68),
                   themeController: widget.themeController,
+                  content: Column(
+                    children: [
+                      HabitCalendar(repository: widget.calendarRepository),
+                      const SizedBox(height: 14),
+                      ReductionCalendar(
+                        repository: widget.reductionCalendarRepository,
+                      ),
+                    ],
+                  ),
+                  showIcon: false,
+                  topAligned: true,
+                  gradientTitle: true,
                 ),
                 _NavigationPage(
                   title: context.tr('AI coach'),
@@ -347,10 +414,12 @@ class _HomeContent extends StatelessWidget {
   const _HomeContent({
     required this.themeController,
     required this.habitRepository,
+    required this.customGraphRepository,
   });
 
   final ThemeController themeController;
   final HabitRepository habitRepository;
+  final CustomGraphRepository customGraphRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -448,6 +517,8 @@ class _HomeContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
+              const BreathingCard(),
+              const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -475,52 +546,63 @@ class _HomeContent extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8), //
-                      Wrap(
-                        spacing: 7,
-                        runSpacing: 7,
-                        children: [
-                          _QuickAddPill(
-                            label: context.tr('Water'),
-                            onTap: () =>
-                                unawaited(_showQuickAdded(context, 'Water')),
-                          ),
-                          _QuickAddPill(
-                            label: context.tr('Healthy meal'),
-                            onTap: () => unawaited(
-                              _showQuickAdded(context, 'Healthy meal'),
-                            ),
-                          ),
-                          _QuickAddPill(
-                            label: context.tr('Arm workout'),
-                            onTap: () => unawaited(
-                              _showQuickAdded(context, 'Arm workout'),
-                            ),
-                          ),
-                          _QuickAddPill(
-                            label: context.tr('Abs workout'),
-                            onTap: () => unawaited(
-                              _showQuickAdded(context, 'Abs workout'),
-                            ),
-                          ),
-                          _QuickAddPill(
-                            label: context.tr('Smoke-free'),
-                            onTap: () => unawaited(
-                              _showQuickAdded(context, 'Smoke-free'),
-                            ),
-                          ),
-                          _QuickAddPill(
-                            label: context.tr('Alcohol'),
-                            onTap: () =>
-                                unawaited(_showQuickAdded(context, 'Alcohol')),
-                          ),
-                        ],
+                      StreamBuilder<List<HabitPreference>>(
+                        stream: habitRepository.watchHabitPreferences(),
+                        builder: (context, snapshot) {
+                          final favorites =
+                              (snapshot.data ?? const <HabitPreference>[])
+                                  .where(
+                                    (habit) =>
+                                        habit.isActive && habit.isFavorite,
+                                  )
+                                  .toList();
+                          if (favorites.isEmpty) {
+                            return Text(
+                              context.tr(
+                                'Choose Quick Add favorites with the pen on the add-habits page.',
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            );
+                          }
+                          return Wrap(
+                            spacing: 7,
+                            runSpacing: 7,
+                            children: [
+                              for (final habit in favorites)
+                                _QuickAddPill(
+                                  label: context.tr(_quickAddLabelKey(habit)),
+                                  isUnwanted: habit.category == 'reduction',
+                                  onThumbUp: () => unawaited(
+                                    _showQuickAdded(
+                                      context,
+                                      _quickAddLabelKey(habit),
+                                      didHabit: habit.category != 'reduction',
+                                    ),
+                                  ),
+                                  onThumbDown: () => unawaited(
+                                    _showQuickAdded(
+                                      context,
+                                      _quickAddLabelKey(habit),
+                                      didHabit: habit.category == 'reduction',
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 18),
-              _GenderBodyFrame(themeController: themeController),
+              _GenderBodyFrame(
+                themeController: themeController,
+                customGraphRepository: customGraphRepository,
+                showSpecialHabitGraphs: false,
+              ),
+              const SizedBox(height: 14),
+              const HabitInfoCards(),
             ],
           ),
         ),
@@ -528,9 +610,16 @@ class _HomeContent extends StatelessWidget {
     );
   }
 
-  Future<void> _showQuickAdded(BuildContext context, String habit) async {
+  Future<void> _showQuickAdded(
+    BuildContext context,
+    String habit, {
+    required bool didHabit,
+  }) async {
     try {
-      final bodyState = await habitRepository.recordHabit(habit);
+      final bodyState = await habitRepository.recordHabit(
+        habit,
+        didHabit: didHabit,
+      );
       BodyVisualState.restore(bodyState);
     } catch (_) {
       if (!context.mounted) return;
@@ -538,22 +627,27 @@ class _HomeContent extends StatelessWidget {
       return;
     }
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(context.habitAdded(context.tr(habit))),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    _showHabitToast(
+      context,
+      didHabit
+          ? context.habitAdded(context.tr(habit))
+          : context.tr('Habit status saved'),
+    );
   }
 }
 
 class _QuickAddPill extends StatelessWidget {
-  const _QuickAddPill({required this.label, required this.onTap});
+  const _QuickAddPill({
+    required this.label,
+    required this.isUnwanted,
+    required this.onThumbUp,
+    required this.onThumbDown,
+  });
 
   final String label;
-  final VoidCallback onTap;
+  final bool isUnwanted;
+  final VoidCallback onThumbUp;
+  final VoidCallback onThumbDown;
 
   @override
   Widget build(BuildContext context) {
@@ -567,26 +661,69 @@ class _QuickAddPill extends StatelessWidget {
     return Material(
       color: pillColor,
       borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: contentColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: contentColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.add_rounded, size: 16, color: contentColor),
-            ],
-          ),
+            ),
+            const SizedBox(width: 6),
+            SizedBox(
+              width: 62,
+              height: 44,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Tooltip(
+                      message: context.tr('I did this habit'),
+                      child: InkWell(
+                        onTap: isUnwanted ? onThumbDown : onThumbUp,
+                        child: Center(
+                          child: Text(
+                            isUnwanted ? '\u{1F44E}' : '\u{1F44D}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 24,
+                    color: contentColor.withValues(alpha: .25),
+                  ),
+                  Expanded(
+                    child: Tooltip(
+                      message: context.tr(
+                        isUnwanted
+                            ? 'I avoided this habit'
+                            : 'I missed this habit',
+                      ),
+                      child: InkWell(
+                        borderRadius: const BorderRadius.horizontal(
+                          right: Radius.circular(20),
+                        ),
+                        onTap: isUnwanted ? onThumbUp : onThumbDown,
+                        child: Center(
+                          child: Text(
+                            isUnwanted ? '\u{1F44D}' : '\u{1F44E}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -604,10 +741,107 @@ void _showStorageFailure(BuildContext context) {
     );
 }
 
+OverlayEntry? _activeHabitToast;
+Timer? _activeHabitToastTimer;
+
+void _showHabitToast(BuildContext context, String message) {
+  final overlay = Overlay.of(context, rootOverlay: true);
+  final theme = Theme.of(context);
+  final colors = theme.colorScheme;
+  final bottomPadding = MediaQuery.paddingOf(context).bottom;
+
+  _activeHabitToastTimer?.cancel();
+  _activeHabitToast?.remove();
+
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (context) => Positioned(
+      left: 20,
+      right: 20,
+      bottom: bottomPadding + 88,
+      child: IgnorePointer(
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            builder: (context, value, child) => Opacity(
+              opacity: value,
+              child: Transform.translate(
+                offset: Offset(0, 8 * (1 - value)),
+                child: child,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surface.withValues(
+                      alpha: theme.brightness == Brightness.dark ? .72 : .78,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: colors.outlineVariant.withValues(alpha: .45),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.shadow.withValues(alpha: .16),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  _activeHabitToast = entry;
+  overlay.insert(entry);
+  _activeHabitToastTimer = Timer(const Duration(milliseconds: 2200), () {
+    if (_activeHabitToast == entry) _activeHabitToast = null;
+    if (entry.mounted) entry.remove();
+  });
+}
+
+String _quickAddLabelKey(HabitPreference habit) {
+  return switch (habit.id) {
+    'water' => 'Water',
+    'healthy_eating' => 'Healthy meal',
+    'workout_arms' => 'Arm workout',
+    'workout_abs' => 'Abs workout',
+    _ => habit.nameKey,
+  };
+}
+
 class _GenderBodyFrame extends StatelessWidget {
-  const _GenderBodyFrame({required this.themeController});
+  const _GenderBodyFrame({
+    required this.themeController,
+    required this.customGraphRepository,
+    required this.showSpecialHabitGraphs,
+  });
 
   final ThemeController themeController;
+  final CustomGraphRepository customGraphRepository;
+  final bool showSpecialHabitGraphs;
 
   @override
   Widget build(BuildContext context) {
@@ -617,20 +851,31 @@ class _GenderBodyFrame extends StatelessWidget {
         final body = themeController.gender == AppGender.male
             ? const BodyFrame(key: ValueKey('maleBody'))
             : const FemaleBodyFrame(key: ValueKey('femaleBody'));
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 320),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: .98, end: 1).animate(animation),
-                child: child,
-              ),
-            );
-          },
-          child: body,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: .98, end: 1).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: body,
+            ),
+            const SizedBox(height: 12),
+            CustomGraphCard(repository: customGraphRepository),
+            if (showSpecialHabitGraphs) ...[
+              const SizedBox(height: 10),
+              SpecialHabitGraphsSection(repository: customGraphRepository),
+            ],
+          ],
         );
       },
     );
@@ -645,6 +890,7 @@ class _NavigationPage extends StatelessWidget {
     this.content,
     this.showIcon = true,
     this.topAligned = false,
+    this.gradientTitle = false,
   });
 
   final String title;
@@ -653,93 +899,114 @@ class _NavigationPage extends StatelessWidget {
   final Widget? content;
   final bool showIcon;
   final bool topAligned;
+  final bool gradientTitle;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final pageContent = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: topAligned
-          ? CrossAxisAlignment.start
-          : CrossAxisAlignment.center,
-      children: [
-        if (showIcon) ...[
-          IconTheme(
-            data: IconThemeData(color: colors.primary),
-            child: icon,
-          ),
-          const SizedBox(height: 16),
-        ],
-        Text(title, style: Theme.of(context).textTheme.headlineSmall),
-        if (content != null) ...[
-          SizedBox(height: topAligned ? 10 : 20),
-          content!,
-        ],
-      ],
-    );
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 85),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Semantics(
-                  button: true,
-                  label: context.tr('Open profile'),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () => Navigator.of(context).push(
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
+          child: Column(
+            crossAxisAlignment: topAligned
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Semantics(
+                    button: true,
+                    label: context.tr('Open profile'),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              ProfilePage(themeController: themeController),
+                        ),
+                      ),
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [colors.primaryContainer, colors.primary],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: colors.outlineVariant,
+                            width: 2,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.person_rounded,
+                          color: colors.onPrimary,
+                          size: 30,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton.filledTonal(
+                    tooltip: context.tr('Settings'),
+                    icon: const Icon(Icons.settings_rounded),
+                    onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) =>
-                            ProfilePage(themeController: themeController),
+                            SettingsPage(themeController: themeController),
                       ),
                     ),
-                    child: Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [colors.primaryContainer, colors.primary],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              if (showIcon) ...[
+                IconTheme(
+                  data: IconThemeData(color: colors.primary),
+                  child: icon,
+                ),
+                const SizedBox(height: 16),
+              ],
+              Align(
+                alignment: topAligned ? Alignment.centerLeft : Alignment.center,
+                child: gradientTitle
+                    ? ShaderMask(
+                        blendMode: BlendMode.srcIn,
+                        shaderCallback: (bounds) => const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF67D8F7),
+                            Color(0xFF8B6FE8),
+                            Color(0xFFF06F9B),
+                            Color(0xFFF2A65A),
+                          ],
+                          stops: [0, .34, .68, 1],
+                        ).createShader(bounds),
+                        child: Text(
+                          title,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -.5,
+                              ),
                         ),
-                        border: Border.all(
-                          color: colors.outlineVariant,
-                          width: 2,
-                        ),
+                      )
+                    : Text(
+                        title,
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                      child: Icon(
-                        Icons.person_rounded,
-                        color: colors.onPrimary,
-                        size: 30,
-                      ),
-                    ),
-                  ),
-                ),
-                IconButton.filledTonal(
-                  tooltip: context.tr('Settings'),
-                  icon: const Icon(Icons.settings_rounded),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          SettingsPage(themeController: themeController),
-                    ),
-                  ),
-                ),
+              ),
+              if (content != null) ...[
+                SizedBox(height: topAligned ? 10 : 20),
+                content!,
               ],
-            ),
-            Expanded(
-              child: topAligned
-                  ? SingleChildScrollView(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: pageContent,
-                    )
-                  : Center(child: pageContent),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -869,27 +1136,52 @@ class _BlurredCapsule extends StatelessWidget {
   }
 }
 
-class AddHabitPage extends StatelessWidget {
+class AddHabitPage extends StatefulWidget {
   const AddHabitPage({required this.habitRepository, super.key});
 
   final HabitRepository habitRepository;
 
-  static const _badHabits = [
-    ('Smoking', Icons.smoke_free_rounded),
-    ('Vaping', Icons.air_rounded),
-    ('Alcohol', Icons.local_bar_rounded),
-    ('Unhealthy eating', Icons.fastfood_rounded),
-    ('Adult videos', Icons.visibility_off_rounded),
-    ('Masturbation', Icons.self_improvement_rounded),
+  @override
+  State<AddHabitPage> createState() => _AddHabitPageState();
+}
+
+class _AddHabitPageState extends State<AddHabitPage> {
+  static const _goodHabits = [
+    _HabitOption('water', 'Drinking water', Icons.water_drop_rounded),
+    _HabitOption('healthy_eating', 'Eating healthy', Icons.eco_rounded),
   ];
 
   static const _exercises = [
-    ('Arm', Icons.fitness_center_rounded),
-    ('Shoulder / Back', Icons.accessibility_new_rounded),
-    ('Chest', Icons.monitor_heart_outlined),
-    ('Abs', Icons.grid_view_rounded),
-    ('Legs', Icons.directions_run_rounded),
+    _HabitOption('workout_arms', 'Arm', Icons.fitness_center_rounded),
+    _HabitOption(
+      'workout_shoulders_back',
+      'Shoulder / Back',
+      Icons.accessibility_new_rounded,
+    ),
+    _HabitOption('workout_chest', 'Chest', Icons.monitor_heart_outlined),
+    _HabitOption('workout_abs', 'Abs', Icons.grid_view_rounded),
+    _HabitOption('workout_legs', 'Legs', Icons.directions_run_rounded),
   ];
+
+  static const _badHabits = [
+    _HabitOption('smoking', 'Smoking', Icons.smoke_free_rounded),
+    _HabitOption('vaping', 'Vaping', Icons.air_rounded),
+    _HabitOption('alcohol', 'Alcohol', Icons.local_bar_rounded),
+    _HabitOption(
+      'unhealthy_eating',
+      'Unhealthy eating',
+      Icons.fastfood_rounded,
+    ),
+    _HabitOption('adult_videos', 'Adult videos', Icons.visibility_off_rounded),
+    _HabitOption(
+      'masturbation',
+      'Masturbation',
+      Icons.self_improvement_rounded,
+    ),
+    _HabitOption('consuming_sugar', 'Consuming sugar', Icons.cake_rounded),
+  ];
+
+  bool _editing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -901,105 +1193,165 @@ class AddHabitPage extends StatelessWidget {
           icon: const Icon(Icons.close_rounded),
         ),
         title: Text(context.tr('Add a habit')),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-        children: [
-          Text(
-            context.tr('Good habits'),
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 3.2,
-            children: [
-              _HabitTile(
-                label: context.tr('Drinking water'),
-                icon: Icons.water_drop_rounded,
-                onAdd: () => unawaited(_showAdded(context, 'Drinking water')),
-              ),
-              _HabitTile(
-                label: context.tr('Eating healthy'),
-                icon: Icons.eco_rounded,
-                onAdd: () => unawaited(_showAdded(context, 'Eating healthy')),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Card(
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.tr('Exercises'),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 6,
-                    crossAxisSpacing: 6,
-                    childAspectRatio: 3.5,
-                    children: [
-                      for (final exercise in _exercises)
-                        _ExerciseRow(
-                          label: context.tr(exercise.$1),
-                          icon: exercise.$2,
-                          onAdd: () =>
-                              unawaited(_showAdded(context, exercise.$1)),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            context.tr('Bad habits'),
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 3.2,
-            children: [
-              for (final habit in _badHabits)
-                _HabitTile(
-                  label: context.tr(habit.$1),
-                  icon: habit.$2,
-                  onAdd: () => unawaited(_showAdded(context, habit.$1)),
-                ),
-            ],
+        actions: [
+          IconButton(
+            tooltip: context.tr(_editing ? 'Finish editing' : 'Edit habits'),
+            onPressed: () => setState(() => _editing = !_editing),
+            icon: Icon(_editing ? Icons.check_rounded : Icons.edit_rounded),
           ),
         ],
+      ),
+      body: StreamBuilder<List<HabitPreference>>(
+        stream: widget.habitRepository.watchHabitPreferences(),
+        builder: (context, snapshot) {
+          final preferences = {
+            for (final preference in snapshot.data ?? const <HabitPreference>[])
+              preference.id: preference,
+          };
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            children: [
+              if (_editing) ...[
+                Text(
+                  context.tr(
+                    'Use the star for Quick Add. Remove or restore habits with the button beside it.',
+                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 12),
+              ],
+              _buildSection(
+                context,
+                title: 'Good habits',
+                options: _goodHabits,
+                preferences: preferences,
+              ),
+              const SizedBox(height: 12),
+              _buildSection(
+                context,
+                title: 'Exercises',
+                options: _exercises,
+                preferences: preferences,
+                inCard: true,
+              ),
+              const SizedBox(height: 14),
+              _buildSection(
+                context,
+                title: 'Bad habits',
+                options: _badHabits,
+                preferences: preferences,
+                isUnwanted: true,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Future<void> _showAdded(BuildContext context, String habit) async {
+  Widget _buildSection(
+    BuildContext context, {
+    required String title,
+    required List<_HabitOption> options,
+    required Map<String, HabitPreference> preferences,
+    bool inCard = false,
+    bool isUnwanted = false,
+  }) {
+    final visibleOptions = _editing
+        ? options
+        : options
+              .where((option) => preferences[option.id]?.isActive ?? true)
+              .toList();
+    if (visibleOptions.isEmpty && !_editing) {
+      return const SizedBox.shrink();
+    }
+
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.tr(title),
+          style:
+              (inCard
+                      ? Theme.of(context).textTheme.titleMedium
+                      : Theme.of(context).textTheme.headlineSmall)
+                  ?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: _editing ? 2.55 : (inCard ? 3.5 : 3.2),
+          children: [
+            for (final option in visibleOptions)
+              if (_editing)
+                _HabitManagementTile(
+                  label: context.tr(option.nameKey),
+                  icon: option.icon,
+                  isActive: preferences[option.id]?.isActive ?? true,
+                  isFavorite: preferences[option.id]?.isFavorite ?? false,
+                  onActiveChanged: (active) => unawaited(
+                    widget.habitRepository.setHabitActive(option.id, active),
+                  ),
+                  onFavoriteChanged: (favorite) => unawaited(
+                    widget.habitRepository.setHabitFavorite(
+                      option.id,
+                      favorite,
+                    ),
+                  ),
+                )
+              else if (inCard)
+                _ExerciseRow(
+                  label: context.tr(option.nameKey),
+                  icon: option.icon,
+                  onThumbUp: () => unawaited(
+                    _showAdded(context, option.nameKey, didHabit: true),
+                  ),
+                  onThumbDown: () => unawaited(
+                    _showAdded(context, option.nameKey, didHabit: false),
+                  ),
+                  isUnwanted: isUnwanted,
+                )
+              else
+                _HabitTile(
+                  label: context.tr(option.nameKey),
+                  icon: option.icon,
+                  onThumbUp: () => unawaited(
+                    _showAdded(context, option.nameKey, didHabit: !isUnwanted),
+                  ),
+                  onThumbDown: () => unawaited(
+                    _showAdded(context, option.nameKey, didHabit: isUnwanted),
+                  ),
+                  isUnwanted: isUnwanted,
+                ),
+          ],
+        ),
+      ],
+    );
+
+    if (!inCard) return content;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+        child: content,
+      ),
+    );
+  }
+
+  Future<void> _showAdded(
+    BuildContext context,
+    String habit, {
+    required bool didHabit,
+  }) async {
     try {
-      final bodyState = await habitRepository.recordHabit(habit);
+      final bodyState = await widget.habitRepository.recordHabit(
+        habit,
+        didHabit: didHabit,
+      );
       BodyVisualState.restore(bodyState);
     } catch (_) {
       if (!context.mounted) return;
@@ -1007,14 +1359,92 @@ class AddHabitPage extends StatelessWidget {
       return;
     }
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(context.habitAdded(context.tr(habit))),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    _showHabitToast(
+      context,
+      didHabit
+          ? context.habitAdded(context.tr(habit))
+          : context.tr('Habit status saved'),
+    );
+  }
+}
+
+class _HabitOption {
+  const _HabitOption(this.id, this.nameKey, this.icon);
+
+  final String id;
+  final String nameKey;
+  final IconData icon;
+}
+
+class _HabitManagementTile extends StatelessWidget {
+  const _HabitManagementTile({
+    required this.label,
+    required this.icon,
+    required this.isActive,
+    required this.isFavorite,
+    required this.onActiveChanged,
+    required this.onFavoriteChanged,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isActive;
+  final bool isFavorite;
+  final ValueChanged<bool> onActiveChanged;
+  final ValueChanged<bool> onFavoriteChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      color: isActive ? null : colors.surfaceContainerHighest,
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          Icon(icon, color: isActive ? colors.primary : colors.outline),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isActive ? null : colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            padding: EdgeInsets.zero,
+            tooltip: context.tr(
+              isFavorite ? 'Remove from Quick Add' : 'Add to Quick Add',
+            ),
+            onPressed: isActive ? () => onFavoriteChanged(!isFavorite) : null,
+            icon: Icon(
+              isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+              size: 20,
+              color: isFavorite ? colors.primary : colors.onSurfaceVariant,
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            padding: EdgeInsets.zero,
+            tooltip: context.tr(isActive ? 'Remove habit' : 'Restore habit'),
+            onPressed: () => onActiveChanged(!isActive),
+            icon: Icon(
+              isActive ? Icons.remove_circle_outline : Icons.add_circle_outline,
+              size: 20,
+              color: isActive ? colors.error : colors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1022,12 +1452,16 @@ class _HabitTile extends StatelessWidget {
   const _HabitTile({
     required this.label,
     required this.icon,
-    required this.onAdd,
+    required this.onThumbUp,
+    required this.onThumbDown,
+    required this.isUnwanted,
   });
 
   final String label;
   final IconData icon;
-  final VoidCallback onAdd;
+  final VoidCallback onThumbUp;
+  final VoidCallback onThumbDown;
+  final bool isUnwanted;
 
   @override
   Widget build(BuildContext context) {
@@ -1038,7 +1472,7 @@ class _HabitTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            flex: 75,
+            flex: 65,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(10, 6, 5, 6),
               child: Row(
@@ -1066,22 +1500,12 @@ class _HabitTile extends StatelessWidget {
             color: colors.outlineVariant.withValues(alpha: .65),
           ),
           Expanded(
-            flex: 25,
-            child: Tooltip(
-              message: '${context.tr('I did')} $label',
-              child: InkWell(
-                borderRadius: const BorderRadius.horizontal(
-                  right: Radius.circular(24),
-                ),
-                onTap: onAdd,
-                child: Center(
-                  child: Icon(
-                    Icons.add_rounded,
-                    size: 19,
-                    color: colors.primary,
-                  ),
-                ),
-              ),
+            flex: 35,
+            child: _ThumbActions(
+              isUnwanted: isUnwanted,
+              onThumbUp: onThumbUp,
+              onThumbDown: onThumbDown,
+              rightRadius: 24,
             ),
           ),
         ],
@@ -1094,12 +1518,16 @@ class _ExerciseRow extends StatelessWidget {
   const _ExerciseRow({
     required this.label,
     required this.icon,
-    required this.onAdd,
+    required this.onThumbUp,
+    required this.onThumbDown,
+    required this.isUnwanted,
   });
 
   final String label;
   final IconData icon;
-  final VoidCallback onAdd;
+  final VoidCallback onThumbUp;
+  final VoidCallback onThumbDown;
+  final bool isUnwanted;
 
   @override
   Widget build(BuildContext context) {
@@ -1113,7 +1541,7 @@ class _ExerciseRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            flex: 75,
+            flex: 65,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(9, 3, 3, 3),
               child: Row(
@@ -1138,26 +1566,78 @@ class _ExerciseRow extends StatelessWidget {
             color: colors.outlineVariant.withValues(alpha: .65),
           ),
           Expanded(
-            flex: 25,
-            child: Tooltip(
-              message: '${context.tr('I did')} $label',
-              child: InkWell(
-                borderRadius: const BorderRadius.horizontal(
-                  right: Radius.circular(18),
-                ),
-                onTap: onAdd,
-                child: Center(
-                  child: Icon(
-                    Icons.add_rounded,
-                    size: 18,
-                    color: colors.primary,
-                  ),
-                ),
-              ),
+            flex: 35,
+            child: _ThumbActions(
+              isUnwanted: isUnwanted,
+              onThumbUp: onThumbUp,
+              onThumbDown: onThumbDown,
+              rightRadius: 18,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ThumbActions extends StatelessWidget {
+  const _ThumbActions({
+    required this.isUnwanted,
+    required this.onThumbUp,
+    required this.onThumbDown,
+    required this.rightRadius,
+  });
+
+  final bool isUnwanted;
+  final VoidCallback onThumbUp;
+  final VoidCallback onThumbDown;
+  final double rightRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Expanded(
+          child: Tooltip(
+            message: context.tr('I did this habit'),
+            child: InkWell(
+              onTap: isUnwanted ? onThumbDown : onThumbUp,
+              child: Center(
+                child: Text(
+                  isUnwanted ? '\u{1F44E}' : '\u{1F44D}',
+                  style: const TextStyle(fontSize: 17),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Container(
+          width: 1,
+          height: 22,
+          color: colors.outlineVariant.withValues(alpha: .65),
+        ),
+        Expanded(
+          child: Tooltip(
+            message: context.tr(
+              isUnwanted ? 'I avoided this habit' : 'I missed this habit',
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.only(
+                topRight: Radius.circular(rightRadius),
+                bottomRight: Radius.circular(rightRadius),
+              ),
+              onTap: isUnwanted ? onThumbUp : onThumbDown,
+              child: Center(
+                child: Text(
+                  isUnwanted ? '\u{1F44D}' : '\u{1F44E}',
+                  style: const TextStyle(fontSize: 17),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
