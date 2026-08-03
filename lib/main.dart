@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:visualyou/data/habits/drift_habit_repository.dart';
 import 'package:visualyou/data/habits/habit_repository.dart';
 import 'package:visualyou/data/local/app_database.dart';
@@ -26,6 +29,7 @@ class VisualYouApp extends StatefulWidget {
     this.customGraphRepository,
     this.calendarRepository,
     this.reductionCalendarRepository,
+    this.skipOnboarding = false,
     super.key,
   });
 
@@ -33,6 +37,7 @@ class VisualYouApp extends StatefulWidget {
   final CustomGraphRepository? customGraphRepository;
   final CalendarRepository? calendarRepository;
   final ReductionCalendarRepository? reductionCalendarRepository;
+  final bool skipOnboarding;
 
   @override
   State<VisualYouApp> createState() => _VisualYouAppState();
@@ -46,6 +51,7 @@ class _VisualYouAppState extends State<VisualYouApp> {
   late final CalendarRepository _calendarRepository;
   late final ReductionCalendarRepository _reductionCalendarRepository;
   bool _storageReady = false;
+  bool _onboardingComplete = false;
   Object? _storageError;
 
   @override
@@ -87,11 +93,16 @@ class _VisualYouAppState extends State<VisualYouApp> {
   Future<void> _initializeStorage() async {
     try {
       await _habitRepository.initialize();
+      await _themeController.restoreFrom(_habitRepository);
       BodyVisualState.restore(await _habitRepository.loadBodyState());
+      final onboardingComplete =
+          widget.skipOnboarding ||
+          await _habitRepository.isOnboardingComplete();
       if (!mounted) return;
       setState(() {
         _storageReady = true;
         _storageError = null;
+        _onboardingComplete = onboardingComplete;
       });
     } catch (error) {
       if (!mounted) return;
@@ -140,6 +151,11 @@ class _VisualYouAppState extends State<VisualYouApp> {
                   unawaited(_initializeStorage());
                 },
               )
+            : !_onboardingComplete
+            ? WelcomeFlow(
+                themeController: _themeController,
+                onFinished: _finishOnboarding,
+              )
             : HomePage(
                 themeController: _themeController,
                 habitRepository: _habitRepository,
@@ -149,6 +165,13 @@ class _VisualYouAppState extends State<VisualYouApp> {
               ),
       ),
     );
+  }
+
+  Future<void> _finishOnboarding() async {
+    await _themeController.flushPersistence();
+    await _habitRepository.completeOnboarding();
+    if (!mounted) return;
+    setState(() => _onboardingComplete = true);
   }
 
   ThemeData _buildTheme(Color seed, Brightness brightness) {
@@ -172,6 +195,1230 @@ class _VisualYouAppState extends State<VisualYouApp> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
     );
+  }
+}
+
+class WelcomeFlow extends StatefulWidget {
+  const WelcomeFlow({
+    required this.themeController,
+    required this.onFinished,
+    this.previewMode = false,
+    super.key,
+  });
+
+  final ThemeController themeController;
+  final Future<void> Function() onFinished;
+  final bool previewMode;
+
+  @override
+  State<WelcomeFlow> createState() => _WelcomeFlowState();
+}
+
+class _WelcomeFlowState extends State<WelcomeFlow> {
+  final PageController _pageController = PageController();
+  final GlobalKey<_WelcomeProfileSetupSlideState> _profileSetupKey =
+      GlobalKey<_WelcomeProfileSetupSlideState>();
+  int _currentPage = 0;
+  bool _finishing = false;
+
+  List<Widget> get _pages => [
+    _WelcomeIntroSlide(themeController: widget.themeController),
+    const _WelcomeBodyProgressSlide(),
+    const _WelcomeGradualReductionSlide(),
+    const _WelcomeCustomCalendarSlide(),
+    const _WelcomeMoreFeaturesSlide(),
+    const _WelcomeAccountSlide(),
+    _WelcomeProfileSetupSlide(
+      key: _profileSetupKey,
+      themeController: widget.themeController,
+    ),
+  ];
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _next() async {
+    if (_currentPage < _pages.length - 1) {
+      await _pageController.nextPage(
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
+    if (!widget.previewMode) {
+      final profileReady = _profileSetupKey.currentState?.validateAndSave();
+      if (profileReady == false) return;
+    }
+    if (_finishing) return;
+    setState(() => _finishing = true);
+    try {
+      await widget.onFinished();
+    } finally {
+      if (mounted) setState(() => _finishing = false);
+    }
+  }
+
+  void _previous() {
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final welcomeTheme = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: widget.themeController.seedColor,
+        brightness: Brightness.light,
+        surface: Colors.white,
+      ),
+      scaffoldBackgroundColor: Colors.white,
+      fontFamily: 'sans-serif',
+    );
+    return Theme(
+      data: welcomeTheme,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
+            PageView(
+              controller: _pageController,
+              onPageChanged: (page) => setState(() => _currentPage = page),
+              children: _pages,
+            ),
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: 16 + bottomPadding,
+              child: Row(
+                children: [
+                  if (_currentPage > 0)
+                    TextButton.icon(
+                      onPressed: _previous,
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: Text(context.tr('Previous')),
+                    ),
+                  const Spacer(),
+                  FilledButton.icon(
+                    key: const Key('welcomeNextButton'),
+                    onPressed: _finishing ? null : _next,
+                    iconAlignment: IconAlignment.end,
+                    icon: _finishing
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            widget.previewMode &&
+                                    _currentPage == _pages.length - 1
+                                ? Icons.close_rounded
+                                : Icons.arrow_forward_rounded,
+                          ),
+                    label: Text(
+                      widget.previewMode && _currentPage == _pages.length - 1
+                          ? context.tr('Close preview')
+                          : context.tr('Next'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (widget.previewMode)
+              Positioned(
+                left: 12,
+                top: MediaQuery.paddingOf(context).top + 8,
+                child: IconButton.filledTonal(
+                  key: const Key('closeWelcomePreviewButton'),
+                  tooltip: context.tr('Close preview'),
+                  onPressed: _finishing ? null : widget.onFinished,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WelcomeIntroSlide extends StatelessWidget {
+  const _WelcomeIntroSlide({required this.themeController});
+
+  final ThemeController themeController;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 104),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  'assets/images/welcomepage/logocolor.png',
+                  fit: BoxFit.cover,
+                ),
+                Image.asset(
+                  'assets/images/welcomepage/logoclose.png',
+                  fit: BoxFit.contain,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 10, 16, 0),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: PopupMenuButton<AppLanguage>(
+                tooltip: context.tr('Choose language'),
+                initialValue: themeController.language,
+                onSelected: themeController.setLanguage,
+                itemBuilder: (context) => AppLanguage.values
+                    .map(
+                      (language) => PopupMenuItem(
+                        value: language,
+                        child: Row(
+                          children: [
+                            if (language == themeController.language) ...[
+                              Icon(
+                                Icons.check_rounded,
+                                size: 19,
+                                color: colors.primary,
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Text(language.displayLabel(context)),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.language_rounded, size: 20),
+                        const SizedBox(width: 7),
+                        Text(themeController.language.displayLabel(context)),
+                        const SizedBox(width: 3),
+                        const Icon(Icons.arrow_drop_down_rounded, size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  context.tr('Welcome to'),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF56C8E8),
+                      Color(0xFF7A6DE8),
+                      Color(0xFFE86596),
+                      Color(0xFFF2A65A),
+                    ],
+                  ).createShader(bounds),
+                  child: Text(
+                    'Visual You',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.displayMedium?.copyWith(
+                      color: Colors.white,
+                      fontSize: 50,
+                      fontWeight: FontWeight.w800,
+                      height: 1.05,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 34),
+                Text(
+                  context.tr(
+                    'Track your habits visually, build healthier routines, reduce unwanted behaviors with clear plans, and get guidance from AI—all in one place.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontFamily: 'sans-serif-medium',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: .15,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WelcomeBodyProgressSlide extends StatelessWidget {
+  const _WelcomeBodyProgressSlide();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 104),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 26),
+            child: AspectRatio(
+              aspectRatio: 1394 / 864,
+              child: Image.asset(
+                'assets/images/welcomepage/quartrio2.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 34, 24, 0),
+            child: Column(
+              children: [
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF00A6C8),
+                      Color(0xFF2FBF71),
+                      Color(0xFFF2C94C),
+                      Color(0xFFFF6B6B),
+                    ],
+                  ).createShader(bounds),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          context.tr('Body'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: Colors.white,
+                            fontSize: 50,
+                            fontWeight: FontWeight.w800,
+                            height: 1.08,
+                          ),
+                        ),
+                        Text(
+                          context.tr('Progress'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: Colors.white,
+                            fontSize: 50,
+                            fontWeight: FontWeight.w800,
+                            height: 1.08,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 92),
+                Text(
+                  context.tr('welcome_body_description'),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontFamily: 'sans-serif-medium',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: .15,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WelcomeGradualReductionSlide extends StatelessWidget {
+  const _WelcomeGradualReductionSlide();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 104),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 26),
+            child: AspectRatio(
+              aspectRatio: 1407 / 1118,
+              child: Image.asset(
+                'assets/images/welcomepage/calendar wp.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 34, 24, 0),
+            child: Column(
+              children: [
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF243B8F),
+                      Color(0xFF5B5FEF),
+                      Color(0xFF9B7EDE),
+                      Color(0xFF63C7DA),
+                    ],
+                  ).createShader(bounds),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          context.tr('Gradual title line'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: Colors.white,
+                            fontSize: 50,
+                            fontWeight: FontWeight.w800,
+                            height: 1.08,
+                          ),
+                        ),
+                        Text(
+                          context.tr('Reduction title line'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: Colors.white,
+                            fontSize: 50,
+                            fontWeight: FontWeight.w800,
+                            height: 1.08,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 92),
+                Text(
+                  context.tr(
+                    'Choose an unwanted habit and follow a custom hard, medium, or easy calendar that spaces allowed days farther apart over time. Adjust when needed, record honestly, and reduce at a pace you can sustain.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontFamily: 'sans-serif-medium',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: .15,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WelcomeCustomCalendarSlide extends StatelessWidget {
+  const _WelcomeCustomCalendarSlide();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 104),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 26),
+            child: AspectRatio(
+              aspectRatio: 1536 / 1024,
+              child: Image.asset(
+                'assets/images/welcomepage/graph.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 34, 24, 0),
+            child: Column(
+              children: [
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF8E2DE2),
+                      Color(0xFFDA4453),
+                      Color(0xFFF6A623),
+                      Color(0xFF4BC0C8),
+                    ],
+                  ).createShader(bounds),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          context.tr('Custom title line'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: Colors.white,
+                            fontSize: 50,
+                            fontWeight: FontWeight.w800,
+                            height: 1.08,
+                          ),
+                        ),
+                        Text(
+                          context.tr('Calendar title line'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: Colors.white,
+                            fontSize: 50,
+                            fontWeight: FontWeight.w800,
+                            height: 1.08,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 92),
+                Text(
+                  context.tr(
+                    'Build a personalized calendar graph from up to three habits. Give each success or miss its own positive or negative value, then see all three combine into one line that reveals your progress over time.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontFamily: 'sans-serif-medium',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: .15,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WelcomeMoreFeaturesSlide extends StatelessWidget {
+  const _WelcomeMoreFeaturesSlide();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 104),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 26),
+            child: AspectRatio(
+              aspectRatio: 1536 / 1024,
+              child: Image.asset(
+                'assets/images/welcomepage/wp cards.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 34, 24, 0),
+            child: Column(
+              children: [
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF6A11CB),
+                      Color(0xFF2575FC),
+                      Color(0xFF00C9A7),
+                      Color(0xFFFFC857),
+                    ],
+                  ).createShader(bounds),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          context.tr('More title line'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: Colors.white,
+                            fontSize: 50,
+                            fontWeight: FontWeight.w800,
+                            height: 1.08,
+                          ),
+                        ),
+                        Text(
+                          context.tr('Features title line'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: Colors.white,
+                            fontSize: 50,
+                            fontWeight: FontWeight.w800,
+                            height: 1.08,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 92),
+                Text(
+                  context.tr(
+                    'Stay motivated with calendars, streaks, badges, reminders, and weekly insights. Personalize your experience and get helpful AI guidance as Visual You grows with you.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontFamily: 'sans-serif-medium',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: .15,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WelcomeAccountSlide extends StatelessWidget {
+  const _WelcomeAccountSlide();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 104),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  'assets/images/welcomepage/logocolor.png',
+                  fit: BoxFit.cover,
+                ),
+                Image.asset(
+                  'assets/images/welcomepage/logoclose.png',
+                  fit: BoxFit.contain,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 30, 24, 0),
+            child: Column(
+              children: [
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF3454D1),
+                      Color(0xFF7B61D1),
+                      Color(0xFFD14D8B),
+                    ],
+                  ).createShader(bounds),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${context.tr('Create title line')} ${context.tr('Account title line')}',
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.displayMedium?.copyWith(
+                          color: Colors.white,
+                          fontSize: 40,
+                          fontWeight: FontWeight.w800,
+                          height: 1.08,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                IgnorePointer(
+                  child: Column(
+                    children: [
+                      _AccountOptionButton(
+                        icon: const Icon(Icons.email_outlined),
+                        label: context.tr('Sign up with email'),
+                      ),
+                      const SizedBox(height: 12),
+                      _AccountOptionButton(
+                        icon: Image.asset(
+                          'assets/images/welcomepage/googlelogo.png',
+                          width: 22,
+                          height: 22,
+                          fit: BoxFit.contain,
+                        ),
+                        label: context.tr('Continue with Google'),
+                      ),
+                      const SizedBox(height: 12),
+                      _AccountOptionButton(
+                        icon: const Icon(Icons.apple_rounded, size: 24),
+                        label: context.tr('Continue with Apple'),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(context.tr('Already have an account?')),
+                          TextButton(
+                            onPressed: () {},
+                            child: Text(context.tr('Log in')),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountOptionButton extends StatelessWidget {
+  const _AccountOptionButton({required this.icon, required this.label});
+
+  final Widget icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: OutlinedButton.icon(
+        onPressed: () {},
+        icon: icon,
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF242735),
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: Color(0xFFD9DCE5)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WelcomeProfileSetupSlide extends StatefulWidget {
+  const _WelcomeProfileSetupSlide({required this.themeController, super.key});
+
+  final ThemeController themeController;
+
+  @override
+  State<_WelcomeProfileSetupSlide> createState() =>
+      _WelcomeProfileSetupSlideState();
+}
+
+class _WelcomeProfileSetupSlideState extends State<_WelcomeProfileSetupSlide> {
+  late final TextEditingController _nameController;
+  int? _day;
+  int? _month;
+  int? _year;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(
+      text: widget.themeController.profileName,
+    );
+    final birthDate = widget.themeController.profileBirthDate;
+    _day = birthDate?.day;
+    _month = birthDate?.month;
+    _year = birthDate?.year;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  bool validateAndSave() {
+    final birthDate = _selectedBirthDate;
+    if (_nameController.text.trim().isEmpty || birthDate == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(context.tr('Complete your name and date of birth')),
+          ),
+        );
+      return false;
+    }
+    widget.themeController.updateProfile(
+      name: _nameController.text,
+      birthDate: birthDate,
+    );
+    return true;
+  }
+
+  DateTime? get _selectedBirthDate {
+    final day = _day;
+    final month = _month;
+    final year = _year;
+    if (day == null || month == null || year == null) return null;
+    final date = DateTime(year, month, day);
+    if (date.year != year || date.month != month || date.day != day) {
+      return null;
+    }
+    final today = DateTime.now();
+    if (date.isAfter(DateTime(today.year, today.month, today.day))) return null;
+    return date;
+  }
+
+  int get _daysInSelectedMonth {
+    return DateUtils.getDaysInMonth(_year ?? 2000, _month ?? 1);
+  }
+
+  void _keepDayValid() {
+    if (_day != null && _day! > _daysInSelectedMonth) _day = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final controller = widget.themeController;
+    final currentYear = DateTime.now().year;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 112),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 38),
+            child: Center(
+              child: _EditableProfilePhoto(
+                themeController: controller,
+                radius: 58,
+                showLabel: true,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+            child: Column(
+              children: [
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF35B8C8),
+                      Color(0xFF6767D9),
+                      Color(0xFFE45B8D),
+                    ],
+                  ).createShader(bounds),
+                  child: Text(
+                    context.tr('Almost done'),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      color: Colors.white,
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  key: const Key('welcomeProfileName'),
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: context.tr('Name'),
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AnimatedBuilder(
+                  animation: controller,
+                  builder: (context, _) => SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<AppGender>(
+                      segments: [
+                        ButtonSegment(
+                          value: AppGender.male,
+                          icon: const Icon(Icons.male_rounded),
+                          label: Text(context.tr('Male')),
+                        ),
+                        ButtonSegment(
+                          value: AppGender.female,
+                          icon: const Icon(Icons.female_rounded),
+                          label: Text(context.tr('Female')),
+                        ),
+                      ],
+                      selected: {controller.gender},
+                      onSelectionChanged: (selection) {
+                        controller.setGender(selection.first);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        key: ValueKey('day-$_day-$_month-$_year'),
+                        initialValue: _day,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('Day'),
+                          border: const OutlineInputBorder(),
+                        ),
+                        items: [
+                          for (var day = 1; day <= _daysInSelectedMonth; day++)
+                            DropdownMenuItem(value: day, child: Text('$day')),
+                        ],
+                        onChanged: (value) => setState(() => _day = value),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _month,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('Month'),
+                          border: const OutlineInputBorder(),
+                        ),
+                        items: [
+                          for (var month = 1; month <= 12; month++)
+                            DropdownMenuItem(
+                              value: month,
+                              child: Text('$month'),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _month = value;
+                            _keepDayValid();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _year,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('Year'),
+                          border: const OutlineInputBorder(),
+                        ),
+                        items: [
+                          for (
+                            var year = currentYear;
+                            year >= currentYear - 120;
+                            year--
+                          )
+                            DropdownMenuItem(value: year, child: Text('$year')),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _year = value;
+                            _keepDayValid();
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                AnimatedBuilder(
+                  animation: controller,
+                  builder: (context, _) => SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<ThemeMode>(
+                      segments: [
+                        ButtonSegment(
+                          value: ThemeMode.light,
+                          icon: const Icon(Icons.light_mode_rounded),
+                          label: Text(context.tr('Light')),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.system,
+                          icon: const Icon(Icons.brightness_auto_rounded),
+                          label: Text(context.tr('System')),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.dark,
+                          icon: const Icon(Icons.dark_mode_rounded),
+                          label: Text(context.tr('Dark')),
+                        ),
+                      ],
+                      selected: {controller.mode},
+                      onSelectionChanged: (selection) {
+                        controller.setMode(selection.first);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                AnimatedBuilder(
+                  animation: controller,
+                  builder: (context, _) => SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<AppAccent>(
+                      segments: [
+                        ButtonSegment(
+                          value: AppAccent.blue,
+                          icon: const Icon(
+                            Icons.water_drop_rounded,
+                            color: Color(0xFF526DFF),
+                          ),
+                          label: Text(context.tr('Blue')),
+                        ),
+                        ButtonSegment(
+                          value: AppAccent.pink,
+                          icon: const Icon(
+                            Icons.favorite_rounded,
+                            color: Color(0xFFE5478D),
+                          ),
+                          label: Text(context.tr('Pink')),
+                        ),
+                      ],
+                      selected: {controller.accent},
+                      onSelectionChanged: (selection) {
+                        controller.setAccent(selection.first);
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditableProfilePhoto extends StatelessWidget {
+  const _EditableProfilePhoto({
+    required this.themeController,
+    required this.radius,
+    this.showLabel = false,
+  });
+
+  final ThemeController themeController;
+  final double radius;
+  final bool showLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: themeController,
+      builder: (context, _) {
+        final imageBytes = themeController.profileImageBytes;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(
+              button: true,
+              label: context.tr(
+                imageBytes == null
+                    ? 'Add profile picture'
+                    : 'Change profile picture',
+              ),
+              child: GestureDetector(
+                key: const Key('profilePhotoButton'),
+                onTap: () => _pickProfilePicture(context, themeController),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: radius * 2,
+                      height: radius * 2,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [colors.primaryContainer, colors.primary],
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: ColoredBox(
+                          color: colors.surfaceContainer,
+                          child: imageBytes == null
+                              ? Icon(
+                                  Icons.person_rounded,
+                                  size: radius,
+                                  color: colors.primary,
+                                )
+                              : Image.memory(
+                                  imageBytes,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: -2,
+                      bottom: 2,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: colors.primary,
+                          border: Border.all(color: colors.surface, width: 3),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(7),
+                          child: Icon(
+                            imageBytes == null
+                                ? Icons.add_a_photo_rounded
+                                : Icons.edit_rounded,
+                            size: 19,
+                            color: colors.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (showLabel) ...[
+              const SizedBox(height: 10),
+              Text(
+                context.tr(
+                  imageBytes == null
+                      ? 'Add profile picture'
+                      : 'Change profile picture',
+                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+Future<void> _pickProfilePicture(
+  BuildContext context,
+  ThemeController themeController,
+) async {
+  try {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 82,
+      requestFullMetadata: false,
+    );
+    if (image == null) return;
+    themeController.setProfileImage(await image.readAsBytes());
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(context.tr('Could not open your photos'))),
+      );
   }
 }
 
@@ -244,6 +1491,18 @@ extension AppLanguageCode on AppLanguage {
     AppLanguage.french => 'French',
     AppLanguage.uzbek => 'Uzbek',
   };
+
+  String get nativeName => switch (this) {
+    AppLanguage.english => 'English',
+    AppLanguage.spanish => 'Español',
+    AppLanguage.russian => 'Русский',
+    AppLanguage.french => 'Français',
+    AppLanguage.uzbek => 'O‘zbekcha',
+  };
+
+  String displayLabel(BuildContext context) {
+    return '${context.tr(labelKey)} ($nativeName)';
+  }
 }
 
 class ThemeController extends ChangeNotifier {
@@ -252,14 +1511,35 @@ class ThemeController extends ChangeNotifier {
   AppGender _gender = AppGender.male;
   AppLanguage _language = AppLanguage.english;
   String _profileName = '';
-  int? _profileAge;
+  DateTime? _profileBirthDate;
+  Uint8List? _profileImageBytes;
+  HabitRepository? _repository;
+  Future<void> _pendingSave = Future<void>.value();
 
   ThemeMode get mode => _mode;
   AppAccent get accent => _accent;
   AppGender get gender => _gender;
   AppLanguage get language => _language;
   String get profileName => _profileName;
-  int? get profileAge => _profileAge;
+  DateTime? get profileBirthDate => _profileBirthDate;
+  Uint8List? get profileImageBytes => _profileImageBytes;
+  int? get profileAge {
+    final birthDate = _profileBirthDate;
+    if (birthDate == null) return null;
+    final today = DateTime.now();
+    var age = today.year - birthDate.year;
+    final birthdayPassed =
+        today.month > birthDate.month ||
+        (today.month == birthDate.month && today.day >= birthDate.day);
+    if (!birthdayPassed) age--;
+    return age;
+  }
+
+  bool get isUnder18 {
+    final age = profileAge;
+    return age != null && age < 18;
+  }
+
   Color get seedColor => switch (_accent) {
     AppAccent.blue => const Color(0xFF526DFF),
     AppAccent.pink => const Color(0xFFE5478D),
@@ -269,36 +1549,98 @@ class ThemeController extends ChangeNotifier {
     if (_mode == value) return;
     _mode = value;
     notifyListeners();
+    _persist();
   }
 
   void setAccent(AppAccent value) {
     if (_accent == value) return;
     _accent = value;
     notifyListeners();
+    _persist();
   }
 
   void setGender(AppGender value) {
     if (_gender == value) return;
     _gender = value;
     notifyListeners();
+    _persist();
   }
 
   void setLanguage(AppLanguage value) {
     if (_language == value) return;
     _language = value;
     notifyListeners();
+    _persist();
   }
 
   void updateProfile({
     required String name,
-    required int? age,
+    required DateTime? birthDate,
     AppGender? gender,
   }) {
     final trimmedName = name.trim();
     _profileName = trimmedName;
-    _profileAge = age;
+    _profileBirthDate = birthDate == null
+        ? null
+        : DateTime(birthDate.year, birthDate.month, birthDate.day);
     if (gender != null) _gender = gender;
     notifyListeners();
+    _persist();
+  }
+
+  void setProfileImage(Uint8List? bytes) {
+    _profileImageBytes = bytes;
+    notifyListeners();
+    _persist();
+  }
+
+  Future<void> restoreFrom(HabitRepository repository) async {
+    _repository = repository;
+    final preferences = await repository.loadAppPreferences();
+    _mode = switch (preferences.themeMode) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+    _accent = preferences.accent == 'pink' ? AppAccent.pink : AppAccent.blue;
+    _gender = preferences.gender == 'female'
+        ? AppGender.female
+        : AppGender.male;
+    _language = AppLanguage.values.firstWhere(
+      (language) => language.name == preferences.language,
+      orElse: () => AppLanguage.english,
+    );
+    _profileName = preferences.profileName;
+    _profileBirthDate = preferences.birthDate;
+    try {
+      _profileImageBytes = preferences.profileImageBase64.isEmpty
+          ? null
+          : base64Decode(preferences.profileImageBase64);
+    } on FormatException {
+      _profileImageBytes = null;
+    }
+    notifyListeners();
+  }
+
+  Future<void> flushPersistence() => _pendingSave;
+
+  void _persist() {
+    final repository = _repository;
+    if (repository == null) return;
+    final snapshot = PersistedAppPreferences(
+      themeMode: _mode.name,
+      accent: _accent.name,
+      gender: _gender.name,
+      language: _language.name,
+      profileName: _profileName,
+      birthDate: _profileBirthDate,
+      profileImageBase64: _profileImageBytes == null
+          ? ''
+          : base64Encode(_profileImageBytes!),
+    );
+    _pendingSave = repository
+        .saveAppPreferences(snapshot)
+        .catchError((Object _) {});
   }
 }
 
@@ -360,9 +1702,20 @@ class _HomePageState extends State<HomePage> {
                   content: Column(
                     children: [
                       HabitCalendar(repository: widget.calendarRepository),
-                      const SizedBox(height: 14),
-                      ReductionCalendar(
-                        repository: widget.reductionCalendarRepository,
+                      AnimatedBuilder(
+                        animation: widget.themeController,
+                        builder: (context, _) =>
+                            widget.themeController.isUnder18
+                            ? const SizedBox.shrink()
+                            : Column(
+                                children: [
+                                  const SizedBox(height: 14),
+                                  ReductionCalendar(
+                                    repository:
+                                        widget.reductionCalendarRepository,
+                                  ),
+                                ],
+                              ),
                       ),
                     ],
                   ),
@@ -1886,38 +3239,9 @@ class ProfilePage extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 104,
-                        height: 104,
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [colors.primaryContainer, colors.primary],
-                          ),
-                          boxShadow: isDark
-                              ? null
-                              : [
-                                  BoxShadow(
-                                    color: colors.primary.withValues(alpha: .2),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 10),
-                                  ),
-                                ],
-                        ),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colors.surfaceContainer,
-                          ),
-                          child: Icon(
-                            Icons.person_rounded,
-                            size: 58,
-                            color: colors.primary,
-                          ),
-                        ),
+                      _EditableProfilePhoto(
+                        themeController: themeController,
+                        radius: 52,
                       ),
                       const SizedBox(width: 20),
                       Expanded(
@@ -1976,9 +3300,8 @@ class ProfilePage extends StatelessWidget {
 
   Future<void> _showEditProfileDialog(BuildContext context) async {
     var draftName = themeController.profileName;
-    var draftAge = themeController.profileAge?.toString() ?? '';
+    var selectedBirthDate = themeController.profileBirthDate;
     var selectedGender = themeController.gender;
-    String? ageError;
 
     final result = await showDialog<_ProfileEditResult>(
       context: context,
@@ -1998,14 +3321,28 @@ class ProfilePage extends StatelessWidget {
                   ).copyWith(labelText: context.tr('Name')),
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  initialValue: draftAge,
-                  onChanged: (value) => draftAge = value,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: context.tr('Age'),
-                    errorText: ageError,
-                    prefixIcon: const Icon(Icons.cake_outlined),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final now = DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate:
+                            selectedBirthDate ?? DateTime(now.year - 18),
+                        firstDate: DateTime(now.year - 120),
+                        lastDate: now,
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedBirthDate = picked);
+                      }
+                    },
+                    icon: const Icon(Icons.cake_outlined),
+                    label: Text(
+                      selectedBirthDate == null
+                          ? context.tr('Date of birth')
+                          : _numericDate(selectedBirthDate!),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -2041,19 +3378,10 @@ class ProfilePage extends StatelessWidget {
             ),
             FilledButton(
               onPressed: () {
-                final rawAge = draftAge.trim();
-                final parsedAge = rawAge.isEmpty ? null : int.tryParse(rawAge);
-                if (rawAge.isNotEmpty &&
-                    (parsedAge == null || parsedAge < 1 || parsedAge > 120)) {
-                  setDialogState(() {
-                    ageError = context.tr('Enter an age from 1 to 120');
-                  });
-                  return;
-                }
                 Navigator.of(dialogContext).pop(
                   _ProfileEditResult(
                     name: draftName,
-                    age: parsedAge,
+                    birthDate: selectedBirthDate,
                     gender: selectedGender,
                   ),
                 );
@@ -2068,7 +3396,7 @@ class ProfilePage extends StatelessWidget {
     if (result == null) return;
     themeController.updateProfile(
       name: result.name,
-      age: result.age,
+      birthDate: result.birthDate,
       gender: result.gender,
     );
   }
@@ -2077,13 +3405,19 @@ class ProfilePage extends StatelessWidget {
 class _ProfileEditResult {
   const _ProfileEditResult({
     required this.name,
-    required this.age,
+    required this.birthDate,
     required this.gender,
   });
 
   final String name;
-  final int? age;
+  final DateTime? birthDate;
   final AppGender gender;
+}
+
+String _numericDate(DateTime date) {
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  return '$day/$month/${date.year}';
 }
 
 class _ProfileFact extends StatelessWidget {
@@ -2148,6 +3482,7 @@ class SettingsPage extends StatelessWidget {
             animation: themeController,
             builder: (context, _) => DropdownButtonFormField<AppLanguage>(
               key: ValueKey(themeController.language),
+              isExpanded: true,
               initialValue: themeController.language,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.language_rounded),
@@ -2159,7 +3494,7 @@ class SettingsPage extends StatelessWidget {
                 for (final language in AppLanguage.values)
                   DropdownMenuItem(
                     value: language,
-                    child: Text(context.tr(language.labelKey)),
+                    child: Text(language.displayLabel(context)),
                   ),
               ],
               onChanged: (language) {
@@ -2299,6 +3634,43 @@ class SettingsPage extends StatelessWidget {
                 themeController.setGender(selection.first);
               },
             ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            context.tr('Welcome page preview'),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.tr(
+              'Open the welcome pages without resetting your onboarding progress.',
+            ),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.tonalIcon(
+            key: const Key('previewWelcomePagesButton'),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (previewContext) => WelcomeFlow(
+                    themeController: themeController,
+                    previewMode: true,
+                    onFinished: () async {
+                      if (previewContext.mounted) {
+                        Navigator.of(previewContext).pop();
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.slideshow_rounded),
+            label: Text(context.tr('Preview welcome pages')),
           ),
         ],
       ),

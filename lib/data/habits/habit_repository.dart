@@ -56,8 +56,36 @@ class HabitPreference {
   final bool isFavorite;
 }
 
+class PersistedAppPreferences {
+  const PersistedAppPreferences({
+    this.themeMode = 'system',
+    this.accent = 'blue',
+    this.gender = 'male',
+    this.language = 'english',
+    this.profileName = '',
+    this.birthDate,
+    this.profileImageBase64 = '',
+  });
+
+  final String themeMode;
+  final String accent;
+  final String gender;
+  final String language;
+  final String profileName;
+  final DateTime? birthDate;
+  final String profileImageBase64;
+}
+
 abstract interface class HabitRepository {
   Future<void> initialize();
+
+  Future<bool> isOnboardingComplete();
+
+  Future<void> completeOnboarding();
+
+  Future<PersistedAppPreferences> loadAppPreferences();
+
+  Future<void> saveAppPreferences(PersistedAppPreferences preferences);
 
   Future<PersistedBodyState> loadBodyState();
 

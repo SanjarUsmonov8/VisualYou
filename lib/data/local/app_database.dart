@@ -107,6 +107,15 @@ class ReductionPlans extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+class AppSettings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {key};
+}
+
 @DriftDatabase(
   tables: [
     HabitDefinitions,
@@ -116,6 +125,7 @@ class ReductionPlans extends Table {
     CustomGraphRules,
     SpecialHabitGraphs,
     ReductionPlans,
+    AppSettings,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -133,7 +143,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -155,6 +165,9 @@ class AppDatabase extends _$AppDatabase {
           "WHERE id IN ('water', 'healthy_eating', 'workout_arms', "
           "'workout_abs', 'alcohol')",
         );
+      }
+      if (from < 6) {
+        await migrator.createTable(appSettings);
       }
     },
     beforeOpen: (details) async {

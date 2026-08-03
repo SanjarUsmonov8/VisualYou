@@ -25,6 +25,7 @@ void main() {
     final database = AppDatabase(NativeDatabase.memory());
     await tester.pumpWidget(
       VisualYouApp(
+        skipOnboarding: true,
         habitRepository: DriftHabitRepository(database),
         customGraphRepository: const TestCustomGraphRepository(),
         calendarRepository: const TestCalendarRepository(),
@@ -67,11 +68,14 @@ void main() {
     await tester.tap(find.text('Edit profile'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'Alex');
-    await tester.enterText(find.byType(TextFormField).at(1), '25');
+    await tester.tap(find.text('Date of birth'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Alex'), findsOneWidget);
-    expect(find.text('25'), findsOneWidget);
+    expect(find.text('18'), findsOneWidget);
     expect(tester.takeException(), null);
 
     await tester.tap(find.byTooltip('Back'));
@@ -79,22 +83,22 @@ void main() {
     await tester.tap(find.byKey(const Key('settingsButton')));
     await tester.pumpAndSettle();
     expect(find.text('Settings'), findsOneWidget);
-    expect(find.text('English'), findsOneWidget);
+    expect(find.text('English (English)'), findsOneWidget);
 
-    await tester.tap(find.text('English'));
+    await tester.tap(find.text('English (English)'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Spanish').last);
+    await tester.tap(find.text('Spanish (Español)').last);
     await tester.pumpAndSettle();
     expect(find.text('Ajustes'), findsOneWidget);
     expect(find.text('Idioma'), findsOneWidget);
-    expect(find.text('Español'), findsOneWidget);
+    expect(find.text('Español (Español)'), findsOneWidget);
 
-    await tester.tap(find.text('Español'));
+    await tester.tap(find.text('Español (Español)'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Inglés').last);
+    await tester.tap(find.text('Inglés (English)').last);
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(ListView), const Offset(0, -420));
+    await tester.drag(find.byType(ListView), const Offset(0, -260));
     await tester.pumpAndSettle();
     expect(find.text('Blue'), findsOneWidget);
     expect(find.text('Pink'), findsOneWidget);
@@ -111,12 +115,13 @@ void main() {
         .theme!
         .colorScheme
         .primary;
+    await tester.drag(find.byType(ListView), const Offset(0, -240));
     await tester.tap(find.text('Pink'));
     await tester.pumpAndSettle();
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.theme!.colorScheme.primary == bluePrimary, false);
 
-    await tester.drag(find.byType(ListView), const Offset(0, -420));
+    await tester.drag(find.byType(ListView), const Offset(0, -260));
     await tester.pumpAndSettle();
     expect(find.text('Male'), findsOneWidget);
     expect(find.text('Female'), findsOneWidget);

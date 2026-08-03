@@ -15,6 +15,7 @@ void main() {
 
     await tester.pumpWidget(
       VisualYouApp(
+        skipOnboarding: true,
         habitRepository: DriftHabitRepository(database),
         customGraphRepository: const TestCustomGraphRepository(),
         calendarRepository: const TestCalendarRepository(),

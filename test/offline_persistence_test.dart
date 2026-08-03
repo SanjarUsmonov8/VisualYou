@@ -36,6 +36,19 @@ void main() {
       final firstRepository = DriftHabitRepository(firstDatabase);
       final firstGraphRepository = DriftCustomGraphRepository(firstDatabase);
       await firstRepository.initialize();
+      expect(await firstRepository.isOnboardingComplete(), isFalse);
+      await firstRepository.completeOnboarding();
+      await firstRepository.saveAppPreferences(
+        PersistedAppPreferences(
+          themeMode: 'dark',
+          accent: 'pink',
+          gender: 'female',
+          language: 'uzbek',
+          profileName: 'Alex',
+          birthDate: DateTime(2008, 4, 12),
+          profileImageBase64: 'AQID',
+        ),
+      );
       final initialBody = await firstRepository.loadBodyState();
       for (final partKey in [
         BodyPartKey.brain,
@@ -108,6 +121,15 @@ void main() {
         reopenedDatabase,
       );
       await reopenedRepository.initialize();
+      expect(await reopenedRepository.isOnboardingComplete(), isTrue);
+      final appPreferences = await reopenedRepository.loadAppPreferences();
+      expect(appPreferences.themeMode, 'dark');
+      expect(appPreferences.accent, 'pink');
+      expect(appPreferences.gender, 'female');
+      expect(appPreferences.language, 'uzbek');
+      expect(appPreferences.profileName, 'Alex');
+      expect(appPreferences.birthDate, DateTime(2008, 4, 12));
+      expect(appPreferences.profileImageBase64, 'AQID');
       final restoredBody = await reopenedRepository.loadBodyState();
       final restoredPreferences = await reopenedRepository
           .watchHabitPreferences()

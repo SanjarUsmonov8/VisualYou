@@ -233,6 +233,71 @@ class DriftHabitRepository implements HabitRepository {
   }
 
   @override
+  Future<bool> isOnboardingComplete() async {
+    final setting = await (database.select(
+      database.appSettings,
+    )..where((row) => row.key.equals('onboarding_complete'))).getSingleOrNull();
+    return setting?.value == 'true';
+  }
+
+  @override
+  Future<void> completeOnboarding() {
+    final now = DateTime.now();
+    return database
+        .into(database.appSettings)
+        .insertOnConflictUpdate(
+          AppSettingsCompanion.insert(
+            key: 'onboarding_complete',
+            value: 'true',
+            updatedAt: now,
+          ),
+        );
+  }
+
+  @override
+  Future<PersistedAppPreferences> loadAppPreferences() async {
+    final rows = await database.select(database.appSettings).get();
+    final values = {for (final row in rows) row.key: row.value};
+    final rawBirthDate = values['profile_birth_date'];
+    return PersistedAppPreferences(
+      themeMode: values['theme_mode'] ?? 'system',
+      accent: values['accent'] ?? 'blue',
+      gender: values['gender'] ?? 'male',
+      language: values['language'] ?? 'english',
+      profileName: values['profile_name'] ?? '',
+      birthDate: rawBirthDate == null ? null : DateTime.tryParse(rawBirthDate),
+      profileImageBase64: values['profile_image_base64'] ?? '',
+    );
+  }
+
+  @override
+  Future<void> saveAppPreferences(PersistedAppPreferences preferences) async {
+    final now = DateTime.now();
+    final values = <String, String>{
+      'theme_mode': preferences.themeMode,
+      'accent': preferences.accent,
+      'gender': preferences.gender,
+      'language': preferences.language,
+      'profile_name': preferences.profileName,
+      'profile_birth_date': preferences.birthDate?.toIso8601String() ?? '',
+      'profile_image_base64': preferences.profileImageBase64,
+    };
+    await database.transaction(() async {
+      for (final entry in values.entries) {
+        await database
+            .into(database.appSettings)
+            .insertOnConflictUpdate(
+              AppSettingsCompanion.insert(
+                key: entry.key,
+                value: entry.value,
+                updatedAt: now,
+              ),
+            );
+      }
+    });
+  }
+
+  @override
   Stream<List<HabitPreference>> watchHabitPreferences() {
     final query = database.select(database.habitDefinitions)
       ..where((habit) => habit.deletedAt.isNull())
