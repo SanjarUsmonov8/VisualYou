@@ -35,6 +35,8 @@ dependencies:
   drift: ^2.34.2
   drift_flutter: ^0.3.1
   image_picker: ^1.2.3
+  flutter_secure_storage: ^10.0.0
+  http: ^1.5.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -86,6 +88,7 @@ flutter:
   assets:
     - assets/images/body/
     - assets/images/welcomepage/
+    - assets/images/badges/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

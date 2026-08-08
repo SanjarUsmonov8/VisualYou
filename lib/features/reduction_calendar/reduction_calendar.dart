@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar_models.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar_repository.dart';
+import 'package:visualyou/features/rewards/rewards_controller.dart';
+import 'package:visualyou/features/rewards/rewards_widgets.dart';
 import 'package:visualyou/l10n/app_strings.dart';
 
 class ReductionCalendar extends StatefulWidget {
-  const ReductionCalendar({required this.repository, super.key});
+  const ReductionCalendar({
+    required this.repository,
+    required this.rewardsController,
+    super.key,
+  });
 
   final ReductionCalendarRepository repository;
+  final RewardsController rewardsController;
 
   @override
   State<ReductionCalendar> createState() => _ReductionCalendarState();
@@ -45,7 +52,10 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
       builder: (context, snapshot) {
         final plans = snapshot.data ?? const <ReductionCalendarData>[];
 
-        Widget buildCard(ReductionCalendarData? plan) {
+        Widget buildCard(
+          ReductionCalendarData? plan, {
+          bool premiumExtra = false,
+        }) {
           return Container(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
             decoration: BoxDecoration(
@@ -60,15 +70,25 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
                   ),
               ],
             ),
-            child: plan == null
-                ? _EmptyReductionPlan(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (premiumExtra) ...[
+                  const TokenChip(amount: 70, compact: true),
+                  const SizedBox(height: 7),
+                ],
+                if (plan == null)
+                  _EmptyReductionPlan(
                     onCreate: () => _openEditor(context, activePlans: plans),
                   )
-                : Column(
+                else
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
                         children: [
+                          if (!widget.rewardsController.isPlus)
+                            const SizedBox(width: 74),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,10 +201,34 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
                       ),
                     ],
                   ),
+              ],
+            ),
           );
         }
 
-        return buildCard(plans.isEmpty ? null : plans.first);
+        final visiblePlans = plans
+            .take(widget.rewardsController.reductionPlanLimit)
+            .toList();
+        return Column(
+          children: [
+            for (var index = 0; index < visiblePlans.length; index++) ...[
+              if (index > 0) const SizedBox(height: 12),
+              buildCard(
+                visiblePlans[index],
+                premiumExtra: widget.rewardsController.isPlus && index >= 1,
+              ),
+            ],
+            if (visiblePlans.length <
+                widget.rewardsController.reductionPlanLimit) ...[
+              if (visiblePlans.isNotEmpty) const SizedBox(height: 12),
+              buildCard(
+                null,
+                premiumExtra:
+                    widget.rewardsController.isPlus && visiblePlans.isNotEmpty,
+              ),
+            ],
+          ],
+        );
       },
     );
   }
@@ -208,6 +252,16 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
       useSafeArea: true,
       builder: (context) => _ReductionPlanEditor(
         repository: widget.repository,
+        rewardsController: widget.rewardsController,
+        requiresPayment:
+            !widget.rewardsController.isPlus ||
+            (initialPlan == null
+                ? activePlans.isNotEmpty
+                : activePlans.indexWhere(
+                        (plan) => plan.planId == initialPlan.planId,
+                      ) >=
+                      1),
+        chargePlus: widget.rewardsController.isPlus,
         initialPlan: initialPlan,
         unavailableHabitIds: {
           for (final plan in activePlans)
@@ -416,6 +470,11 @@ class _ReductionDayCircle extends StatelessWidget {
     final consumedScheduledSlot =
         !beforePlan && isFlexibleScheduledSlotConsumed(plan, day);
     final availableScheduledDay = allowed && !consumedScheduledSlot;
+    final completedAvoidance =
+        !beforePlan &&
+        !availableScheduledDay &&
+        plan.hasStatusOn(day) &&
+        plan.countOn(day) == 0;
     final color = beforePlan
         ? theme.colorScheme.surfaceContainerHighest
         : violation
@@ -448,7 +507,7 @@ class _ReductionDayCircle extends StatelessWidget {
             ],
           ),
           alignment: Alignment.center,
-          child: completedAllowedUse
+          child: completedAllowedUse || completedAvoidance
               ? Icon(Icons.check_rounded, color: textColor, size: 21)
               : Text(
                   '${day.day}',
@@ -604,11 +663,17 @@ class _ReductionPlanEditor extends StatefulWidget {
   const _ReductionPlanEditor({
     required this.repository,
     required this.unavailableHabitIds,
+    required this.rewardsController,
+    required this.requiresPayment,
+    required this.chargePlus,
     this.initialPlan,
   });
 
   final ReductionCalendarRepository repository;
   final Set<String> unavailableHabitIds;
+  final RewardsController rewardsController;
+  final bool requiresPayment;
+  final bool chargePlus;
   final ReductionCalendarData? initialPlan;
 
   @override
@@ -776,6 +841,27 @@ class _ReductionPlanEditorState extends State<_ReductionPlanEditor> {
       if (!confirmed || !mounted) return;
     }
     setState(() => _saving = true);
+    if (widget.requiresPayment) {
+      final paid = await confirmTokenOrAdPurchase(
+        context,
+        controller: widget.rewardsController,
+        amount: 70,
+        reason: widget.initialPlan == null
+            ? 'new-reduction-plan'
+            : 'change-reduction-plan',
+        title: context.tr('Do you want to choose this reduction plan?'),
+        chargePlus: widget.chargePlus,
+      );
+      if (!paid) {
+        if (mounted) setState(() => _saving = false);
+        return;
+      }
+    }
+    if (widget.initialPlan != null &&
+        widget.repository is DriftReductionCalendarRepository) {
+      await (widget.repository as DriftReductionCalendarRepository)
+          .deactivatePlan(widget.initialPlan!.planId);
+    }
     switch (_selectedMode) {
       case 'easy':
         await widget.repository.createEasyPlan(

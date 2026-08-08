@@ -50,7 +50,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(finished, isFalse);
     expect(find.text('Custom'), findsOneWidget);
-    expect(find.text('Calendar'), findsOneWidget);
+    expect(find.text('Graph'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('welcomeNextButton')));
     await tester.pumpAndSettle();
@@ -67,6 +67,14 @@ void main() {
     expect(find.text('Continue with Apple'), findsOneWidget);
     expect(find.text('Log in'), findsOneWidget);
 
+    await tester.tap(find.text('Sign up with email'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('signupEmailField')), findsOneWidget);
+    Navigator.of(
+      tester.element(find.byKey(const Key('signupEmailField'))),
+    ).pop();
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byKey(const Key('welcomeNextButton')));
     await tester.pumpAndSettle();
     expect(finished, isFalse);
@@ -78,6 +86,59 @@ void main() {
     expect(find.text('Dark'), findsOneWidget);
     expect(find.text('Blue'), findsOneWidget);
     expect(find.text('Pink'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('welcomeProfileName')),
+      'Taylor',
+    );
+    await tester.pump();
+    expect(themeController.profileName, 'Taylor');
+
+    themeController.setMode(ThemeMode.dark);
+    await tester.pump();
+    expect(
+      Theme.of(
+        tester.element(find.byKey(const Key('welcomeProfileName'))),
+      ).brightness,
+      Brightness.dark,
+    );
+
+    await tester.tap(find.text('Previous'));
+    await tester.pumpAndSettle();
+    expect(find.text('Create Account'), findsOneWidget);
+    expect(
+      Theme.of(tester.element(find.text('Create Account'))).brightness,
+      Brightness.light,
+    );
+
+    await tester.tap(find.byKey(const Key('welcomeNextButton')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('welcomeNextButton')));
+    await tester.pumpAndSettle();
+
+    expect(finished, isFalse);
+    expect(find.text('Before you begin'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
+    expect(themeController.termsAccepted, isFalse);
+
+    await tester.ensureVisible(find.byKey(const Key('honestyAgreementNote')));
+    await tester.tap(find.byKey(const Key('honestyAgreementNote')));
+    await tester.pump();
+    expect(themeController.termsAccepted, isFalse);
+
+    await tester.ensureVisible(find.byKey(const Key('symbolicAgreementNote')));
+    await tester.tap(find.byKey(const Key('symbolicAgreementNote')));
+    await tester.pump();
+    expect(themeController.termsAccepted, isTrue);
+
+    await tester.ensureVisible(find.byKey(const Key('allTermsAgreement')));
+    await tester.tap(find.byKey(const Key('allTermsAgreement')));
+    await tester.pump();
+    expect(themeController.termsAccepted, isFalse);
+    await tester.tap(find.byKey(const Key('allTermsAgreement')));
+    await tester.pump();
+    expect(themeController.termsAccepted, isTrue);
 
     await tester.tap(find.byKey(const Key('welcomeNextButton')));
     await tester.pump();

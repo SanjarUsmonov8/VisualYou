@@ -38,6 +38,7 @@ class HabitLogEntries extends Table {
 class BodyPartStates extends Table {
   TextColumn get partKey => text()();
   IntColumn get level => integer().withDefault(const Constant(0))();
+  RealColumn get score => real().nullable()();
   IntColumn get colorValue => integer().nullable()();
   DateTimeColumn get updatedAt => dateTime()();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
@@ -116,6 +117,46 @@ class AppSettings extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
+@DataClassName('RewardStateRow')
+class RewardStates extends Table {
+  IntColumn get id => integer().withDefault(const Constant(1))();
+  TextColumn get plan => text().withDefault(const Constant('free'))();
+  DateTimeColumn get planExpiresAt => dateTime().nullable()();
+  IntColumn get tokenBalance => integer().withDefault(const Constant(140))();
+  IntColumn get currentStreak => integer().withDefault(const Constant(0))();
+  IntColumn get profileProgress => integer().withDefault(const Constant(140))();
+  IntColumn get bodyProgress => integer().withDefault(const Constant(0))();
+  IntColumn get calendarProgress => integer().withDefault(const Constant(0))();
+  DateTimeColumn get lastEvaluatedWeek => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('RewardEventRow')
+class RewardEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get badgeKey => text().nullable()();
+  IntColumn get amount => integer()();
+  DateTimeColumn get occurredOn => dateTime()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('FeatureUnlockRow')
+class FeatureUnlocks extends Table {
+  TextColumn get featureKey => text()();
+  DateTimeColumn get unlockedUntil => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {featureKey};
+}
+
 @DriftDatabase(
   tables: [
     HabitDefinitions,
@@ -126,6 +167,9 @@ class AppSettings extends Table {
     SpecialHabitGraphs,
     ReductionPlans,
     AppSettings,
+    RewardStates,
+    RewardEvents,
+    FeatureUnlocks,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -143,7 +187,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -168,6 +212,21 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 6) {
         await migrator.createTable(appSettings);
+      }
+      if (from < 7) {
+        await migrator.addColumn(bodyPartStates, bodyPartStates.score);
+        await customStatement(
+          'UPDATE body_part_states SET score = CAST(level AS REAL) '
+          'WHERE score IS NULL',
+        );
+      }
+      if (from < 8) {
+        await migrator.createTable(rewardStates);
+        await migrator.createTable(rewardEvents);
+        await migrator.createTable(featureUnlocks);
+      }
+      if (from < 9) {
+        await migrator.addColumn(rewardStates, rewardStates.planExpiresAt);
       }
     },
     beforeOpen: (details) async {

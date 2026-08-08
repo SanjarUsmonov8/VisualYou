@@ -4,12 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:visualyou/features/custom_graph/custom_graph_models.dart';
 import 'package:visualyou/features/custom_graph/custom_graph_repository.dart';
+import 'package:visualyou/features/rewards/rewards_controller.dart';
+import 'package:visualyou/features/rewards/rewards_models.dart';
+import 'package:visualyou/features/rewards/rewards_widgets.dart';
 import 'package:visualyou/l10n/app_strings.dart';
 
 class CustomGraphCard extends StatefulWidget {
-  const CustomGraphCard({required this.repository, super.key});
+  const CustomGraphCard({
+    required this.repository,
+    required this.rewardsController,
+    super.key,
+  });
 
   final CustomGraphRepository repository;
+  final RewardsController rewardsController;
 
   @override
   State<CustomGraphCard> createState() => _CustomGraphCardState();
@@ -63,6 +71,8 @@ class _CustomGraphCardState extends State<CustomGraphCard> {
             children: [
               Row(
                 children: [
+                  if (!widget.rewardsController.isPlus)
+                    const SizedBox(width: 74),
                   Expanded(
                     child: Text(
                       context.tr('Custom graph'),
@@ -143,24 +153,37 @@ class _CustomGraphCardState extends State<CustomGraphCard> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => CustomGraphEditor(repository: widget.repository),
+      builder: (context) => CustomGraphEditor(
+        repository: widget.repository,
+        rewardsController: widget.rewardsController,
+      ),
     );
   }
 }
 
 class CustomGraphEditor extends StatefulWidget {
-  const CustomGraphEditor({required this.repository, super.key});
+  const CustomGraphEditor({
+    required this.repository,
+    required this.rewardsController,
+    super.key,
+  });
 
   final CustomGraphRepository repository;
+  final RewardsController rewardsController;
 
   @override
   State<CustomGraphEditor> createState() => _CustomGraphEditorState();
 }
 
 class SpecialHabitGraphsSection extends StatefulWidget {
-  const SpecialHabitGraphsSection({required this.repository, super.key});
+  const SpecialHabitGraphsSection({
+    required this.repository,
+    required this.rewardsController,
+    super.key,
+  });
 
   final CustomGraphRepository repository;
+  final RewardsController rewardsController;
 
   @override
   State<SpecialHabitGraphsSection> createState() =>
@@ -193,18 +216,34 @@ class _SpecialHabitGraphsSectionState extends State<SpecialHabitGraphsSection> {
           for (final graph in snapshot.data ?? const <SpecialHabitGraph>[])
             graph.slot: graph,
         };
-        return Row(
+        Widget graphGrid(int firstSlot, int count) => GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: count,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemBuilder: (context, index) {
+            final slot = firstSlot + index;
+            return _SpecialHabitGraphCard(
+              slot: slot,
+              graph: graphs[slot],
+              repository: widget.repository,
+              rewardsController: widget.rewardsController,
+            );
+          },
+        );
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (var slot = 0; slot < 2; slot++) ...[
-              if (slot > 0) const SizedBox(width: 10),
-              Expanded(
-                child: _SpecialHabitGraphCard(
-                  slot: slot,
-                  graph: graphs[slot],
-                  repository: widget.repository,
-                ),
-              ),
+            graphGrid(0, 2),
+            if (widget.rewardsController.isPlus) ...[
+              const SizedBox(height: 10),
+              const TokenChip(amount: 35, compact: true),
+              const SizedBox(height: 7),
+              graphGrid(2, 2),
             ],
           ],
         );
@@ -218,11 +257,13 @@ class _SpecialHabitGraphCard extends StatelessWidget {
     required this.slot,
     required this.graph,
     required this.repository,
+    required this.rewardsController,
   });
 
   final int slot;
   final SpecialHabitGraph? graph;
   final CustomGraphRepository repository;
+  final RewardsController rewardsController;
 
   @override
   Widget build(BuildContext context) {
@@ -231,73 +272,70 @@ class _SpecialHabitGraphCard extends StatelessWidget {
     final lineColor = slot == 0
         ? theme.colorScheme.primary
         : theme.colorScheme.secondary;
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Material(
-        color: isDark ? const Color(0xFF24272E) : const Color(0xFFF0F2F5),
+    return Material(
+      color: isDark ? const Color(0xFF24272E) : const Color(0xFFF0F2F5),
+      borderRadius: BorderRadius.circular(22),
+      elevation: isDark ? 0 : 2,
+      shadowColor: theme.colorScheme.primary.withValues(alpha: .18),
+      child: InkWell(
         borderRadius: BorderRadius.circular(22),
-        elevation: isDark ? 0 : 2,
-        shadowColor: theme.colorScheme.primary.withValues(alpha: .18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(22),
-          onTap: () => _openPicker(context),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(11, 8, 8, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        graph == null
-                            ? context.tr('Choose habit')
-                            : context.tr(graph!.habitNameKey),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+        onTap: () => _openPicker(context),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(11, 8, 8, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      graph == null
+                          ? context.tr('Choose habit')
+                          : context.tr(graph!.habitNameKey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    Icon(Icons.tune_rounded, size: 18, color: lineColor),
+                  ),
+                  Icon(Icons.tune_rounded, size: 18, color: lineColor),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: graph == null
+                    ? Center(
+                        child: Icon(
+                          Icons.add_chart_rounded,
+                          size: 34,
+                          color: lineColor,
+                        ),
+                      )
+                    : CustomPaint(
+                        size: Size.infinite,
+                        painter: _SpecialHabitGraphPainter(
+                          days: graph!.days,
+                          lineColor: lineColor,
+                          gridColor: theme.colorScheme.outlineVariant,
+                        ),
+                      ),
+              ),
+              if (graph != null)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${graph!.days.first.day.day}',
+                      style: theme.textTheme.labelSmall,
+                    ),
+                    Text(
+                      '${graph!.days.last.day.day}',
+                      style: theme.textTheme.labelSmall,
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Expanded(
-                  child: graph == null
-                      ? Center(
-                          child: Icon(
-                            Icons.add_chart_rounded,
-                            size: 34,
-                            color: lineColor,
-                          ),
-                        )
-                      : CustomPaint(
-                          size: Size.infinite,
-                          painter: _SpecialHabitGraphPainter(
-                            days: graph!.days,
-                            lineColor: lineColor,
-                            gridColor: theme.colorScheme.outlineVariant,
-                          ),
-                        ),
-                ),
-                if (graph != null)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${graph!.days.first.day.day}',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                      Text(
-                        '${graph!.days.last.day.day}',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
@@ -312,6 +350,7 @@ class _SpecialHabitGraphCard extends StatelessWidget {
         slot: slot,
         selectedHabitId: graph?.habitId,
         repository: repository,
+        rewardsController: rewardsController,
       ),
     );
   }
@@ -322,11 +361,13 @@ class _SpecialHabitPicker extends StatefulWidget {
     required this.slot,
     required this.selectedHabitId,
     required this.repository,
+    required this.rewardsController,
   });
 
   final int slot;
   final String? selectedHabitId;
   final CustomGraphRepository repository;
+  final RewardsController rewardsController;
 
   @override
   State<_SpecialHabitPicker> createState() => _SpecialHabitPickerState();
@@ -372,7 +413,13 @@ class _SpecialHabitPickerState extends State<_SpecialHabitPicker> {
                       selected: widget.selectedHabitId == null,
                       onTap: () => _select(context, null),
                     ),
-                    for (final habit in snapshot.data!)
+                    for (final habit in snapshot.data!.where(
+                      (habit) =>
+                          widget.rewardsController.isPlus ||
+                          (habit.id != 'consuming_sugar' &&
+                              habit.id != 'studying' &&
+                              !habit.id.startsWith('custom_')),
+                    ))
                       ListTile(
                         leading: const Icon(Icons.show_chart_rounded),
                         title: Text(context.tr(habit.nameKey)),
@@ -390,6 +437,34 @@ class _SpecialHabitPickerState extends State<_SpecialHabitPicker> {
   }
 
   Future<void> _select(BuildContext context, String? habitId) async {
+    if (habitId == widget.selectedHabitId) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final isExtraPair = widget.rewardsController.isPlus && widget.slot >= 2;
+    final requiresPayment =
+        !widget.rewardsController.isPlus ||
+        (isExtraPair &&
+            !widget.rewardsController.isPaidExtensionUnlocked(
+              GatedFeature.extraSingleGraphs,
+            ));
+    if (requiresPayment) {
+      final paid = await confirmTokenOrAdPurchase(
+        context,
+        controller: widget.rewardsController,
+        amount: 35,
+        reason: 'special-graph-${widget.slot}',
+        title: context.tr('Do you want to change this graph?'),
+        chargePlus: widget.rewardsController.isPlus,
+      );
+      if (!paid) return;
+      if (isExtraPair) {
+        await widget.rewardsController.repository.unlockFeatureAfterPayment(
+          GatedFeature.extraSingleGraphs,
+        );
+        await widget.rewardsController.refresh();
+      }
+    }
     await widget.repository.saveSpecialHabit(
       slot: widget.slot,
       habitId: habitId,
@@ -399,7 +474,8 @@ class _SpecialHabitPickerState extends State<_SpecialHabitPicker> {
 }
 
 class _CustomGraphEditorState extends State<CustomGraphEditor> {
-  final _slots = List.generate(3, (index) => _EditableRule(slot: index));
+  late final List<_EditableRule> _slots;
+  final Map<int, String?> _originalHabits = {};
   List<CustomGraphHabit> _habits = const [];
   bool _loading = true;
   bool _saving = false;
@@ -408,6 +484,10 @@ class _CustomGraphEditorState extends State<CustomGraphEditor> {
   @override
   void initState() {
     super.initState();
+    _slots = List.generate(
+      widget.rewardsController.customGraphLimit,
+      (index) => _EditableRule(slot: index),
+    );
     _load();
   }
 
@@ -417,7 +497,16 @@ class _CustomGraphEditorState extends State<CustomGraphEditor> {
         widget.repository.loadHabits(),
         widget.repository.loadRules(),
       ]);
-      final habits = results[0] as List<CustomGraphHabit>;
+      final allHabits = results[0] as List<CustomGraphHabit>;
+      final habits = allHabits
+          .where(
+            (habit) =>
+                widget.rewardsController.isPlus ||
+                (habit.id != 'consuming_sugar' &&
+                    habit.id != 'studying' &&
+                    !habit.id.startsWith('custom_')),
+          )
+          .toList();
       final rules = results[1] as List<CustomGraphRule>;
       for (final rule in rules) {
         if (rule.slot < 0 || rule.slot >= _slots.length) continue;
@@ -425,6 +514,7 @@ class _CustomGraphEditorState extends State<CustomGraphEditor> {
           ..habitId = rule.habitId
           ..completedPoints = '${rule.completedPoints}'
           ..missedPoints = '${rule.missedPoints}';
+        _originalHabits[rule.slot] = rule.habitId;
       }
       if (!mounted) return;
       setState(() {
@@ -473,7 +563,7 @@ class _CustomGraphEditorState extends State<CustomGraphEditor> {
             ),
             const SizedBox(height: 4),
             Text(
-              context.tr('Choose up to 3 habits and set their point values.'),
+              '${context.tr('Choose up to')} ${_slots.length} ${context.tr('habits and set their point values.')}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -483,11 +573,16 @@ class _CustomGraphEditorState extends State<CustomGraphEditor> {
               const Center(child: CircularProgressIndicator())
             else
               for (final slot in _slots) ...[
+                if (!widget.rewardsController.isPlus) ...[
+                  const TokenChip(amount: 35, compact: true),
+                  const SizedBox(height: 7),
+                ],
                 _RuleEditor(
                   key: ValueKey('customGraphSlot${slot.slot}'),
                   number: slot.slot + 1,
                   slot: slot,
                   habits: _habits,
+                  showCost: widget.rewardsController.isPlus && slot.slot >= 3,
                   onChanged: () => setState(() => _error = null),
                 ),
                 const SizedBox(height: 10),
@@ -550,6 +645,32 @@ class _CustomGraphEditorState extends State<CustomGraphEditor> {
 
     setState(() => _saving = true);
     try {
+      final changedSlots = _slots
+          .where((slot) => _originalHabits[slot.slot] != slot.habitId)
+          .toList();
+      final paidSlots = widget.rewardsController.isPlus
+          ? changedSlots.where((slot) => slot.slot >= 3).toList()
+          : changedSlots;
+      if (paidSlots.isNotEmpty) {
+        final paid = await confirmTokenOrAdPurchase(
+          context,
+          controller: widget.rewardsController,
+          amount: paidSlots.length * 35,
+          reason: 'custom-graph-habits',
+          title: context.tr('Do you want to change these graph habits?'),
+          chargePlus: widget.rewardsController.isPlus,
+        );
+        if (!paid) {
+          if (!mounted) return;
+          setState(() {
+            _saving = false;
+            _error = context.tr(
+              'You do not have enough tokens for these graph changes.',
+            );
+          });
+          return;
+        }
+      }
       await widget.repository.saveRules(rules);
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -568,6 +689,7 @@ class _RuleEditor extends StatelessWidget {
     required this.number,
     required this.slot,
     required this.habits,
+    required this.showCost,
     required this.onChanged,
     super.key,
   });
@@ -575,6 +697,7 @@ class _RuleEditor extends StatelessWidget {
   final int number;
   final _EditableRule slot;
   final List<CustomGraphHabit> habits;
+  final bool showCost;
   final VoidCallback onChanged;
 
   @override
@@ -589,6 +712,10 @@ class _RuleEditor extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (showCost) ...[
+            const TokenChip(amount: 35, compact: true),
+            const SizedBox(height: 8),
+          ],
           Text(
             '${context.tr('Habit')} $number',
             style: theme.textTheme.labelLarge?.copyWith(
@@ -619,7 +746,9 @@ class _RuleEditor extends StatelessWidget {
                   slot.completedPoints.isEmpty &&
                   slot.missedPoints.isEmpty) {
                 final habit = habits.firstWhere((habit) => habit.id == habitId);
-                final isReduction = habit.category == 'reduction';
+                final isReduction =
+                    habit.category == 'reduction' ||
+                    habit.category == 'custom_bad';
                 slot.completedPoints = isReduction ? '-5' : '3';
                 slot.missedPoints = isReduction ? '5' : '-2';
               }

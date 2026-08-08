@@ -14,10 +14,15 @@ abstract final class BodyPartKey {
 }
 
 class PersistedBodyPart {
-  const PersistedBodyPart({required this.level, required this.colorValue});
+  const PersistedBodyPart({
+    required this.level,
+    required this.colorValue,
+    required this.score,
+  });
 
   final int level;
   final int? colorValue;
+  final double score;
 }
 
 class PersistedBodyState {
@@ -65,6 +70,9 @@ class PersistedAppPreferences {
     this.profileName = '',
     this.birthDate,
     this.profileImageBase64 = '',
+    this.profileImageAlignmentX = 0,
+    this.profileImageAlignmentY = 0,
+    this.termsAccepted = false,
   });
 
   final String themeMode;
@@ -74,6 +82,9 @@ class PersistedAppPreferences {
   final String profileName;
   final DateTime? birthDate;
   final String profileImageBase64;
+  final double profileImageAlignmentX;
+  final double profileImageAlignmentY;
+  final bool termsAccepted;
 }
 
 abstract interface class HabitRepository {
@@ -86,6 +97,10 @@ abstract interface class HabitRepository {
   Future<PersistedAppPreferences> loadAppPreferences();
 
   Future<void> saveAppPreferences(PersistedAppPreferences preferences);
+
+  Future<PersistedBodyState> applyDailyRecovery({DateTime? now});
+
+  Future<PersistedBodyState> applyBreathingReward({DateTime? occurredAt});
 
   Future<PersistedBodyState> loadBodyState();
 
@@ -100,6 +115,11 @@ abstract interface class HabitRepository {
   Future<void> setHabitActive(String habitId, bool isActive);
 
   Future<void> setHabitFavorite(String habitId, bool isFavorite);
+
+  Future<String> createCustomHabit({
+    required String name,
+    required bool isUnwanted,
+  });
 
   Stream<List<DailyProgressPoint>> watchGraphHistory({
     String metricKey = 'total_actions',

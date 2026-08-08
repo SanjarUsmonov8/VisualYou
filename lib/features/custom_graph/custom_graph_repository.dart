@@ -97,7 +97,8 @@ class DriftCustomGraphRepository implements CustomGraphRepository {
         r.completed_points,
         r.missed_points,
         h.name_key,
-        l.local_day
+        l.local_day,
+        COALESCE(SUM(l.quantity), 0) AS habit_count
       FROM custom_graph_rules AS r
       INNER JOIN habit_definitions AS h ON h.id = r.habit_id
       LEFT JOIN habit_log_entries AS l
@@ -105,6 +106,8 @@ class DriftCustomGraphRepository implements CustomGraphRepository {
         AND l.deleted_at IS NULL
         AND l.local_day >= ?
         AND l.local_day <= ?
+      GROUP BY r.slot, r.habit_id, r.completed_points, r.missed_points,
+        h.name_key, l.local_day
       ORDER BY r.slot
       ''',
       variables: [Variable(firstDay), Variable(today)],
@@ -209,7 +212,7 @@ class DriftCustomGraphRepository implements CustomGraphRepository {
     required DateTime firstDay,
   }) {
     final rulesById = <String, CustomGraphRule>{};
-    final completedKeys = <String>{};
+    final recordedValues = <String, bool>{};
     for (final row in rows) {
       final habitId = row.read<String>('habit_id');
       rulesById.putIfAbsent(
@@ -224,7 +227,8 @@ class DriftCustomGraphRepository implements CustomGraphRepository {
       );
       final localDay = row.readNullable<DateTime>('local_day');
       if (localDay != null) {
-        completedKeys.add('$habitId:${_dayKey(localDay)}');
+        recordedValues['$habitId:${_dayKey(localDay)}'] =
+            row.read<int>('habit_count') > 0;
       }
     }
     final rules = rulesById.values.toList()
@@ -233,7 +237,11 @@ class DriftCustomGraphRepository implements CustomGraphRepository {
       rules: rules,
       days: [
         for (var offset = 0; offset < 7; offset++)
-          _buildDay(firstDay.add(Duration(days: offset)), rules, completedKeys),
+          _buildDay(
+            firstDay.add(Duration(days: offset)),
+            rules,
+            recordedValues,
+          ),
       ],
     );
   }
@@ -241,16 +249,18 @@ class DriftCustomGraphRepository implements CustomGraphRepository {
   static CustomGraphDay _buildDay(
     DateTime day,
     List<CustomGraphRule> rules,
-    Set<String> completedKeys,
+    Map<String, bool> recordedValues,
   ) {
     return CustomGraphDay(
       day: day,
       values: {
         for (final rule in rules)
           rule.habitId:
-              completedKeys.contains('${rule.habitId}:${_dayKey(day)}')
-              ? rule.completedPoints
-              : rule.missedPoints,
+              switch (recordedValues['${rule.habitId}:${_dayKey(day)}']) {
+                true => rule.completedPoints,
+                false => rule.missedPoints,
+                null => 0,
+              },
       },
     );
   }

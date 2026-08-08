@@ -658,17 +658,14 @@ class _PositionedOrgan extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget displayedImage = Image.asset(
-      assetPath,
-      fit: imageFit,
-      semanticLabel: semanticLabel,
+    Widget displayedImage = _AnimatedTintedBodyPart(
+      tintColor: tintColor,
+      child: Image.asset(
+        assetPath,
+        fit: imageFit,
+        semanticLabel: semanticLabel,
+      ),
     );
-    if (tintColor != null) {
-      displayedImage = ColorFiltered(
-        colorFilter: ColorFilter.matrix(_tintMatrix(tintColor!)),
-        child: displayedImage,
-      );
-    }
     if (flipHorizontally) {
       displayedImage = Transform.flip(flipX: true, child: displayedImage);
     }
@@ -689,31 +686,131 @@ class _PositionedOrgan extends StatelessWidget {
       ),
     );
   }
+}
 
-  List<double> _tintMatrix(Color color) {
-    return [
-      .2126 * color.r,
-      .7152 * color.r,
-      .0722 * color.r,
-      0,
-      0,
-      .2126 * color.g,
-      .7152 * color.g,
-      .0722 * color.g,
-      0,
-      0,
-      .2126 * color.b,
-      .7152 * color.b,
-      .0722 * color.b,
-      0,
-      0,
-      0,
-      0,
-      0,
-      1,
-      0,
-    ];
+class _AnimatedTintedBodyPart extends StatefulWidget {
+  const _AnimatedTintedBodyPart({required this.tintColor, required this.child});
+
+  final Color? tintColor;
+  final Widget child;
+
+  @override
+  State<_AnimatedTintedBodyPart> createState() =>
+      _AnimatedTintedBodyPartState();
+}
+
+class _AnimatedTintedBodyPartState extends State<_AnimatedTintedBodyPart>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _curve;
+  late List<double> _fromMatrix;
+  late List<double> _toMatrix;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+      value: 1,
+    );
+    _curve = CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic);
+    _fromMatrix = _bodyPartTintMatrix(widget.tintColor);
+    _toMatrix = List<double>.from(_fromMatrix);
   }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedTintedBodyPart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tintColor == widget.tintColor) return;
+    _fromMatrix = _currentMatrix;
+    _toMatrix = _bodyPartTintMatrix(widget.tintColor);
+    _controller.forward(from: 0);
+  }
+
+  List<double> get _currentMatrix {
+    final progress = _curve.value;
+    return List<double>.generate(
+      _toMatrix.length,
+      (index) =>
+          _fromMatrix[index] +
+          (_toMatrix[index] - _fromMatrix[index]) * progress,
+      growable: false,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        final pulse = math.sin(_controller.value * math.pi) * .04;
+        return Transform.scale(
+          scale: 1 + pulse,
+          child: ColorFiltered(
+            colorFilter: ColorFilter.matrix(_currentMatrix),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+const _identityColorMatrix = <double>[
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+];
+
+List<double> _bodyPartTintMatrix(Color? color) {
+  if (color == null) return List<double>.from(_identityColorMatrix);
+  return [
+    .2126 * color.r,
+    .7152 * color.r,
+    .0722 * color.r,
+    0,
+    0,
+    .2126 * color.g,
+    .7152 * color.g,
+    .0722 * color.g,
+    0,
+    0,
+    .2126 * color.b,
+    .7152 * color.b,
+    .0722 * color.b,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+  ];
 }
 
 class _MaleBodyViewControls extends StatelessWidget {

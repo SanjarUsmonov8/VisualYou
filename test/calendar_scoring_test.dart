@@ -23,12 +23,26 @@ void main() {
       count: 1,
     );
 
-    expect(summary([good]).score, 2);
-    expect(summary([good]).level, CalendarPerformanceLevel.excellent);
+    expect(summary([good]).score, 1);
+    expect(summary([good]).level, CalendarPerformanceLevel.good);
     expect(summary([unwanted]).score, -1);
     expect(summary([unwanted]).level, CalendarPerformanceLevel.bad);
-    expect(summary([good, unwanted]).score, 1);
-    expect(summary([good, unwanted]).level, CalendarPerformanceLevel.good);
+    expect(summary([good, unwanted]).score, 0);
+    expect(summary([good, unwanted]).level, CalendarPerformanceLevel.okay);
+
+    const missedGood = CalendarActivity(
+      habitId: 'water',
+      habitNameKey: 'Drinking water',
+      category: 'good',
+      count: 0,
+    );
+    const avoidedUnwanted = CalendarActivity(
+      habitId: 'smoking',
+      habitNameKey: 'Smoking',
+      category: 'reduction',
+      count: 0,
+    );
+    expect(summary([missedGood]).score, -1);
+    expect(summary([avoidedUnwanted]).score, 1);
   });
 }
-

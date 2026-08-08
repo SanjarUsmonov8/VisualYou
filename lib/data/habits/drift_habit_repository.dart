@@ -14,6 +14,7 @@ class DriftHabitRepository implements HabitRepository {
     'Drinking water': _HabitSeed('water', 'Drinking water', 'good'),
     'Healthy meal': _HabitSeed('healthy_eating', 'Eating healthy', 'good'),
     'Eating healthy': _HabitSeed('healthy_eating', 'Eating healthy', 'good'),
+    'Studying': _HabitSeed('studying', 'Studying', 'good'),
     'Arm workout': _HabitSeed('workout_arms', 'Arm', 'exercise'),
     'Arm': _HabitSeed('workout_arms', 'Arm', 'exercise'),
     'Shoulder / Back': _HabitSeed(
@@ -60,130 +61,150 @@ class DriftHabitRepository implements HabitRepository {
     BodyPartKey.gut,
   };
 
-  static const _organEffects = <String, Map<String, int>>{
-    'smoking': {
-      BodyPartKey.lungs: -3,
-      BodyPartKey.heart: -2,
-      BodyPartKey.brain: -1,
-      BodyPartKey.liver: -1,
-      BodyPartKey.stomach: -1,
-      BodyPartKey.kidneys: -1,
-      BodyPartKey.gut: -1,
-    },
-    'vaping': {
-      BodyPartKey.lungs: -3,
-      BodyPartKey.heart: -2,
-      BodyPartKey.brain: -1,
-      BodyPartKey.gut: -1,
-      BodyPartKey.stomach: -1,
-    },
-    'alcohol': {
-      BodyPartKey.liver: -3,
-      BodyPartKey.brain: -2,
-      BodyPartKey.heart: -2,
-      BodyPartKey.stomach: -2,
-      BodyPartKey.gut: -2,
-      BodyPartKey.kidneys: -1,
-    },
-    'unhealthy_eating': {
-      BodyPartKey.gut: -3,
-      BodyPartKey.heart: -2,
-      BodyPartKey.liver: -2,
-      BodyPartKey.brain: -1,
-      BodyPartKey.stomach: -1,
-      BodyPartKey.kidneys: -1,
-    },
-    'consuming_sugar': {
-      BodyPartKey.liver: -3,
-      BodyPartKey.gut: -2,
-      BodyPartKey.heart: -1,
-      BodyPartKey.brain: -1,
-      BodyPartKey.kidneys: -1,
-      BodyPartKey.stomach: -1,
-    },
-    'adult_videos': {BodyPartKey.brain: -3},
-    'masturbation': {BodyPartKey.brain: -3},
-    'water': {
-      BodyPartKey.kidneys: 3,
-      BodyPartKey.gut: 2,
-      BodyPartKey.brain: 2,
-      BodyPartKey.heart: 2,
-      BodyPartKey.stomach: 1,
-      BodyPartKey.liver: 1,
-      BodyPartKey.lungs: 1,
-    },
-    'healthy_eating': {
-      BodyPartKey.gut: 3,
-      BodyPartKey.brain: 2,
-      BodyPartKey.heart: 2,
-      BodyPartKey.liver: 2,
-      BodyPartKey.stomach: 2,
-      BodyPartKey.kidneys: 2,
-      BodyPartKey.lungs: 1,
-    },
+  static const _muscleKeys = {
+    BodyPartKey.arms,
+    BodyPartKey.shouldersBack,
+    BodyPartKey.chest,
+    BodyPartKey.abs,
+    BodyPartKey.legs,
   };
 
-  static const _notDoneOrganEffects = <String, Map<String, int>>{
+  static const _organEffects = <String, Map<String, double>>{
     'smoking': {
-      BodyPartKey.lungs: 3,
-      BodyPartKey.heart: 2,
+      BodyPartKey.lungs: -1.5,
+      BodyPartKey.heart: -1,
+      BodyPartKey.brain: -.5,
+      BodyPartKey.liver: -.5,
+      BodyPartKey.stomach: -.5,
+      BodyPartKey.kidneys: -.5,
+      BodyPartKey.gut: -.5,
+    },
+    'vaping': {
+      BodyPartKey.lungs: -1.5,
+      BodyPartKey.heart: -1,
+      BodyPartKey.brain: -.5,
+      BodyPartKey.gut: -.5,
+      BodyPartKey.stomach: -.5,
+    },
+    'alcohol': {
+      BodyPartKey.liver: -1.5,
+      BodyPartKey.brain: -1,
+      BodyPartKey.heart: -1,
+      BodyPartKey.stomach: -1,
+      BodyPartKey.gut: -1,
+      BodyPartKey.kidneys: -.5,
+    },
+    'unhealthy_eating': {
+      BodyPartKey.gut: -1.5,
+      BodyPartKey.heart: -1,
+      BodyPartKey.liver: -1,
+      BodyPartKey.brain: -.5,
+      BodyPartKey.stomach: -.5,
+      BodyPartKey.kidneys: -.5,
+    },
+    'consuming_sugar': {
+      BodyPartKey.liver: -1.5,
+      BodyPartKey.gut: -1,
+      BodyPartKey.heart: -.5,
+      BodyPartKey.brain: -.5,
+      BodyPartKey.kidneys: -.5,
+      BodyPartKey.stomach: -.5,
+    },
+    'adult_videos': {BodyPartKey.brain: -1.5},
+    'masturbation': {BodyPartKey.brain: -1.5},
+    'water': {
+      BodyPartKey.kidneys: 1.5,
+      BodyPartKey.gut: 1,
       BodyPartKey.brain: 1,
+      BodyPartKey.heart: 1,
+      BodyPartKey.stomach: .5,
+      BodyPartKey.liver: .5,
+      BodyPartKey.lungs: .5,
+    },
+    'healthy_eating': {
+      BodyPartKey.gut: 1.5,
+      BodyPartKey.brain: 1,
+      BodyPartKey.heart: 1,
       BodyPartKey.liver: 1,
       BodyPartKey.stomach: 1,
       BodyPartKey.kidneys: 1,
-      BodyPartKey.gut: 1,
+      BodyPartKey.lungs: .5,
+    },
+    'studying': {BodyPartKey.brain: 1},
+  };
+
+  static const _notDoneOrganEffects = <String, Map<String, double>>{
+    'smoking': {
+      BodyPartKey.lungs: 1,
+      BodyPartKey.heart: .5,
+      BodyPartKey.brain: .25,
+      BodyPartKey.liver: .25,
+      BodyPartKey.stomach: .25,
+      BodyPartKey.kidneys: .25,
+      BodyPartKey.gut: .25,
     },
     'vaping': {
-      BodyPartKey.lungs: 3,
-      BodyPartKey.heart: 2,
-      BodyPartKey.brain: 1,
-      BodyPartKey.gut: 1,
-      BodyPartKey.stomach: 1,
+      BodyPartKey.lungs: 1,
+      BodyPartKey.heart: .5,
+      BodyPartKey.brain: .25,
+      BodyPartKey.gut: .25,
+      BodyPartKey.stomach: .25,
     },
     'alcohol': {
-      BodyPartKey.liver: 3,
-      BodyPartKey.brain: 2,
-      BodyPartKey.stomach: 2,
-      BodyPartKey.gut: 2,
-      BodyPartKey.heart: 2,
-      BodyPartKey.kidneys: 1,
+      BodyPartKey.liver: 1,
+      BodyPartKey.brain: .5,
+      BodyPartKey.stomach: .5,
+      BodyPartKey.gut: .5,
+      BodyPartKey.heart: .5,
+      BodyPartKey.kidneys: .25,
     },
     'unhealthy_eating': {
-      BodyPartKey.gut: 3,
-      BodyPartKey.heart: 2,
-      BodyPartKey.liver: 2,
-      BodyPartKey.brain: 1,
-      BodyPartKey.stomach: 1,
-      BodyPartKey.kidneys: 1,
+      BodyPartKey.gut: 1,
+      BodyPartKey.heart: .5,
+      BodyPartKey.liver: .5,
+      BodyPartKey.brain: .25,
+      BodyPartKey.stomach: .25,
+      BodyPartKey.kidneys: .25,
     },
     'consuming_sugar': {
-      BodyPartKey.liver: 3,
-      BodyPartKey.gut: 2,
-      BodyPartKey.brain: 2,
-      BodyPartKey.heart: 1,
-      BodyPartKey.kidneys: 1,
-      BodyPartKey.stomach: 1,
+      BodyPartKey.liver: 1,
+      BodyPartKey.gut: .5,
+      BodyPartKey.brain: .5,
+      BodyPartKey.heart: .25,
+      BodyPartKey.kidneys: .25,
+      BodyPartKey.stomach: .25,
     },
-    'adult_videos': {BodyPartKey.brain: 3},
-    'masturbation': {BodyPartKey.brain: 3},
+    'adult_videos': {BodyPartKey.brain: 1},
+    'masturbation': {BodyPartKey.brain: 1},
     'water': {
-      BodyPartKey.kidneys: -3,
-      BodyPartKey.gut: -2,
-      BodyPartKey.brain: -2,
-      BodyPartKey.heart: -2,
-      BodyPartKey.stomach: -1,
-      BodyPartKey.liver: -1,
-      BodyPartKey.lungs: -1,
+      BodyPartKey.kidneys: -1.5,
+      BodyPartKey.gut: -1,
+      BodyPartKey.brain: -1,
+      BodyPartKey.heart: -1,
+      BodyPartKey.stomach: -.5,
+      BodyPartKey.liver: -.5,
+      BodyPartKey.lungs: -.5,
     },
     'healthy_eating': {
-      BodyPartKey.gut: -3,
-      BodyPartKey.brain: -2,
-      BodyPartKey.heart: -2,
-      BodyPartKey.liver: -2,
-      BodyPartKey.stomach: -2,
-      BodyPartKey.kidneys: -2,
-      BodyPartKey.lungs: -1,
+      BodyPartKey.gut: -1.25,
+      BodyPartKey.brain: -.75,
+      BodyPartKey.heart: -.75,
+      BodyPartKey.liver: -.75,
+      BodyPartKey.stomach: -.75,
+      BodyPartKey.kidneys: -.75,
+      BodyPartKey.lungs: -.5,
     },
+    'studying': {BodyPartKey.brain: -.5},
+  };
+
+  static const _overnightRecovery = <String, double>{
+    BodyPartKey.brain: .5,
+    BodyPartKey.heart: .5,
+    BodyPartKey.lungs: .25,
+    BodyPartKey.liver: .5,
+    BodyPartKey.kidneys: .5,
+    BodyPartKey.gut: .5,
+    BodyPartKey.stomach: .25,
   };
 
   @override
@@ -213,6 +234,7 @@ class DriftHabitRepository implements HabitRepository {
           BodyPartStatesCompanion.insert(
             partKey: partKey,
             level: const Value(3),
+            score: const Value(3.0),
             colorValue: const Value(null),
             updatedAt: now,
           ),
@@ -220,6 +242,7 @@ class DriftHabitRepository implements HabitRepository {
         );
       }
     });
+    await _applyOvernightRecovery(now);
     await (database.update(
       database.habitDefinitions,
     )..where((habit) => habit.id.equals('smoke_free'))).write(
@@ -267,6 +290,11 @@ class DriftHabitRepository implements HabitRepository {
       profileName: values['profile_name'] ?? '',
       birthDate: rawBirthDate == null ? null : DateTime.tryParse(rawBirthDate),
       profileImageBase64: values['profile_image_base64'] ?? '',
+      profileImageAlignmentX:
+          double.tryParse(values['profile_image_alignment_x'] ?? '') ?? 0,
+      profileImageAlignmentY:
+          double.tryParse(values['profile_image_alignment_y'] ?? '') ?? 0,
+      termsAccepted: values['terms_accepted'] == 'true',
     );
   }
 
@@ -281,6 +309,9 @@ class DriftHabitRepository implements HabitRepository {
       'profile_name': preferences.profileName,
       'profile_birth_date': preferences.birthDate?.toIso8601String() ?? '',
       'profile_image_base64': preferences.profileImageBase64,
+      'profile_image_alignment_x': '${preferences.profileImageAlignmentX}',
+      'profile_image_alignment_y': '${preferences.profileImageAlignmentY}',
+      'terms_accepted': '${preferences.termsAccepted}',
     };
     await database.transaction(() async {
       for (final entry in values.entries) {
@@ -350,14 +381,55 @@ class DriftHabitRepository implements HabitRepository {
   }
 
   @override
+  Future<String> createCustomHabit({
+    required String name,
+    required bool isUnwanted,
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) throw ArgumentError.value(name, 'name');
+    final customHabits =
+        await (database.select(database.habitDefinitions)..where(
+              (habit) =>
+                  habit.category.isIn(const ['custom_good', 'custom_bad']),
+            ))
+            .get();
+    if (customHabits.length >= 2) {
+      throw StateError('Only two custom habits are allowed.');
+    }
+    final now = DateTime.now();
+    final id = 'custom_${_slug(trimmed)}_${now.microsecondsSinceEpoch}';
+    await database
+        .into(database.habitDefinitions)
+        .insert(
+          HabitDefinitionsCompanion.insert(
+            id: id,
+            nameKey: trimmed,
+            category: isUnwanted ? 'custom_bad' : 'custom_good',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    return id;
+  }
+
+  @override
   Future<PersistedBodyState> recordHabit(
     String actionKey, {
     DateTime? occurredAt,
     bool didHabit = true,
   }) async {
+    await applyDailyRecovery();
     final now = occurredAt ?? DateTime.now();
     final day = DateTime(now.year, now.month, now.day);
-    final seed = _resolveSeed(actionKey);
+    final storedHabit =
+        await (database.select(database.habitDefinitions)..where(
+              (habit) =>
+                  habit.id.equals(actionKey) | habit.nameKey.equals(actionKey),
+            ))
+            .getSingleOrNull();
+    final seed = storedHabit == null
+        ? _resolveSeed(actionKey)
+        : _HabitSeed(storedHabit.id, storedHabit.nameKey, storedHabit.category);
 
     await database.transaction(() async {
       await database
@@ -392,6 +464,7 @@ class DriftHabitRepository implements HabitRepository {
       } else {
         await _applyNotDoneProgress(seed.id, now);
       }
+      await _updateBodyHistory(day, now);
       await _updateGraphHistory(seed.id, day, now);
     });
 
@@ -405,9 +478,36 @@ class DriftHabitRepository implements HabitRepository {
       for (final row in rows)
         row.partKey: PersistedBodyPart(
           level: row.level,
+          score: row.score ?? row.level.toDouble(),
           colorValue: row.colorValue,
         ),
     });
+  }
+
+  @override
+  Future<PersistedBodyState> applyDailyRecovery({DateTime? now}) async {
+    final current = now ?? DateTime.now();
+    await _applyOvernightRecovery(current);
+    await _updateBodyHistory(
+      DateTime(current.year, current.month, current.day),
+      current,
+    );
+    return loadBodyState();
+  }
+
+  @override
+  Future<PersistedBodyState> applyBreathingReward({
+    DateTime? occurredAt,
+  }) async {
+    final now = occurredAt ?? DateTime.now();
+    await applyDailyRecovery(now: now);
+    final day = DateTime(now.year, now.month, now.day);
+    await database.transaction(() async {
+      await _changeOrganScore(BodyPartKey.brain, 1.5, now);
+      await _changeOrganScore(BodyPartKey.lungs, 1.5, now);
+      await _updateBodyHistory(day, now);
+    });
+    return loadBodyState();
   }
 
   @override
@@ -436,6 +536,44 @@ class DriftHabitRepository implements HabitRepository {
           ),
       ],
     );
+  }
+
+  Future<void> _applyOvernightRecovery(DateTime now) async {
+    final today = DateTime(now.year, now.month, now.day);
+    final setting =
+        await (database.select(database.appSettings)
+              ..where((row) => row.key.equals('last_organ_recovery_day')))
+            .getSingleOrNull();
+    final previousDay = setting == null
+        ? null
+        : DateTime.tryParse(setting.value);
+    if (previousDay != null) {
+      final todayUtc = DateTime.utc(today.year, today.month, today.day);
+      final previousUtc = DateTime.utc(
+        previousDay.year,
+        previousDay.month,
+        previousDay.day,
+      );
+      final elapsedDays = todayUtc.difference(previousUtc).inDays;
+      if (elapsedDays > 0) {
+        for (final recovery in _overnightRecovery.entries) {
+          await _changeOrganScore(
+            recovery.key,
+            recovery.value * elapsedDays,
+            now,
+          );
+        }
+      }
+    }
+    await database
+        .into(database.appSettings)
+        .insertOnConflictUpdate(
+          AppSettingsCompanion.insert(
+            key: 'last_organ_recovery_day',
+            value: _dayKey(today),
+            updatedAt: now,
+          ),
+        );
   }
 
   Future<void> _applyBodyProgress(String habitId, DateTime now) async {
@@ -489,14 +627,17 @@ class DriftHabitRepository implements HabitRepository {
 
   Future<void> _changeOrganScore(
     String partKey,
-    int points,
+    double points,
     DateTime now,
   ) async {
     final existing = await _bodyPart(partKey);
-    final nextLevel = ((existing?.level ?? 3) + points).clamp(1, 5);
+    final currentScore = existing?.score ?? existing?.level.toDouble() ?? 3.0;
+    final nextScore = (currentScore + points).clamp(1.0, 5.0).toDouble();
+    final nextLevel = nextScore.round().clamp(1, 5);
     await _upsertBodyPart(
       partKey: partKey,
       level: nextLevel,
+      score: nextScore,
       colorValue: _organColor(nextLevel),
       updatedAt: now,
     );
@@ -508,6 +649,7 @@ class DriftHabitRepository implements HabitRepository {
     await _upsertBodyPart(
       partKey: partKey,
       level: nextLevel,
+      score: nextLevel.toDouble(),
       colorValue: _muscleColor(nextLevel),
       updatedAt: now,
     );
@@ -519,6 +661,7 @@ class DriftHabitRepository implements HabitRepository {
     await _upsertBodyPart(
       partKey: partKey,
       level: nextLevel,
+      score: nextLevel.toDouble(),
       colorValue: _muscleColor(nextLevel),
       updatedAt: now,
     );
@@ -533,6 +676,7 @@ class DriftHabitRepository implements HabitRepository {
   Future<void> _upsertBodyPart({
     required String partKey,
     required int level,
+    required double score,
     required int colorValue,
     required DateTime updatedAt,
   }) {
@@ -542,6 +686,7 @@ class DriftHabitRepository implements HabitRepository {
           BodyPartStatesCompanion.insert(
             partKey: partKey,
             level: Value(level),
+            score: Value(score),
             colorValue: Value(colorValue),
             updatedAt: updatedAt,
           ),
@@ -568,6 +713,35 @@ class DriftHabitRepository implements HabitRepository {
       metricKey: 'total_actions',
       day: day,
       value: totalCount.toDouble(),
+      now: now,
+    );
+  }
+
+  Future<void> _updateBodyHistory(DateTime day, DateTime now) async {
+    final rows = await database.select(database.bodyPartStates).get();
+    final levels = {for (final row in rows) row.partKey: row.level};
+    final organLevels = [for (final key in _organKeys) levels[key] ?? 3];
+    final muscleLevels = [for (final key in _muscleKeys) levels[key] ?? 1];
+    final dayKey = _dayKey(day);
+    await _upsertGraphPoint(
+      id: 'organ_min_level:$dayKey',
+      metricKey: 'organ_min_level',
+      day: day,
+      value: organLevels.reduce(math.min).toDouble(),
+      now: now,
+    );
+    await _upsertGraphPoint(
+      id: 'organ_max_level:$dayKey',
+      metricKey: 'organ_max_level',
+      day: day,
+      value: organLevels.reduce(math.max).toDouble(),
+      now: now,
+    );
+    await _upsertGraphPoint(
+      id: 'muscle_min_level:$dayKey',
+      metricKey: 'muscle_min_level',
+      day: day,
+      value: muscleLevels.reduce(math.min).toDouble(),
       now: now,
     );
   }

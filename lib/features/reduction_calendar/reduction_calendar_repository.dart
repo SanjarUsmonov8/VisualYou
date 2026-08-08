@@ -32,7 +32,7 @@ class DriftReductionCalendarRepository implements ReductionCalendarRepository {
     final query = database.select(database.habitDefinitions)
       ..where(
         (habit) =>
-            habit.category.equals('reduction') &
+            habit.category.isIn(const ['reduction', 'custom_bad']) &
             habit.isActive.equals(true) &
             habit.deletedAt.isNull(),
       )
@@ -79,14 +79,14 @@ class DriftReductionCalendarRepository implements ReductionCalendarRepository {
       startValue.day,
     );
     await database.transaction(() async {
-      await database
-          .update(database.reductionPlans)
-          .write(
-            ReductionPlansCompanion(
-              isActive: const Value(false),
-              updatedAt: Value(now),
-            ),
-          );
+      await (database.update(
+        database.reductionPlans,
+      )..where((plan) => plan.habitId.equals(habitId))).write(
+        ReductionPlansCompanion(
+          isActive: const Value(false),
+          updatedAt: Value(now),
+        ),
+      );
 
       await database
           .into(database.reductionPlans)
@@ -101,6 +101,17 @@ class DriftReductionCalendarRepository implements ReductionCalendarRepository {
             ),
           );
     });
+  }
+
+  Future<void> deactivatePlan(String planId) async {
+    await (database.update(
+      database.reductionPlans,
+    )..where((plan) => plan.id.equals(planId))).write(
+      ReductionPlansCompanion(
+        isActive: const Value(false),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   @override
@@ -130,20 +141,19 @@ class DriftReductionCalendarRepository implements ReductionCalendarRepository {
             ),
           );
 
-      if (didHabit) {
-        await database
-            .into(database.habitLogEntries)
-            .insert(
-              HabitLogEntriesCompanion.insert(
-                id: 'reduction:$planId:${localDay.microsecondsSinceEpoch}:${now.microsecondsSinceEpoch}',
-                habitId: plan.habitId,
-                loggedAt: now,
-                localDay: localDay,
-                createdAt: now,
-                updatedAt: now,
-              ),
-            );
-      }
+      await database
+          .into(database.habitLogEntries)
+          .insert(
+            HabitLogEntriesCompanion.insert(
+              id: 'reduction:$planId:${localDay.microsecondsSinceEpoch}:${now.microsecondsSinceEpoch}',
+              habitId: plan.habitId,
+              loggedAt: now,
+              localDay: localDay,
+              quantity: Value(didHabit ? 1 : 0),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
     });
   }
 
@@ -175,7 +185,7 @@ class DriftReductionCalendarRepository implements ReductionCalendarRepository {
         AND p.deleted_at IS NULL
       GROUP BY
         p.id, p.habit_id, p.mode, p.started_on, h.name_key, l.local_day
-      ORDER BY p.created_at DESC, l.local_day
+      ORDER BY p.created_at ASC, l.local_day
       ''',
       readsFrom: {
         database.reductionPlans,
@@ -188,10 +198,7 @@ class DriftReductionCalendarRepository implements ReductionCalendarRepository {
       for (final row in rows) {
         rowsByPlan.putIfAbsent(row.read<String>('id'), () => []).add(row);
       }
-      return [
-        for (final planRows in rowsByPlan.values.take(1))
-          _mapPlanRows(planRows),
-      ];
+      return [for (final planRows in rowsByPlan.values) _mapPlanRows(planRows)];
     });
   }
 

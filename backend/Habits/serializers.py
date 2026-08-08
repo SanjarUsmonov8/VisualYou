@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from .models import AIConversation, AIMessage, HabitDefinition
@@ -21,25 +20,35 @@ class UserSerializer(serializers.ModelSerializer):
         return normalized
 
 
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, trim_whitespace=False)
-
-    class Meta:
-        model = User
-        fields = ('username', 'email', 'password', 'first_name', 'last_name')
+class EmailSignupStartSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
     def validate_email(self, value):
         normalized = value.strip().lower()
         if User.objects.filter(email__iexact=normalized).exists():
-            raise serializers.ValidationError('An account with this email already exists.')
+            raise serializers.ValidationError(
+                'An account with this email already exists. Log in instead.'
+            )
         return normalized
 
-    def validate_password(self, value):
-        validate_password(value, user=User(username=self.initial_data.get('username', '')))
-        return value
 
-    def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+class EmailSignupVerifySerializer(serializers.Serializer):
+    challenge_id = serializers.UUIDField()
+    code = serializers.RegexField(r'^\d{6}$')
+
+
+class EmailSignupCompleteSerializer(serializers.Serializer):
+    challenge_id = serializers.UUIDField()
+    setup_token = serializers.CharField(min_length=32, max_length=200)
+    password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+
+class EmailLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate_email(self, value):
+        return value.strip().lower()
 
 
 class AIMessageSerializer(serializers.ModelSerializer):

@@ -15,129 +15,129 @@ void main() {
     BodyPartKey.gut,
   ];
 
-  const effects = <String, Map<String, int>>{
+  const effects = <String, Map<String, double>>{
     'Smoking': {
-      BodyPartKey.lungs: -3,
-      BodyPartKey.heart: -2,
-      BodyPartKey.brain: -1,
-      BodyPartKey.liver: -1,
-      BodyPartKey.stomach: -1,
-      BodyPartKey.kidneys: -1,
-      BodyPartKey.gut: -1,
+      BodyPartKey.lungs: -1.5,
+      BodyPartKey.heart: -1,
+      BodyPartKey.brain: -.5,
+      BodyPartKey.liver: -.5,
+      BodyPartKey.stomach: -.5,
+      BodyPartKey.kidneys: -.5,
+      BodyPartKey.gut: -.5,
     },
     'Vaping': {
-      BodyPartKey.lungs: -3,
-      BodyPartKey.heart: -2,
-      BodyPartKey.brain: -1,
-      BodyPartKey.gut: -1,
-      BodyPartKey.stomach: -1,
+      BodyPartKey.lungs: -1.5,
+      BodyPartKey.heart: -1,
+      BodyPartKey.brain: -.5,
+      BodyPartKey.gut: -.5,
+      BodyPartKey.stomach: -.5,
     },
     'Alcohol': {
-      BodyPartKey.liver: -3,
-      BodyPartKey.brain: -2,
-      BodyPartKey.heart: -2,
-      BodyPartKey.stomach: -2,
-      BodyPartKey.gut: -2,
-      BodyPartKey.kidneys: -1,
+      BodyPartKey.liver: -1.5,
+      BodyPartKey.brain: -1,
+      BodyPartKey.heart: -1,
+      BodyPartKey.stomach: -1,
+      BodyPartKey.gut: -1,
+      BodyPartKey.kidneys: -.5,
     },
     'Unhealthy eating': {
-      BodyPartKey.gut: -3,
-      BodyPartKey.heart: -2,
-      BodyPartKey.liver: -2,
-      BodyPartKey.brain: -1,
-      BodyPartKey.stomach: -1,
-      BodyPartKey.kidneys: -1,
+      BodyPartKey.gut: -1.5,
+      BodyPartKey.heart: -1,
+      BodyPartKey.liver: -1,
+      BodyPartKey.brain: -.5,
+      BodyPartKey.stomach: -.5,
+      BodyPartKey.kidneys: -.5,
     },
     'Consuming sugar': {
-      BodyPartKey.liver: -3,
-      BodyPartKey.gut: -2,
-      BodyPartKey.heart: -1,
-      BodyPartKey.brain: -1,
-      BodyPartKey.kidneys: -1,
-      BodyPartKey.stomach: -1,
+      BodyPartKey.liver: -1.5,
+      BodyPartKey.gut: -1,
+      BodyPartKey.heart: -.5,
+      BodyPartKey.brain: -.5,
+      BodyPartKey.kidneys: -.5,
+      BodyPartKey.stomach: -.5,
     },
-    'Adult videos': {BodyPartKey.brain: -3},
-    'Masturbation': {BodyPartKey.brain: -3},
+    'Adult videos': {BodyPartKey.brain: -1.5},
+    'Masturbation': {BodyPartKey.brain: -1.5},
     'Drinking water': {
-      BodyPartKey.kidneys: 3,
-      BodyPartKey.gut: 2,
-      BodyPartKey.brain: 2,
-      BodyPartKey.heart: 2,
-      BodyPartKey.stomach: 1,
-      BodyPartKey.liver: 1,
-      BodyPartKey.lungs: 1,
+      BodyPartKey.kidneys: 1.5,
+      BodyPartKey.gut: 1,
+      BodyPartKey.brain: 1,
+      BodyPartKey.heart: 1,
+      BodyPartKey.stomach: .5,
+      BodyPartKey.liver: .5,
+      BodyPartKey.lungs: .5,
     },
     'Eating healthy': {
-      BodyPartKey.gut: 3,
-      BodyPartKey.brain: 2,
-      BodyPartKey.heart: 2,
-      BodyPartKey.liver: 2,
-      BodyPartKey.stomach: 2,
-      BodyPartKey.kidneys: 2,
-      BodyPartKey.lungs: 1,
+      BodyPartKey.gut: 1.5,
+      BodyPartKey.brain: 1,
+      BodyPartKey.heart: 1,
+      BodyPartKey.liver: 1,
+      BodyPartKey.stomach: 1,
+      BodyPartKey.kidneys: 1,
+      BodyPartKey.lungs: .5,
     },
   };
 
-  const notDoneEffects = <String, Map<String, int>>{
+  const notDoneEffects = <String, Map<String, double>>{
     'Smoking': {
-      BodyPartKey.lungs: 3,
-      BodyPartKey.heart: 2,
-      BodyPartKey.brain: 1,
-      BodyPartKey.liver: 1,
-      BodyPartKey.stomach: 1,
-      BodyPartKey.kidneys: 1,
-      BodyPartKey.gut: 1,
+      BodyPartKey.lungs: 1,
+      BodyPartKey.heart: .5,
+      BodyPartKey.brain: .25,
+      BodyPartKey.liver: .25,
+      BodyPartKey.stomach: .25,
+      BodyPartKey.kidneys: .25,
+      BodyPartKey.gut: .25,
     },
     'Vaping': {
-      BodyPartKey.lungs: 3,
-      BodyPartKey.heart: 2,
-      BodyPartKey.brain: 1,
-      BodyPartKey.gut: 1,
-      BodyPartKey.stomach: 1,
+      BodyPartKey.lungs: 1,
+      BodyPartKey.heart: .5,
+      BodyPartKey.brain: .25,
+      BodyPartKey.gut: .25,
+      BodyPartKey.stomach: .25,
     },
     'Alcohol': {
-      BodyPartKey.liver: 3,
-      BodyPartKey.brain: 2,
-      BodyPartKey.stomach: 2,
-      BodyPartKey.gut: 2,
-      BodyPartKey.heart: 2,
-      BodyPartKey.kidneys: 1,
+      BodyPartKey.liver: 1,
+      BodyPartKey.brain: .5,
+      BodyPartKey.stomach: .5,
+      BodyPartKey.gut: .5,
+      BodyPartKey.heart: .5,
+      BodyPartKey.kidneys: .25,
     },
     'Unhealthy eating': {
-      BodyPartKey.gut: 3,
-      BodyPartKey.heart: 2,
-      BodyPartKey.liver: 2,
-      BodyPartKey.brain: 1,
-      BodyPartKey.stomach: 1,
-      BodyPartKey.kidneys: 1,
+      BodyPartKey.gut: 1,
+      BodyPartKey.heart: .5,
+      BodyPartKey.liver: .5,
+      BodyPartKey.brain: .25,
+      BodyPartKey.stomach: .25,
+      BodyPartKey.kidneys: .25,
     },
     'Consuming sugar': {
-      BodyPartKey.liver: 3,
-      BodyPartKey.gut: 2,
-      BodyPartKey.brain: 2,
-      BodyPartKey.heart: 1,
-      BodyPartKey.kidneys: 1,
-      BodyPartKey.stomach: 1,
+      BodyPartKey.liver: 1,
+      BodyPartKey.gut: .5,
+      BodyPartKey.brain: .5,
+      BodyPartKey.heart: .25,
+      BodyPartKey.kidneys: .25,
+      BodyPartKey.stomach: .25,
     },
-    'Adult videos': {BodyPartKey.brain: 3},
-    'Masturbation': {BodyPartKey.brain: 3},
+    'Adult videos': {BodyPartKey.brain: 1},
+    'Masturbation': {BodyPartKey.brain: 1},
     'Drinking water': {
-      BodyPartKey.kidneys: -3,
-      BodyPartKey.gut: -2,
-      BodyPartKey.brain: -2,
-      BodyPartKey.heart: -2,
-      BodyPartKey.stomach: -1,
-      BodyPartKey.liver: -1,
-      BodyPartKey.lungs: -1,
+      BodyPartKey.kidneys: -1.5,
+      BodyPartKey.gut: -1,
+      BodyPartKey.brain: -1,
+      BodyPartKey.heart: -1,
+      BodyPartKey.stomach: -.5,
+      BodyPartKey.liver: -.5,
+      BodyPartKey.lungs: -.5,
     },
     'Eating healthy': {
-      BodyPartKey.gut: -3,
-      BodyPartKey.brain: -2,
-      BodyPartKey.heart: -2,
-      BodyPartKey.liver: -2,
-      BodyPartKey.stomach: -2,
-      BodyPartKey.kidneys: -2,
-      BodyPartKey.lungs: -1,
+      BodyPartKey.gut: -1.25,
+      BodyPartKey.brain: -.75,
+      BodyPartKey.heart: -.75,
+      BodyPartKey.liver: -.75,
+      BodyPartKey.stomach: -.75,
+      BodyPartKey.kidneys: -.75,
+      BodyPartKey.lungs: -.5,
     },
   };
 
@@ -150,6 +150,7 @@ void main() {
     final state = await repository.loadBodyState();
     for (final organ in organs) {
       expect(state.parts[organ]?.level, 3, reason: organ);
+      expect(state.parts[organ]?.score, 3.0, reason: organ);
       expect(state.parts[organ]?.colorValue, isNull, reason: organ);
     }
   });
@@ -165,7 +166,9 @@ void main() {
 
         for (final organ in organs) {
           final points = habit.value[organ] ?? 0;
-          final expectedLevel = (3 + points).clamp(1, 5);
+          final expectedScore = (3.0 + points).clamp(1.0, 5.0);
+          final expectedLevel = expectedScore.round().clamp(1, 5);
+          expect(state.parts[organ]?.score, expectedScore, reason: organ);
           expect(state.parts[organ]?.level, expectedLevel, reason: organ);
           expect(
             state.parts[organ]?.colorValue,
@@ -192,7 +195,9 @@ void main() {
 
         for (final organ in organs) {
           final points = habit.value[organ] ?? 0;
-          final expectedLevel = (3 + points).clamp(1, 5);
+          final expectedScore = (3.0 + points).clamp(1.0, 5.0);
+          final expectedLevel = expectedScore.round().clamp(1, 5);
+          expect(state.parts[organ]?.score, expectedScore, reason: organ);
           expect(state.parts[organ]?.level, expectedLevel, reason: organ);
           expect(
             state.parts[organ]?.colorValue,
@@ -223,6 +228,40 @@ void main() {
     state = await repository.loadBodyState();
     expect(state.parts[BodyPartKey.legs]?.level, 1);
     expect(state.parts[BodyPartKey.legs]?.colorValue, 0xFFE53935);
+  });
+
+  test('overnight recovery is applied once for each elapsed day', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = DriftHabitRepository(database);
+    await repository.initialize();
+
+    final yesterday = DateTime(2026, 8, 3);
+    await database
+        .into(database.appSettings)
+        .insertOnConflictUpdate(
+          AppSettingsCompanion.insert(
+            key: 'last_organ_recovery_day',
+            value:
+                '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}',
+            updatedAt: yesterday,
+          ),
+        );
+
+    var state = await repository.applyDailyRecovery(now: DateTime(2026, 8, 4));
+    expect(state.parts[BodyPartKey.brain]?.score, 3.5);
+    expect(state.parts[BodyPartKey.brain]?.level, 4);
+    expect(state.parts[BodyPartKey.heart]?.score, 3.5);
+    expect(state.parts[BodyPartKey.lungs]?.score, 3.25);
+    expect(state.parts[BodyPartKey.lungs]?.level, 3);
+    expect(state.parts[BodyPartKey.liver]?.score, 3.5);
+    expect(state.parts[BodyPartKey.kidneys]?.score, 3.5);
+    expect(state.parts[BodyPartKey.gut]?.score, 3.5);
+    expect(state.parts[BodyPartKey.stomach]?.score, 3.25);
+
+    state = await repository.applyDailyRecovery(now: DateTime(2026, 8, 4));
+    expect(state.parts[BodyPartKey.brain]?.score, 3.5);
+    expect(state.parts[BodyPartKey.lungs]?.score, 3.25);
   });
 }
 

@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:visualyou/features/calendar/calendar_models.dart';
 import 'package:visualyou/features/calendar/calendar_repository.dart';
+import 'package:visualyou/features/rewards/rewards_controller.dart';
+import 'package:visualyou/features/rewards/rewards_widgets.dart';
 import 'package:visualyou/l10n/app_strings.dart';
 
 class HabitCalendar extends StatefulWidget {
-  const HabitCalendar({required this.repository, super.key});
+  const HabitCalendar({
+    required this.repository,
+    required this.rewardsController,
+    super.key,
+  });
 
   final CalendarRepository repository;
+  final RewardsController rewardsController;
 
   @override
   State<HabitCalendar> createState() => _HabitCalendarState();
@@ -16,6 +23,7 @@ class _HabitCalendarState extends State<HabitCalendar> {
   late DateTime _visibleMonth;
   late DateTime _selectedDay;
   late Stream<List<CalendarDaySummary>> _monthStream;
+  bool _olderMonthsUnlocked = false;
 
   @override
   void initState() {
@@ -115,11 +123,26 @@ class _HabitCalendarState extends State<HabitCalendar> {
     );
   }
 
-  void _changeMonth(int offset) {
+  Future<void> _changeMonth(int offset) async {
     final nextMonth = DateTime(
       _visibleMonth.year,
       _visibleMonth.month + offset,
     );
+    final now = DateTime.now();
+    final previousMonth = DateTime(now.year, now.month - 1);
+    final isOlder = nextMonth.isBefore(previousMonth);
+    if (isOlder && !widget.rewardsController.isPlus && !_olderMonthsUnlocked) {
+      final paid = await confirmTokenOrAdPurchase(
+        context,
+        controller: widget.rewardsController,
+        amount: 35,
+        reason: 'older-calendar-session',
+        title: context.tr('Open older calendar history?'),
+      );
+      if (!paid || !mounted) return;
+      _olderMonthsUnlocked = true;
+    }
+    if (!mounted) return;
     setState(() {
       _visibleMonth = nextMonth;
       _selectedDay = DateTime(nextMonth.year, nextMonth.month, 1);

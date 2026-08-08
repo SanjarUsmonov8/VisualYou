@@ -20,6 +20,10 @@ class ReductionCalendarData {
   int countOn(DateTime day) {
     return logCounts[DateTime(day.year, day.month, day.day)] ?? 0;
   }
+
+  bool hasStatusOn(DateTime day) {
+    return logCounts.containsKey(DateTime(day.year, day.month, day.day));
+  }
 }
 
 typedef ReductionHabit = CustomGraphHabit;

@@ -47,6 +47,9 @@ void main() {
           profileName: 'Alex',
           birthDate: DateTime(2008, 4, 12),
           profileImageBase64: 'AQID',
+          profileImageAlignmentX: .45,
+          profileImageAlignmentY: -.3,
+          termsAccepted: true,
         ),
       );
       final initialBody = await firstRepository.loadBodyState();
@@ -130,6 +133,9 @@ void main() {
       expect(appPreferences.profileName, 'Alex');
       expect(appPreferences.birthDate, DateTime(2008, 4, 12));
       expect(appPreferences.profileImageBase64, 'AQID');
+      expect(appPreferences.profileImageAlignmentX, .45);
+      expect(appPreferences.profileImageAlignmentY, -.3);
+      expect(appPreferences.termsAccepted, isTrue);
       final restoredBody = await reopenedRepository.loadBodyState();
       final restoredPreferences = await reopenedRepository
           .watchHabitPreferences()
@@ -155,12 +161,18 @@ void main() {
         isTrue,
       );
 
-      expect(restoredBody.parts[BodyPartKey.brain]?.colorValue, 0xFFE53935);
-      expect(restoredBody.parts[BodyPartKey.heart]?.colorValue, 0xFFE53935);
-      expect(restoredBody.parts[BodyPartKey.liver]?.colorValue, 0xFFE53935);
-      expect(restoredBody.parts[BodyPartKey.stomach]?.colorValue, 0xFFE53935);
-      expect(restoredBody.parts[BodyPartKey.gut]?.colorValue, 0xFFE53935);
-      expect(restoredBody.parts[BodyPartKey.kidneys]?.colorValue, 0xFFFB8C00);
+      expect(restoredBody.parts[BodyPartKey.brain]?.score, 2.0);
+      expect(restoredBody.parts[BodyPartKey.brain]?.colorValue, 0xFFFB8C00);
+      expect(restoredBody.parts[BodyPartKey.heart]?.score, 2.0);
+      expect(restoredBody.parts[BodyPartKey.heart]?.colorValue, 0xFFFB8C00);
+      expect(restoredBody.parts[BodyPartKey.liver]?.score, 1.5);
+      expect(restoredBody.parts[BodyPartKey.liver]?.colorValue, 0xFFFB8C00);
+      expect(restoredBody.parts[BodyPartKey.stomach]?.score, 2.0);
+      expect(restoredBody.parts[BodyPartKey.stomach]?.colorValue, 0xFFFB8C00);
+      expect(restoredBody.parts[BodyPartKey.gut]?.score, 2.0);
+      expect(restoredBody.parts[BodyPartKey.gut]?.colorValue, 0xFFFB8C00);
+      expect(restoredBody.parts[BodyPartKey.kidneys]?.score, 2.5);
+      expect(restoredBody.parts[BodyPartKey.kidneys]?.colorValue, 0xFFFFCA28);
       expect(restoredBody.parts[BodyPartKey.lungs]?.colorValue, isNull);
       expect(restoredBody.parts[BodyPartKey.arms]?.level, 2);
       expect(restoredBody.parts[BodyPartKey.arms]?.colorValue, 0xFFFB8C00);
@@ -198,8 +210,8 @@ void main() {
           .watchMonth(DateTime(2026, 7))
           .first
           .timeout(const Duration(seconds: 5));
-      expect(calendar.single.score, 1);
-      expect(calendar.single.level, CalendarPerformanceLevel.good);
+      expect(calendar.single.score, 0);
+      expect(calendar.single.level, CalendarPerformanceLevel.okay);
       expect(calendar.single.activities.length, 2);
 
       final reductionPlan = await reductionRepository
@@ -218,10 +230,15 @@ void main() {
           .watchPlansMonth(DateTime(2026, 7))
           .first
           .timeout(const Duration(seconds: 5));
-      expect(reductionPlans, hasLength(1));
-      expect(reductionPlans.single.habitId, 'vaping');
+      expect(reductionPlans, hasLength(2));
+      expect(
+        reductionPlans.map((plan) => plan.habitId),
+        containsAll(['smoking', 'vaping']),
+      );
 
-      final vapingPlan = reductionPlans.single;
+      final vapingPlan = reductionPlans.singleWhere(
+        (plan) => plan.habitId == 'vaping',
+      );
       final selectedDay = DateTime(2026, 7, 29);
       await reductionRepository.setDayStatus(
         planId: vapingPlan.planId,
@@ -232,7 +249,12 @@ void main() {
           .watchPlansMonth(DateTime(2026, 7))
           .first
           .timeout(const Duration(seconds: 5));
-      expect(reductionPlans.single.countOn(selectedDay), 1);
+      expect(
+        reductionPlans
+            .singleWhere((plan) => plan.habitId == 'vaping')
+            .countOn(selectedDay),
+        1,
+      );
 
       await reductionRepository.setDayStatus(
         planId: vapingPlan.planId,
@@ -243,7 +265,11 @@ void main() {
           .watchPlansMonth(DateTime(2026, 7))
           .first
           .timeout(const Duration(seconds: 5));
-      expect(reductionPlans.single.countOn(selectedDay), 0);
+      final updatedVapingPlan = reductionPlans.singleWhere(
+        (plan) => plan.habitId == 'vaping',
+      );
+      expect(updatedVapingPlan.countOn(selectedDay), 0);
+      expect(updatedVapingPlan.hasStatusOn(selectedDay), isTrue);
     },
   );
 }

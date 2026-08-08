@@ -3,11 +3,13 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AIConversationViewSet,
+    EmailLoginView,
+    EmailSignupCompleteView,
+    EmailSignupStartView,
+    EmailSignupVerifyView,
     HealthView,
-    LoginView,
     LogoutView,
     MeView,
-    RegisterView,
     SyncView,
 )
 
@@ -16,8 +18,10 @@ router.register('ai/conversations', AIConversationViewSet, basename='ai-conversa
 
 urlpatterns = [
     path('health/', HealthView.as_view(), name='health'),
-    path('auth/register/', RegisterView.as_view(), name='register'),
-    path('auth/login/', LoginView.as_view(), name='login'),
+    path('auth/email/start/', EmailSignupStartView.as_view(), name='email-signup-start'),
+    path('auth/email/verify/', EmailSignupVerifyView.as_view(), name='email-signup-verify'),
+    path('auth/email/complete/', EmailSignupCompleteView.as_view(), name='email-signup-complete'),
+    path('auth/email/login/', EmailLoginView.as_view(), name='email-login'),
     path('auth/logout/', LogoutView.as_view(), name='logout'),
     path('me/', MeView.as_view(), name='me'),
     path('sync/', SyncView.as_view(), name='sync'),

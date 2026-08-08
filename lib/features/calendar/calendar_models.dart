@@ -13,9 +13,13 @@ class CalendarActivity {
   final String category;
   final int count;
 
-  bool get isUnwanted => category == 'reduction';
+  bool get isUnwanted => category == 'reduction' || category == 'custom_bad';
 
-  int get score => isUnwanted ? -count : count;
+  int get score {
+    final didHabit = count > 0;
+    if (isUnwanted) return didHabit ? -1 : 1;
+    return didHabit ? 1 : -1;
+  }
 }
 
 class CalendarDaySummary {

@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:visualyou/data/habits/drift_habit_repository.dart';
 import 'package:visualyou/data/habits/habit_repository.dart';
 import 'package:visualyou/data/local/app_database.dart';
+import 'package:visualyou/features/auth/email_auth_sheet.dart';
 import 'package:visualyou/features/body/body.dart';
 import 'package:visualyou/features/breathing/breathing_card.dart';
 import 'package:visualyou/features/calendar/calendar_repository.dart';
@@ -19,6 +20,12 @@ import 'package:visualyou/features/female_body/female_body.dart';
 import 'package:visualyou/features/habit_info/habit_info_cards.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar_repository.dart';
+import 'package:visualyou/features/rewards/premium_page.dart';
+import 'package:visualyou/features/rewards/rewards_controller.dart';
+import 'package:visualyou/features/rewards/rewards_models.dart';
+import 'package:visualyou/features/rewards/rewards_profile.dart';
+import 'package:visualyou/features/rewards/rewards_repository.dart';
+import 'package:visualyou/features/rewards/rewards_widgets.dart';
 import 'package:visualyou/l10n/app_strings.dart';
 
 void main() => runApp(const VisualYouApp());
@@ -43,38 +50,36 @@ class VisualYouApp extends StatefulWidget {
   State<VisualYouApp> createState() => _VisualYouAppState();
 }
 
-class _VisualYouAppState extends State<VisualYouApp> {
+class _VisualYouAppState extends State<VisualYouApp>
+    with WidgetsBindingObserver {
   final ThemeController _themeController = ThemeController();
   AppDatabase? _ownedDatabase;
   late final HabitRepository _habitRepository;
   late final CustomGraphRepository _customGraphRepository;
   late final CalendarRepository _calendarRepository;
   late final ReductionCalendarRepository _reductionCalendarRepository;
+  late final RewardsController _rewardsController;
   bool _storageReady = false;
   bool _onboardingComplete = false;
   Object? _storageError;
+  bool _refreshingDailyRecovery = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final injectedRepository = widget.habitRepository;
     if (injectedRepository != null) {
+      final database = (injectedRepository as DriftHabitRepository).database;
       _habitRepository = injectedRepository;
       _customGraphRepository =
-          widget.customGraphRepository ??
-          DriftCustomGraphRepository(
-            (injectedRepository as DriftHabitRepository).database,
-          );
+          widget.customGraphRepository ?? DriftCustomGraphRepository(database);
       _calendarRepository =
-          widget.calendarRepository ??
-          DriftCalendarRepository(
-            (injectedRepository as DriftHabitRepository).database,
-          );
+          widget.calendarRepository ?? DriftCalendarRepository(database);
       _reductionCalendarRepository =
           widget.reductionCalendarRepository ??
-          DriftReductionCalendarRepository(
-            (injectedRepository as DriftHabitRepository).database,
-          );
+          DriftReductionCalendarRepository(database);
+      _rewardsController = RewardsController(RewardsRepository(database));
     } else {
       final database = AppDatabase.defaults();
       _ownedDatabase = database;
@@ -86,6 +91,7 @@ class _VisualYouAppState extends State<VisualYouApp> {
       _reductionCalendarRepository =
           widget.reductionCalendarRepository ??
           DriftReductionCalendarRepository(database);
+      _rewardsController = RewardsController(RewardsRepository(database));
     }
     unawaited(_initializeStorage());
   }
@@ -93,6 +99,7 @@ class _VisualYouAppState extends State<VisualYouApp> {
   Future<void> _initializeStorage() async {
     try {
       await _habitRepository.initialize();
+      await _rewardsController.initialize();
       await _themeController.restoreFrom(_habitRepository);
       BodyVisualState.restore(await _habitRepository.loadBodyState());
       final onboardingComplete =
@@ -115,10 +122,35 @@ class _VisualYouAppState extends State<VisualYouApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     final database = _ownedDatabase;
     if (database != null) unawaited(database.close());
     _themeController.dispose();
+    _rewardsController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        _storageReady &&
+        _storageError == null) {
+      unawaited(_refreshDailyRecovery());
+    }
+  }
+
+  Future<void> _refreshDailyRecovery() async {
+    if (_refreshingDailyRecovery) return;
+    _refreshingDailyRecovery = true;
+    try {
+      final bodyState = await _habitRepository.applyDailyRecovery();
+      BodyVisualState.restore(bodyState);
+      await _rewardsController.refresh();
+    } catch (_) {
+      // A later habit action or app resume will safely retry this local update.
+    } finally {
+      _refreshingDailyRecovery = false;
+    }
   }
 
   @override
@@ -162,6 +194,7 @@ class _VisualYouAppState extends State<VisualYouApp> {
                 customGraphRepository: _customGraphRepository,
                 calendarRepository: _calendarRepository,
                 reductionCalendarRepository: _reductionCalendarRepository,
+                rewardsController: _rewardsController,
               ),
       ),
     );
@@ -215,9 +248,12 @@ class WelcomeFlow extends StatefulWidget {
 }
 
 class _WelcomeFlowState extends State<WelcomeFlow> {
+  static const int _profileSetupPageIndex = 6;
   final PageController _pageController = PageController();
   final GlobalKey<_WelcomeProfileSetupSlideState> _profileSetupKey =
       GlobalKey<_WelcomeProfileSetupSlideState>();
+  final GlobalKey<_WelcomeAgreementSlideState> _agreementKey =
+      GlobalKey<_WelcomeAgreementSlideState>();
   int _currentPage = 0;
   bool _finishing = false;
 
@@ -232,6 +268,10 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
       key: _profileSetupKey,
       themeController: widget.themeController,
     ),
+    _WelcomeAgreementSlide(
+      key: _agreementKey,
+      themeController: widget.themeController,
+    ),
   ];
 
   @override
@@ -241,6 +281,14 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
   }
 
   Future<void> _next() async {
+    if (_currentPage == _profileSetupPageIndex) {
+      if (!widget.previewMode) {
+        final profileReady = _profileSetupKey.currentState?.validateAndSave();
+        if (profileReady == false) return;
+      } else {
+        _profileSetupKey.currentState?.saveDraft();
+      }
+    }
     if (_currentPage < _pages.length - 1) {
       await _pageController.nextPage(
         duration: const Duration(milliseconds: 360),
@@ -249,12 +297,13 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
       return;
     }
     if (!widget.previewMode) {
-      final profileReady = _profileSetupKey.currentState?.validateAndSave();
-      if (profileReady == false) return;
+      final agreementReady = _agreementKey.currentState?.validateAgreement();
+      if (agreementReady == false) return;
     }
     if (_finishing) return;
     setState(() => _finishing = true);
     try {
+      await _saveWelcomeSettings();
       await widget.onFinished();
     } finally {
       if (mounted) setState(() => _finishing = false);
@@ -268,24 +317,62 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
     );
   }
 
+  Future<void> _closePreview() async {
+    if (_finishing) return;
+    setState(() => _finishing = true);
+    try {
+      await _saveWelcomeSettings();
+      await widget.onFinished();
+    } finally {
+      if (mounted) setState(() => _finishing = false);
+    }
+  }
+
+  Future<void> _saveWelcomeSettings() async {
+    _profileSetupKey.currentState?.saveDraft();
+    await widget.themeController.flushPersistence();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.themeController,
+      builder: (context, _) => _buildFlow(context),
+    );
+  }
+
+  Widget _buildFlow(BuildContext context) {
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final appliesSelectedTheme = _currentPage >= _profileSetupPageIndex;
+    final platformBrightness = MediaQuery.platformBrightnessOf(context);
+    final selectedBrightness = switch (widget.themeController.mode) {
+      ThemeMode.light => Brightness.light,
+      ThemeMode.dark => Brightness.dark,
+      ThemeMode.system => platformBrightness,
+    };
+    final brightness = appliesSelectedTheme
+        ? selectedBrightness
+        : Brightness.light;
+    final seedColor = appliesSelectedTheme
+        ? widget.themeController.seedColor
+        : const Color(0xFF526DFF);
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: seedColor,
+      brightness: brightness,
+      surface: appliesSelectedTheme ? null : Colors.white,
+    );
     final welcomeTheme = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: widget.themeController.seedColor,
-        brightness: Brightness.light,
-        surface: Colors.white,
-      ),
-      scaffoldBackgroundColor: Colors.white,
+      brightness: brightness,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: colorScheme.surface,
       fontFamily: 'sans-serif',
     );
     return Theme(
       data: welcomeTheme,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: welcomeTheme.scaffoldBackgroundColor,
         body: Stack(
           children: [
             PageView(
@@ -293,43 +380,43 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
               onPageChanged: (page) => setState(() => _currentPage = page),
               children: _pages,
             ),
-            Positioned(
-              left: 24,
-              right: 24,
-              bottom: 16 + bottomPadding,
-              child: Row(
-                children: [
-                  if (_currentPage > 0)
-                    TextButton.icon(
-                      onPressed: _previous,
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: Text(context.tr('Previous')),
+            if (!keyboardVisible)
+              Positioned(
+                left: 24,
+                right: 24,
+                bottom: 16 + bottomPadding,
+                child: Row(
+                  children: [
+                    if (_currentPage > 0)
+                      TextButton.icon(
+                        onPressed: _previous,
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: Text(context.tr('Previous')),
+                      ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      key: const Key('welcomeNextButton'),
+                      onPressed: _finishing ? null : _next,
+                      iconAlignment: IconAlignment.end,
+                      icon: _finishing
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              _currentPage == _pages.length - 1
+                                  ? Icons.check_rounded
+                                  : Icons.arrow_forward_rounded,
+                            ),
+                      label: Text(
+                        _currentPage == _pages.length - 1
+                            ? context.tr('Done')
+                            : context.tr('Next'),
+                      ),
                     ),
-                  const Spacer(),
-                  FilledButton.icon(
-                    key: const Key('welcomeNextButton'),
-                    onPressed: _finishing ? null : _next,
-                    iconAlignment: IconAlignment.end,
-                    icon: _finishing
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            widget.previewMode &&
-                                    _currentPage == _pages.length - 1
-                                ? Icons.close_rounded
-                                : Icons.arrow_forward_rounded,
-                          ),
-                    label: Text(
-                      widget.previewMode && _currentPage == _pages.length - 1
-                          ? context.tr('Close preview')
-                          : context.tr('Next'),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             if (widget.previewMode)
               Positioned(
                 left: 12,
@@ -337,7 +424,7 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
                 child: IconButton.filledTonal(
                   key: const Key('closeWelcomePreviewButton'),
                   tooltip: context.tr('Close preview'),
-                  onPressed: _finishing ? null : widget.onFinished,
+                  onPressed: _finishing ? null : _closePreview,
                   icon: const Icon(Icons.close_rounded),
                 ),
               ),
@@ -689,7 +776,7 @@ class _WelcomeCustomCalendarSlide extends StatelessWidget {
             child: AspectRatio(
               aspectRatio: 1536 / 1024,
               child: Image.asset(
-                'assets/images/welcomepage/graph.png',
+                'assets/images/welcomepage/customgraphwp.png',
                 fit: BoxFit.cover,
               ),
             ),
@@ -726,7 +813,7 @@ class _WelcomeCustomCalendarSlide extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          context.tr('Calendar title line'),
+                          context.tr('Graph title line'),
                           textAlign: TextAlign.center,
                           style: theme.textTheme.displayMedium?.copyWith(
                             color: Colors.white,
@@ -915,42 +1002,41 @@ class _WelcomeAccountSlide extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                IgnorePointer(
-                  child: Column(
-                    children: [
-                      _AccountOptionButton(
-                        icon: const Icon(Icons.email_outlined),
-                        label: context.tr('Sign up with email'),
+                Column(
+                  children: [
+                    _AccountOptionButton(
+                      icon: const Icon(Icons.email_outlined),
+                      label: context.tr('Sign up with email'),
+                      onPressed: () => showEmailSignupSheet(context),
+                    ),
+                    const SizedBox(height: 12),
+                    _AccountOptionButton(
+                      icon: Image.asset(
+                        'assets/images/welcomepage/googlelogo.png',
+                        width: 22,
+                        height: 22,
+                        fit: BoxFit.contain,
                       ),
-                      const SizedBox(height: 12),
-                      _AccountOptionButton(
-                        icon: Image.asset(
-                          'assets/images/welcomepage/googlelogo.png',
-                          width: 22,
-                          height: 22,
-                          fit: BoxFit.contain,
+                      label: context.tr('Continue with Google'),
+                    ),
+                    const SizedBox(height: 12),
+                    _AccountOptionButton(
+                      icon: const Icon(Icons.apple_rounded, size: 24),
+                      label: context.tr('Continue with Apple'),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(context.tr('Already have an account?')),
+                        TextButton(
+                          onPressed: () => showEmailLoginSheet(context),
+                          child: Text(context.tr('Log in')),
                         ),
-                        label: context.tr('Continue with Google'),
-                      ),
-                      const SizedBox(height: 12),
-                      _AccountOptionButton(
-                        icon: const Icon(Icons.apple_rounded, size: 24),
-                        label: context.tr('Continue with Apple'),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(context.tr('Already have an account?')),
-                          TextButton(
-                            onPressed: () {},
-                            child: Text(context.tr('Log in')),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -962,10 +1048,15 @@ class _WelcomeAccountSlide extends StatelessWidget {
 }
 
 class _AccountOptionButton extends StatelessWidget {
-  const _AccountOptionButton({required this.icon, required this.label});
+  const _AccountOptionButton({
+    required this.icon,
+    required this.label,
+    this.onPressed,
+  });
 
   final Widget icon;
   final String label;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -973,7 +1064,7 @@ class _AccountOptionButton extends StatelessWidget {
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: onPressed,
         icon: icon,
         label: Text(
           label,
@@ -1045,6 +1136,13 @@ class _WelcomeProfileSetupSlideState extends State<_WelcomeProfileSetupSlide> {
     return true;
   }
 
+  void saveDraft() {
+    widget.themeController.updateProfile(
+      name: _nameController.text,
+      birthDate: _selectedBirthDate ?? widget.themeController.profileBirthDate,
+    );
+  }
+
   DateTime? get _selectedBirthDate {
     final day = _day;
     final month = _month;
@@ -1074,6 +1172,7 @@ class _WelcomeProfileSetupSlideState extends State<_WelcomeProfileSetupSlide> {
     final currentYear = DateTime.now().year;
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 112),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1117,6 +1216,9 @@ class _WelcomeProfileSetupSlideState extends State<_WelcomeProfileSetupSlide> {
                   key: const Key('welcomeProfileName'),
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.done,
+                  onChanged: (_) => saveDraft(),
+                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
                   decoration: InputDecoration(
                     labelText: context.tr('Name'),
                     prefixIcon: const Icon(Icons.person_outline_rounded),
@@ -1166,7 +1268,10 @@ class _WelcomeProfileSetupSlideState extends State<_WelcomeProfileSetupSlide> {
                           for (var day = 1; day <= _daysInSelectedMonth; day++)
                             DropdownMenuItem(value: day, child: Text('$day')),
                         ],
-                        onChanged: (value) => setState(() => _day = value),
+                        onChanged: (value) {
+                          setState(() => _day = value);
+                          saveDraft();
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1190,6 +1295,7 @@ class _WelcomeProfileSetupSlideState extends State<_WelcomeProfileSetupSlide> {
                             _month = value;
                             _keepDayValid();
                           });
+                          saveDraft();
                         },
                       ),
                     ),
@@ -1215,6 +1321,7 @@ class _WelcomeProfileSetupSlideState extends State<_WelcomeProfileSetupSlide> {
                             _year = value;
                             _keepDayValid();
                           });
+                          saveDraft();
                         },
                       ),
                     ),
@@ -1290,6 +1397,239 @@ class _WelcomeProfileSetupSlideState extends State<_WelcomeProfileSetupSlide> {
   }
 }
 
+class _WelcomeAgreementSlide extends StatefulWidget {
+  const _WelcomeAgreementSlide({required this.themeController, super.key});
+
+  final ThemeController themeController;
+
+  @override
+  State<_WelcomeAgreementSlide> createState() => _WelcomeAgreementSlideState();
+}
+
+class _WelcomeAgreementSlideState extends State<_WelcomeAgreementSlide> {
+  late bool _honestyAccepted;
+  late bool _symbolicProgressAccepted;
+  late bool _allAccepted;
+
+  @override
+  void initState() {
+    super.initState();
+    _allAccepted = widget.themeController.termsAccepted;
+    _honestyAccepted = _allAccepted;
+    _symbolicProgressAccepted = _allAccepted;
+  }
+
+  bool validateAgreement() {
+    if (_allAccepted) return true;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr('Please accept the terms and policies to continue'),
+          ),
+        ),
+      );
+    return false;
+  }
+
+  void _setNote({required bool honesty, required bool value}) {
+    setState(() {
+      if (honesty) {
+        _honestyAccepted = value;
+      } else {
+        _symbolicProgressAccepted = value;
+      }
+      _allAccepted = _honestyAccepted && _symbolicProgressAccepted;
+    });
+    widget.themeController.setTermsAccepted(_allAccepted);
+  }
+
+  void _setAll(bool value) {
+    setState(() {
+      _allAccepted = value;
+      _honestyAccepted = value;
+      _symbolicProgressAccepted = value;
+    });
+    widget.themeController.setTermsAccepted(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(22, 54, 22, 116),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ShaderMask(
+              blendMode: BlendMode.srcIn,
+              shaderCallback: (bounds) => LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colors.primary.withValues(alpha: .72),
+                  colors.primary,
+                  colors.tertiary,
+                ],
+              ).createShader(bounds),
+              child: Text(
+                context.tr('Before you begin'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: Colors.white,
+                  fontSize: 40,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              context.tr(
+                'Please read and acknowledge these important notes about using Visual You.',
+              ),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: colors.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 26),
+            _AgreementNoteCard(
+              key: const Key('honestyAgreementNote'),
+              checked: _honestyAccepted,
+              title: context.tr('Track honestly and consistently'),
+              body: context.tr('agreement_honesty_note'),
+              onChanged: (value) => _setNote(honesty: true, value: value),
+            ),
+            const SizedBox(height: 14),
+            _AgreementNoteCard(
+              key: const Key('symbolicAgreementNote'),
+              checked: _symbolicProgressAccepted,
+              title: context.tr('Understand symbolic progress'),
+              body: context.tr('agreement_symbolic_note'),
+              onChanged: (value) => _setNote(honesty: false, value: value),
+            ),
+            const SizedBox(height: 20),
+            Material(
+              color: _allAccepted
+                  ? colors.primaryContainer
+                  : colors.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(22),
+              child: InkWell(
+                key: const Key('allTermsAgreement'),
+                borderRadius: BorderRadius.circular(22),
+                onTap: () => _setAll(!_allAccepted),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 17,
+                  ),
+                  child: Row(
+                    children: [
+                      _CircularAgreementCheck(checked: _allAccepted),
+                      const SizedBox(width: 13),
+                      Expanded(
+                        child: Text(
+                          context.tr('I agree to the terms and policies'),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AgreementNoteCard extends StatelessWidget {
+  const _AgreementNoteCard({
+    required this.checked,
+    required this.title,
+    required this.body,
+    required this.onChanged,
+    super.key,
+  });
+
+  final bool checked;
+  final String title;
+  final String body;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: checked
+          ? colors.primaryContainer.withValues(alpha: .62)
+          : colors.surfaceContainer,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () => onChanged(!checked),
+        child: Padding(
+          padding: const EdgeInsets.all(17),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CircularAgreementCheck(checked: checked),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      body,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        height: 1.48,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CircularAgreementCheck extends StatelessWidget {
+  const _CircularAgreementCheck({required this.checked});
+
+  final bool checked;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      child: Icon(
+        checked ? Icons.check_circle_rounded : Icons.circle_outlined,
+        key: ValueKey(checked),
+        size: 28,
+        color: checked ? colors.primary : colors.outline,
+      ),
+    );
+  }
+}
+
 class _EditableProfilePhoto extends StatelessWidget {
   const _EditableProfilePhoto({
     required this.themeController,
@@ -1320,7 +1660,7 @@ class _EditableProfilePhoto extends StatelessWidget {
               ),
               child: GestureDetector(
                 key: const Key('profilePhotoButton'),
-                onTap: () => _pickProfilePicture(context, themeController),
+                onTap: () => _handleProfilePictureTap(context, themeController),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -1348,6 +1688,8 @@ class _EditableProfilePhoto extends StatelessWidget {
                               : Image.memory(
                                   imageBytes,
                                   fit: BoxFit.cover,
+                                  alignment:
+                                      themeController.profileImageAlignment,
                                   gaplessPlayback: true,
                                 ),
                         ),
@@ -1398,7 +1740,64 @@ class _EditableProfilePhoto extends StatelessWidget {
   }
 }
 
-Future<void> _pickProfilePicture(
+enum _ProfilePhotoAction { choose, position, remove }
+
+Future<void> _handleProfilePictureTap(
+  BuildContext context,
+  ThemeController themeController,
+) async {
+  if (themeController.profileImageBytes == null) {
+    await _chooseProfilePicture(context, themeController);
+    return;
+  }
+  final action = await showModalBottomSheet<_ProfilePhotoAction>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: Text(sheetContext.tr('Choose new picture')),
+            onTap: () =>
+                Navigator.pop(sheetContext, _ProfilePhotoAction.choose),
+          ),
+          ListTile(
+            leading: const Icon(Icons.open_with_rounded),
+            title: Text(sheetContext.tr('Adjust picture position')),
+            onTap: () =>
+                Navigator.pop(sheetContext, _ProfilePhotoAction.position),
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.delete_outline_rounded,
+              color: Theme.of(sheetContext).colorScheme.error,
+            ),
+            title: Text(sheetContext.tr('Remove picture')),
+            onTap: () =>
+                Navigator.pop(sheetContext, _ProfilePhotoAction.remove),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+  if (!context.mounted || action == null) return;
+  switch (action) {
+    case _ProfilePhotoAction.choose:
+      await _chooseProfilePicture(context, themeController);
+      break;
+    case _ProfilePhotoAction.position:
+      await _adjustProfilePicturePosition(context, themeController);
+      break;
+    case _ProfilePhotoAction.remove:
+      themeController.setProfileImage(null);
+      break;
+  }
+}
+
+Future<void> _chooseProfilePicture(
   BuildContext context,
   ThemeController themeController,
 ) async {
@@ -1412,6 +1811,9 @@ Future<void> _pickProfilePicture(
     );
     if (image == null) return;
     themeController.setProfileImage(await image.readAsBytes());
+    if (context.mounted) {
+      await _adjustProfilePicturePosition(context, themeController);
+    }
   } catch (_) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
@@ -1419,6 +1821,101 @@ Future<void> _pickProfilePicture(
       ..showSnackBar(
         SnackBar(content: Text(context.tr('Could not open your photos'))),
       );
+  }
+}
+
+Future<void> _adjustProfilePicturePosition(
+  BuildContext context,
+  ThemeController themeController,
+) async {
+  final imageBytes = themeController.profileImageBytes;
+  if (imageBytes == null) return;
+  var draftAlignment = themeController.profileImageAlignment;
+  final selectedAlignment = await showDialog<Alignment>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: Text(context.tr('Picture position')),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                context.tr('Drag the picture to position it inside the circle'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                key: const Key('profilePictureCropArea'),
+                behavior: HitTestBehavior.opaque,
+                onPanUpdate: (details) {
+                  setDialogState(() {
+                    final nextX = (draftAlignment.x - details.delta.dx / 90)
+                        .clamp(-1.0, 1.0)
+                        .toDouble();
+                    final nextY = (draftAlignment.y - details.delta.dy / 90)
+                        .clamp(-1.0, 1.0)
+                        .toDouble();
+                    draftAlignment = Alignment(nextX, nextY);
+                  });
+                },
+                child: SizedBox.square(
+                  dimension: 250,
+                  child: ClipRect(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.memory(
+                          imageBytes,
+                          fit: BoxFit.cover,
+                          alignment: draftAlignment,
+                          gaplessPlayback: true,
+                        ),
+                        IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                        IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black54, blurRadius: 2),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.tr('Cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, draftAlignment),
+            child: Text(context.tr('Save')),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (selectedAlignment != null) {
+    themeController.setProfileImageAlignment(selectedAlignment);
   }
 }
 
@@ -1513,6 +2010,9 @@ class ThemeController extends ChangeNotifier {
   String _profileName = '';
   DateTime? _profileBirthDate;
   Uint8List? _profileImageBytes;
+  double _profileImageAlignmentX = 0;
+  double _profileImageAlignmentY = 0;
+  bool _termsAccepted = false;
   HabitRepository? _repository;
   Future<void> _pendingSave = Future<void>.value();
 
@@ -1523,6 +2023,9 @@ class ThemeController extends ChangeNotifier {
   String get profileName => _profileName;
   DateTime? get profileBirthDate => _profileBirthDate;
   Uint8List? get profileImageBytes => _profileImageBytes;
+  Alignment get profileImageAlignment =>
+      Alignment(_profileImageAlignmentX, _profileImageAlignmentY);
+  bool get termsAccepted => _termsAccepted;
   int? get profileAge {
     final birthDate = _profileBirthDate;
     if (birthDate == null) return null;
@@ -1590,6 +2093,24 @@ class ThemeController extends ChangeNotifier {
 
   void setProfileImage(Uint8List? bytes) {
     _profileImageBytes = bytes;
+    if (bytes == null) {
+      _profileImageAlignmentX = 0;
+      _profileImageAlignmentY = 0;
+    }
+    notifyListeners();
+    _persist();
+  }
+
+  void setProfileImageAlignment(Alignment alignment) {
+    _profileImageAlignmentX = alignment.x.clamp(-1.0, 1.0).toDouble();
+    _profileImageAlignmentY = alignment.y.clamp(-1.0, 1.0).toDouble();
+    notifyListeners();
+    _persist();
+  }
+
+  void setTermsAccepted(bool accepted) {
+    if (_termsAccepted == accepted) return;
+    _termsAccepted = accepted;
     notifyListeners();
     _persist();
   }
@@ -1619,6 +2140,13 @@ class ThemeController extends ChangeNotifier {
     } on FormatException {
       _profileImageBytes = null;
     }
+    _profileImageAlignmentX = preferences.profileImageAlignmentX
+        .clamp(-1.0, 1.0)
+        .toDouble();
+    _profileImageAlignmentY = preferences.profileImageAlignmentY
+        .clamp(-1.0, 1.0)
+        .toDouble();
+    _termsAccepted = preferences.termsAccepted;
     notifyListeners();
   }
 
@@ -1637,6 +2165,9 @@ class ThemeController extends ChangeNotifier {
       profileImageBase64: _profileImageBytes == null
           ? ''
           : base64Encode(_profileImageBytes!),
+      profileImageAlignmentX: _profileImageAlignmentX,
+      profileImageAlignmentY: _profileImageAlignmentY,
+      termsAccepted: _termsAccepted,
     );
     _pendingSave = repository
         .saveAppPreferences(snapshot)
@@ -1651,6 +2182,7 @@ class HomePage extends StatefulWidget {
     required this.customGraphRepository,
     required this.calendarRepository,
     required this.reductionCalendarRepository,
+    required this.rewardsController,
     super.key,
   });
 
@@ -1659,6 +2191,7 @@ class HomePage extends StatefulWidget {
   final CustomGraphRepository customGraphRepository;
   final CalendarRepository calendarRepository;
   final ReductionCalendarRepository reductionCalendarRepository;
+  final RewardsController rewardsController;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -1681,14 +2214,17 @@ class _HomePageState extends State<HomePage> {
                   themeController: widget.themeController,
                   habitRepository: widget.habitRepository,
                   customGraphRepository: widget.customGraphRepository,
+                  rewardsController: widget.rewardsController,
                 ),
                 _NavigationPage(
                   title: context.tr('Body statistics'),
                   icon: const AnatomyIcon(size: 72),
                   themeController: widget.themeController,
+                  rewardsController: widget.rewardsController,
                   content: _GenderBodyFrame(
                     themeController: widget.themeController,
                     customGraphRepository: widget.customGraphRepository,
+                    rewardsController: widget.rewardsController,
                     showSpecialHabitGraphs: true,
                   ),
                   showIcon: false,
@@ -1699,9 +2235,13 @@ class _HomePageState extends State<HomePage> {
                   title: context.tr('Calendar'),
                   icon: const Icon(Icons.calendar_month_rounded, size: 68),
                   themeController: widget.themeController,
+                  rewardsController: widget.rewardsController,
                   content: Column(
                     children: [
-                      HabitCalendar(repository: widget.calendarRepository),
+                      HabitCalendar(
+                        repository: widget.calendarRepository,
+                        rewardsController: widget.rewardsController,
+                      ),
                       AnimatedBuilder(
                         animation: widget.themeController,
                         builder: (context, _) =>
@@ -1710,9 +2250,18 @@ class _HomePageState extends State<HomePage> {
                             : Column(
                                 children: [
                                   const SizedBox(height: 14),
-                                  ReductionCalendar(
-                                    repository:
-                                        widget.reductionCalendarRepository,
+                                  RewardFeatureGate(
+                                    controller: widget.rewardsController,
+                                    feature: GatedFeature.reductionCalendar,
+                                    title: context.tr(
+                                      'Gradual-reduction calendar',
+                                    ),
+                                    child: ReductionCalendar(
+                                      repository:
+                                          widget.reductionCalendarRepository,
+                                      rewardsController:
+                                          widget.rewardsController,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1727,6 +2276,7 @@ class _HomePageState extends State<HomePage> {
                   title: context.tr('AI coach'),
                   icon: const Icon(Icons.auto_awesome_rounded, size: 68),
                   themeController: widget.themeController,
+                  rewardsController: widget.rewardsController,
                 ),
               ],
             ),
@@ -1757,7 +2307,150 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).push(
       _CircularRevealRoute(
         origin: origin,
-        page: AddHabitPage(habitRepository: widget.habitRepository),
+        page: AddHabitPage(
+          habitRepository: widget.habitRepository,
+          rewardsController: widget.rewardsController,
+        ),
+      ),
+    );
+  }
+}
+
+class _TopHeader extends StatelessWidget {
+  const _TopHeader({
+    required this.themeController,
+    required this.rewardsController,
+    this.useTestKeys = false,
+  });
+
+  final ThemeController themeController;
+  final RewardsController rewardsController;
+  final bool useTestKeys;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        AnimatedBuilder(
+          animation: themeController,
+          builder: (context, _) => InkWell(
+            key: useTestKeys ? const Key('profileButton') : null,
+            customBorder: const CircleBorder(),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => ProfilePage(
+                  themeController: themeController,
+                  rewardsController: rewardsController,
+                ),
+              ),
+            ),
+            child: _HeaderAvatar(themeController: themeController),
+          ),
+        ),
+        Material(
+          color: colors.primaryContainer.withValues(alpha: .72),
+          borderRadius: BorderRadius.circular(28),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PremiumButton(controller: rewardsController),
+              Container(
+                width: 1,
+                height: 25,
+                color: colors.outlineVariant.withValues(alpha: .7),
+              ),
+              IconButton(
+                key: useTestKeys ? const Key('settingsButton') : null,
+                tooltip: context.tr('Settings'),
+                icon: const Icon(Icons.settings_rounded),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        SettingsPage(themeController: themeController),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeaderAvatar extends StatelessWidget {
+  const _HeaderAvatar({required this.themeController});
+  final ThemeController themeController;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final bytes = themeController.profileImageBytes;
+    return Container(
+      width: 52,
+      height: 52,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [colors.primaryContainer, colors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: ClipOval(
+        child: bytes == null
+            ? ColoredBox(
+                color: colors.primary,
+                child: Icon(
+                  Icons.person_rounded,
+                  color: colors.onPrimary,
+                  size: 30,
+                ),
+              )
+            : Image.memory(
+                bytes,
+                fit: BoxFit.cover,
+                alignment: themeController.profileImageAlignment,
+                gaplessPlayback: true,
+              ),
+      ),
+    );
+  }
+}
+
+List<Color> _pageTitleColors(String title) {
+  if (title.contains('Calendar')) {
+    return const [Color(0xFFFFB347), Color(0xFFFF6B6B), Color(0xFF8E54E9)];
+  }
+  if (title.contains('Body')) {
+    return const [Color(0xFF26D0CE), Color(0xFF6A82FB), Color(0xFFB06AB3)];
+  }
+  if (title.contains('AI')) {
+    return const [Color(0xFF00F2FE), Color(0xFF4FACFE), Color(0xFFA18CD1)];
+  }
+  return const [Color(0xFFFFD86F), Color(0xFFFC6262), Color(0xFF8B5CF6)];
+}
+
+class _GradientPageTitle extends StatelessWidget {
+  const _GradientPageTitle(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (bounds) =>
+          LinearGradient(colors: _pageTitleColors(text)).createShader(bounds),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -1768,11 +2461,13 @@ class _HomeContent extends StatelessWidget {
     required this.themeController,
     required this.habitRepository,
     required this.customGraphRepository,
+    required this.rewardsController,
   });
 
   final ThemeController themeController;
   final HabitRepository habitRepository;
   final CustomGraphRepository customGraphRepository;
+  final RewardsController rewardsController;
 
   @override
   Widget build(BuildContext context) {
@@ -1788,62 +2483,21 @@ class _HomeContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Semantics(
-                    button: true,
-                    label: context.tr('Open profile'),
-                    child: InkWell(
-                      key: const Key('profileButton'),
-                      customBorder: const CircleBorder(),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              ProfilePage(themeController: themeController),
-                        ),
-                      ),
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [colors.primaryContainer, colors.primary],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          border: Border.all(
-                            color: colors.outlineVariant,
-                            width: 2,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.person_rounded,
-                          color: colors.onPrimary,
-                          size: 30,
-                        ),
-                      ),
-                    ),
-                  ),
-                  IconButton.filledTonal(
-                    key: const Key('settingsButton'),
-                    tooltip: context.tr('Settings'),
-                    icon: const Icon(Icons.settings_rounded),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            SettingsPage(themeController: themeController),
-                      ),
-                    ),
-                  ),
-                ],
+              _TopHeader(
+                themeController: themeController,
+                rewardsController: rewardsController,
+                useTestKeys: true,
               ),
               const SizedBox(height: 5),
-              Text(
-                context.tr('Hi!'),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
+              AnimatedBuilder(
+                animation: themeController,
+                builder: (context, _) => Text(
+                  themeController.profileName.trim().isEmpty
+                      ? context.tr('Hi!')
+                      : '${context.tr('Hi!')} ${themeController.profileName.trim()}',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ),
               const SizedBox(height: 6),
@@ -1870,7 +2524,10 @@ class _HomeContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              const BreathingCard(),
+              BreathingCard(
+                onThreeMinutesReached: () =>
+                    unawaited(_recordBreathingReward(context)),
+              ),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -1906,7 +2563,14 @@ class _HomeContent extends StatelessWidget {
                               (snapshot.data ?? const <HabitPreference>[])
                                   .where(
                                     (habit) =>
-                                        habit.isActive && habit.isFavorite,
+                                        habit.isActive &&
+                                        habit.isFavorite &&
+                                        (rewardsController.isPlus ||
+                                            (habit.id != 'consuming_sugar' &&
+                                                habit.id != 'studying' &&
+                                                !habit.id.startsWith(
+                                                  'custom_',
+                                                ))),
                                   )
                                   .toList();
                           if (favorites.isEmpty) {
@@ -1924,19 +2588,25 @@ class _HomeContent extends StatelessWidget {
                               for (final habit in favorites)
                                 _QuickAddPill(
                                   label: context.tr(_quickAddLabelKey(habit)),
-                                  isUnwanted: habit.category == 'reduction',
+                                  isUnwanted:
+                                      habit.category == 'reduction' ||
+                                      habit.category == 'custom_bad',
                                   onThumbUp: () => unawaited(
                                     _showQuickAdded(
                                       context,
                                       _quickAddLabelKey(habit),
-                                      didHabit: habit.category != 'reduction',
+                                      didHabit:
+                                          habit.category != 'reduction' &&
+                                          habit.category != 'custom_bad',
                                     ),
                                   ),
                                   onThumbDown: () => unawaited(
                                     _showQuickAdded(
                                       context,
                                       _quickAddLabelKey(habit),
-                                      didHabit: habit.category == 'reduction',
+                                      didHabit:
+                                          habit.category == 'reduction' ||
+                                          habit.category == 'custom_bad',
                                     ),
                                   ),
                                 ),
@@ -1952,6 +2622,7 @@ class _HomeContent extends StatelessWidget {
               _GenderBodyFrame(
                 themeController: themeController,
                 customGraphRepository: customGraphRepository,
+                rewardsController: rewardsController,
                 showSpecialHabitGraphs: false,
               ),
               const SizedBox(height: 14),
@@ -1974,6 +2645,7 @@ class _HomeContent extends StatelessWidget {
         didHabit: didHabit,
       );
       BodyVisualState.restore(bodyState);
+      await rewardsController.refresh();
     } catch (_) {
       if (!context.mounted) return;
       _showStorageFailure(context);
@@ -1986,6 +2658,21 @@ class _HomeContent extends StatelessWidget {
           ? context.habitAdded(context.tr(habit))
           : context.tr('Habit status saved'),
     );
+  }
+
+  Future<void> _recordBreathingReward(BuildContext context) async {
+    try {
+      final bodyState = await habitRepository.applyBreathingReward();
+      BodyVisualState.restore(bodyState);
+      await rewardsController.refresh();
+      if (!context.mounted) return;
+      _showHabitToast(
+        context,
+        context.tr('Three-minute breathing reward added'),
+      );
+    } catch (_) {
+      if (context.mounted) _showStorageFailure(context);
+    }
   }
 }
 
@@ -2190,11 +2877,13 @@ class _GenderBodyFrame extends StatelessWidget {
     required this.themeController,
     required this.customGraphRepository,
     required this.showSpecialHabitGraphs,
+    required this.rewardsController,
   });
 
   final ThemeController themeController;
   final CustomGraphRepository customGraphRepository;
   final bool showSpecialHabitGraphs;
+  final RewardsController rewardsController;
 
   @override
   Widget build(BuildContext context) {
@@ -2207,27 +2896,50 @@ class _GenderBodyFrame extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 320),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: .98, end: 1).animate(animation),
-                    child: child,
-                  ),
-                );
-              },
-              child: body,
+            RewardFeatureGate(
+              controller: rewardsController,
+              feature: GatedFeature.body,
+              title: context.tr('Visual body'),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(
+                        begin: .98,
+                        end: 1,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: body,
+              ),
             ),
             const SizedBox(height: 12),
-            CustomGraphCard(repository: customGraphRepository),
-            if (showSpecialHabitGraphs) ...[
-              const SizedBox(height: 10),
-              SpecialHabitGraphsSection(repository: customGraphRepository),
-            ],
+            RewardFeatureGate(
+              controller: rewardsController,
+              feature: GatedFeature.graphs,
+              title: context.tr('Progress graphs'),
+              child: Column(
+                children: [
+                  CustomGraphCard(
+                    repository: customGraphRepository,
+                    rewardsController: rewardsController,
+                  ),
+                  if (showSpecialHabitGraphs) ...[
+                    const SizedBox(height: 10),
+                    SpecialHabitGraphsSection(
+                      repository: customGraphRepository,
+                      rewardsController: rewardsController,
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         );
       },
@@ -2240,6 +2952,7 @@ class _NavigationPage extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.themeController,
+    required this.rewardsController,
     this.content,
     this.showIcon = true,
     this.topAligned = false,
@@ -2249,6 +2962,7 @@ class _NavigationPage extends StatelessWidget {
   final String title;
   final Widget icon;
   final ThemeController themeController;
+  final RewardsController rewardsController;
   final Widget? content;
   final bool showIcon;
   final bool topAligned;
@@ -2266,54 +2980,9 @@ class _NavigationPage extends StatelessWidget {
                 ? CrossAxisAlignment.start
                 : CrossAxisAlignment.center,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Semantics(
-                    button: true,
-                    label: context.tr('Open profile'),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              ProfilePage(themeController: themeController),
-                        ),
-                      ),
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [colors.primaryContainer, colors.primary],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          border: Border.all(
-                            color: colors.outlineVariant,
-                            width: 2,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.person_rounded,
-                          color: colors.onPrimary,
-                          size: 30,
-                        ),
-                      ),
-                    ),
-                  ),
-                  IconButton.filledTonal(
-                    tooltip: context.tr('Settings'),
-                    icon: const Icon(Icons.settings_rounded),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            SettingsPage(themeController: themeController),
-                      ),
-                    ),
-                  ),
-                ],
+              _TopHeader(
+                themeController: themeController,
+                rewardsController: rewardsController,
               ),
               const SizedBox(height: 18),
               if (showIcon) ...[
@@ -2328,16 +2997,11 @@ class _NavigationPage extends StatelessWidget {
                 child: gradientTitle
                     ? ShaderMask(
                         blendMode: BlendMode.srcIn,
-                        shaderCallback: (bounds) => const LinearGradient(
+                        shaderCallback: (bounds) => LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF67D8F7),
-                            Color(0xFF8B6FE8),
-                            Color(0xFFF06F9B),
-                            Color(0xFFF2A65A),
-                          ],
-                          stops: [0, .34, .68, 1],
+                          colors: _pageTitleColors(title),
+                          stops: const [0, .5, 1],
                         ).createShader(bounds),
                         child: Text(
                           title,
@@ -2490,9 +3154,14 @@ class _BlurredCapsule extends StatelessWidget {
 }
 
 class AddHabitPage extends StatefulWidget {
-  const AddHabitPage({required this.habitRepository, super.key});
+  const AddHabitPage({
+    required this.habitRepository,
+    required this.rewardsController,
+    super.key,
+  });
 
   final HabitRepository habitRepository;
+  final RewardsController rewardsController;
 
   @override
   State<AddHabitPage> createState() => _AddHabitPageState();
@@ -2502,6 +3171,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
   static const _goodHabits = [
     _HabitOption('water', 'Drinking water', Icons.water_drop_rounded),
     _HabitOption('healthy_eating', 'Eating healthy', Icons.eco_rounded),
+    _HabitOption('studying', 'Studying', Icons.school_rounded),
   ];
 
   static const _exercises = [
@@ -2545,7 +3215,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
           onPressed: () => Navigator.of(context).pop(),
           icon: const Icon(Icons.close_rounded),
         ),
-        title: Text(context.tr('Add a habit')),
+        title: _GradientPageTitle(context.tr('Add a habit')),
         actions: [
           IconButton(
             tooltip: context.tr(_editing ? 'Finish editing' : 'Edit habits'),
@@ -2561,6 +3231,24 @@ class _AddHabitPageState extends State<AddHabitPage> {
             for (final preference in snapshot.data ?? const <HabitPreference>[])
               preference.id: preference,
           };
+          final customGood = preferences.values
+              .where((habit) => habit.category == 'custom_good')
+              .map(
+                (habit) => _HabitOption(
+                  habit.id,
+                  habit.nameKey,
+                  Icons.auto_awesome_rounded,
+                ),
+              )
+              .toList();
+          final customBad = preferences.values
+              .where((habit) => habit.category == 'custom_bad')
+              .map(
+                (habit) =>
+                    _HabitOption(habit.id, habit.nameKey, Icons.block_rounded),
+              )
+              .toList();
+          final customCount = customGood.length + customBad.length;
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
             children: [
@@ -2572,6 +3260,23 @@ class _AddHabitPageState extends State<AddHabitPage> {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 12),
+                if (widget.rewardsController.isPlus) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.tonalIcon(
+                      onPressed: customCount >= 2
+                          ? null
+                          : () => _createCustomHabit(context),
+                      icon: const Icon(Icons.add_rounded),
+                      label: Text(
+                        customCount >= 2
+                            ? context.tr('Two custom habits created')
+                            : context.tr('Create your own habit'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
               ],
               _buildSection(
                 context,
@@ -2579,6 +3284,15 @@ class _AddHabitPageState extends State<AddHabitPage> {
                 options: _goodHabits,
                 preferences: preferences,
               ),
+              if (customGood.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildSection(
+                  context,
+                  title: 'Your good habits',
+                  options: customGood,
+                  preferences: preferences,
+                ),
+              ],
               const SizedBox(height: 12),
               _buildSection(
                 context,
@@ -2595,6 +3309,16 @@ class _AddHabitPageState extends State<AddHabitPage> {
                 preferences: preferences,
                 isUnwanted: true,
               ),
+              if (customBad.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildSection(
+                  context,
+                  title: 'Your unwanted habits',
+                  options: customBad,
+                  preferences: preferences,
+                  isUnwanted: true,
+                ),
+              ],
             ],
           );
         },
@@ -2640,7 +3364,19 @@ class _AddHabitPageState extends State<AddHabitPage> {
           childAspectRatio: _editing ? 2.55 : (inCard ? 3.5 : 3.2),
           children: [
             for (final option in visibleOptions)
-              if (_editing)
+              if ((option.id == 'consuming_sugar' || option.id == 'studying') &&
+                  !widget.rewardsController.isPlus)
+                _PremiumHabitTile(
+                  label: context.tr(option.nameKey),
+                  icon: option.icon,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          PremiumPage(controller: widget.rewardsController),
+                    ),
+                  ),
+                )
+              else if (_editing)
                 _HabitManagementTile(
                   label: context.tr(option.nameKey),
                   icon: option.icon,
@@ -2706,6 +3442,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
         didHabit: didHabit,
       );
       BodyVisualState.restore(bodyState);
+      await widget.rewardsController.refresh();
     } catch (_) {
       if (!context.mounted) return;
       _showStorageFailure(context);
@@ -2717,6 +3454,118 @@ class _AddHabitPageState extends State<AddHabitPage> {
       didHabit
           ? context.habitAdded(context.tr(habit))
           : context.tr('Habit status saved'),
+    );
+  }
+
+  Future<void> _createCustomHabit(BuildContext context) async {
+    var name = '';
+    var unwanted = false;
+    final shouldCreate =
+        await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => StatefulBuilder(
+            builder: (context, setDialogState) => AlertDialog(
+              title: Text(context.tr('Create your own habit')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    autofocus: true,
+                    maxLength: 40,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (value) => name = value,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Habit name'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment(
+                        value: false,
+                        label: Text(context.tr('Good habit')),
+                        icon: const Icon(Icons.thumb_up_alt_outlined),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text(context.tr('Unwanted habit')),
+                        icon: const Icon(Icons.thumb_down_alt_outlined),
+                      ),
+                    ],
+                    selected: {unwanted},
+                    onSelectionChanged: (selection) =>
+                        setDialogState(() => unwanted = selection.first),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: Text(context.tr('Cancel')),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: Text(context.tr('Create')),
+                ),
+              ],
+            ),
+          ),
+        ) ??
+        false;
+    if (!shouldCreate || name.trim().isEmpty) return;
+    try {
+      await widget.habitRepository.createCustomHabit(
+        name: name,
+        isUnwanted: unwanted,
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('Could not create habit'))),
+      );
+    }
+  }
+}
+
+class _PremiumHabitTile extends StatelessWidget {
+  const _PremiumHabitTile({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      color: colors.surfaceContainerHighest,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          child: Row(
+            children: [
+              Icon(icon, color: colors.onSurfaceVariant, size: 19),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.workspace_premium_rounded, color: colors.primary),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -3188,9 +4037,14 @@ class _AnatomyIconPainter extends CustomPainter {
 }
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({required this.themeController, super.key});
+  const ProfilePage({
+    required this.themeController,
+    required this.rewardsController,
+    super.key,
+  });
 
   final ThemeController themeController;
+  final RewardsController rewardsController;
 
   @override
   Widget build(BuildContext context) {
@@ -3199,7 +4053,7 @@ class ProfilePage extends StatelessWidget {
 
     return Scaffold(
       body: AnimatedBuilder(
-        animation: themeController,
+        animation: Listenable.merge([themeController, rewardsController]),
         builder: (context, _) => DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -3217,79 +4071,98 @@ class ProfilePage extends StatelessWidget {
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton.filledTonal(
-                        tooltip: context.tr('Back'),
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.arrow_back_rounded),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _showEditProfileDialog(context),
-                        icon: const Icon(Icons.edit_rounded, size: 19),
-                        label: Text(context.tr('Edit profile')),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _EditableProfilePhoto(
-                        themeController: themeController,
-                        radius: 52,
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              themeController.profileName.isEmpty
-                                  ? context.tr('Your Name')
-                                  : themeController.profileName,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.1,
-                                  ),
-                            ),
-                            const SizedBox(height: 18),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _ProfileFact(
-                                    label: context.tr('Gender'),
-                                    value: switch (themeController.gender) {
-                                      AppGender.male => context.tr('Male'),
-                                      AppGender.female => context.tr('Female'),
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: _ProfileFact(
-                                    label: context.tr('Age'),
-                                    value:
-                                        themeController.profileAge
-                                            ?.toString() ??
-                                        context.tr('Not set'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton.filledTonal(
+                          tooltip: context.tr('Back'),
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.arrow_back_rounded),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        Expanded(
+                          child: Center(
+                            child: _GradientPageTitle(context.tr('Profile')),
+                          ),
+                        ),
+                        IconButton.filledTonal(
+                          tooltip: context.tr('Edit profile'),
+                          onPressed: () => _showEditProfileDialog(context),
+                          icon: const Icon(Icons.edit_rounded, size: 19),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _EditableProfilePhoto(
+                          themeController: themeController,
+                          radius: 52,
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                themeController.profileName.isEmpty
+                                    ? context.tr('Your Name')
+                                    : themeController.profileName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.1,
+                                    ),
+                              ),
+                              const SizedBox(height: 18),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _ProfileFact(
+                                      label: context.tr('Gender'),
+                                      value: switch (themeController.gender) {
+                                        AppGender.male => context.tr('Male'),
+                                        AppGender.female => context.tr(
+                                          'Female',
+                                        ),
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: _ProfileFact(
+                                      label: context.tr('Age'),
+                                      value:
+                                          themeController.profileAge
+                                              ?.toString() ??
+                                          context.tr('Not set'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: _ProfileFact(
+                                      label: context.tr('Plan'),
+                                      value: _profilePlanText(
+                                        context,
+                                        rewardsController,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    RewardsProfileSection(controller: rewardsController),
+                  ],
+                ),
               ),
             ),
           ),
@@ -3420,6 +4293,15 @@ String _numericDate(DateTime date) {
   return '$day/$month/${date.year}';
 }
 
+String _profilePlanText(BuildContext context, RewardsController controller) {
+  final snapshot = controller.snapshot;
+  if (snapshot == null || !snapshot.isPlus) return context.tr('Free');
+  final remaining = snapshot.remainingPlanTime(DateTime.now());
+  if (remaining == null) return context.tr('Plus');
+  final days = (remaining.inHours / 24).ceil();
+  return '${context.tr('Plus')}\n$days ${context.tr(days == 1 ? 'day left' : 'days left')}';
+}
+
 class _ProfileFact extends StatelessWidget {
   const _ProfileFact({required this.label, required this.value});
 
@@ -3441,7 +4323,7 @@ class _ProfileFact extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           value,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(
             context,
@@ -3460,7 +4342,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(context.tr('Settings'))),
+      appBar: AppBar(title: _GradientPageTitle(context.tr('Settings'))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [

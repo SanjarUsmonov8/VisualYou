@@ -47,6 +47,12 @@ SECRET_KEY = required_env('DJANGO_SECRET_KEY')
 DEBUG = env_bool('DJANGO_DEBUG')
 
 ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
+CORS_ALLOWED_ORIGINS = env_list('DJANGO_CORS_ALLOWED_ORIGINS')
+CORS_ALLOWED_ORIGIN_REGEXES = env_list(
+    'DJANGO_CORS_ALLOWED_ORIGIN_REGEXES',
+    r'^http://(localhost|127\.0\.0\.1)(:\d+)?$' if DEBUG else '',
+)
+CORS_ALLOW_PRIVATE_NETWORK = env_bool('DJANGO_CORS_ALLOW_PRIVATE_NETWORK', DEBUG)
 
 
 # Application definition
@@ -58,6 +64,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework.authtoken',
     'rest_framework',
     'Habits.apps.HabitsConfig',
@@ -65,6 +72,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -124,7 +132,31 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
     ),
+    'DEFAULT_THROTTLE_RATES': {
+        'email_signup_start': '5/hour',
+        'email_signup_verify': '20/hour',
+        'email_signup_complete': '10/hour',
+        'email_login': '20/hour',
+    },
 }
+
+EMAIL_BACKEND = os.getenv(
+    'DJANGO_EMAIL_BACKEND',
+    (
+        'django.core.mail.backends.console.EmailBackend'
+        if DEBUG
+        else 'django.core.mail.backends.smtp.EmailBackend'
+    ),
+)
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
+EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', False)
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Visual You <no-reply@visualyou.app>')
+EMAIL_SIGNUP_CODE_TTL_MINUTES = int(os.getenv('EMAIL_SIGNUP_CODE_TTL_MINUTES', '10'))
 
 
 # Password validation

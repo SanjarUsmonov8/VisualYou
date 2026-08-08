@@ -1255,6 +1255,15 @@ class $BodyPartStatesTable extends BodyPartStates
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _scoreMeta = const VerificationMeta('score');
+  @override
+  late final GeneratedColumn<double> score = GeneratedColumn<double>(
+    'score',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _colorValueMeta = const VerificationMeta(
     'colorValue',
   );
@@ -1304,6 +1313,7 @@ class $BodyPartStatesTable extends BodyPartStates
   List<GeneratedColumn> get $columns => [
     partKey,
     level,
+    score,
     colorValue,
     updatedAt,
     syncStatus,
@@ -1333,6 +1343,12 @@ class $BodyPartStatesTable extends BodyPartStates
       context.handle(
         _levelMeta,
         level.isAcceptableOrUnknown(data['level']!, _levelMeta),
+      );
+    }
+    if (data.containsKey('score')) {
+      context.handle(
+        _scoreMeta,
+        score.isAcceptableOrUnknown(data['score']!, _scoreMeta),
       );
     }
     if (data.containsKey('color_value')) {
@@ -1378,6 +1394,10 @@ class $BodyPartStatesTable extends BodyPartStates
         DriftSqlType.int,
         data['${effectivePrefix}level'],
       )!,
+      score: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}score'],
+      ),
       colorValue: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}color_value'],
@@ -1406,6 +1426,7 @@ class $BodyPartStatesTable extends BodyPartStates
 class BodyPartState extends DataClass implements Insertable<BodyPartState> {
   final String partKey;
   final int level;
+  final double? score;
   final int? colorValue;
   final DateTime updatedAt;
   final String syncStatus;
@@ -1413,6 +1434,7 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
   const BodyPartState({
     required this.partKey,
     required this.level,
+    this.score,
     this.colorValue,
     required this.updatedAt,
     required this.syncStatus,
@@ -1423,6 +1445,9 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
     final map = <String, Expression>{};
     map['part_key'] = Variable<String>(partKey);
     map['level'] = Variable<int>(level);
+    if (!nullToAbsent || score != null) {
+      map['score'] = Variable<double>(score);
+    }
     if (!nullToAbsent || colorValue != null) {
       map['color_value'] = Variable<int>(colorValue);
     }
@@ -1438,6 +1463,9 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
     return BodyPartStatesCompanion(
       partKey: Value(partKey),
       level: Value(level),
+      score: score == null && nullToAbsent
+          ? const Value.absent()
+          : Value(score),
       colorValue: colorValue == null && nullToAbsent
           ? const Value.absent()
           : Value(colorValue),
@@ -1457,6 +1485,7 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
     return BodyPartState(
       partKey: serializer.fromJson<String>(json['partKey']),
       level: serializer.fromJson<int>(json['level']),
+      score: serializer.fromJson<double?>(json['score']),
       colorValue: serializer.fromJson<int?>(json['colorValue']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
@@ -1469,6 +1498,7 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
     return <String, dynamic>{
       'partKey': serializer.toJson<String>(partKey),
       'level': serializer.toJson<int>(level),
+      'score': serializer.toJson<double?>(score),
       'colorValue': serializer.toJson<int?>(colorValue),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'syncStatus': serializer.toJson<String>(syncStatus),
@@ -1479,6 +1509,7 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
   BodyPartState copyWith({
     String? partKey,
     int? level,
+    Value<double?> score = const Value.absent(),
     Value<int?> colorValue = const Value.absent(),
     DateTime? updatedAt,
     String? syncStatus,
@@ -1486,6 +1517,7 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
   }) => BodyPartState(
     partKey: partKey ?? this.partKey,
     level: level ?? this.level,
+    score: score.present ? score.value : this.score,
     colorValue: colorValue.present ? colorValue.value : this.colorValue,
     updatedAt: updatedAt ?? this.updatedAt,
     syncStatus: syncStatus ?? this.syncStatus,
@@ -1495,6 +1527,7 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
     return BodyPartState(
       partKey: data.partKey.present ? data.partKey.value : this.partKey,
       level: data.level.present ? data.level.value : this.level,
+      score: data.score.present ? data.score.value : this.score,
       colorValue: data.colorValue.present
           ? data.colorValue.value
           : this.colorValue,
@@ -1511,6 +1544,7 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
     return (StringBuffer('BodyPartState(')
           ..write('partKey: $partKey, ')
           ..write('level: $level, ')
+          ..write('score: $score, ')
           ..write('colorValue: $colorValue, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncStatus: $syncStatus, ')
@@ -1520,14 +1554,22 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(partKey, level, colorValue, updatedAt, syncStatus, remoteId);
+  int get hashCode => Object.hash(
+    partKey,
+    level,
+    score,
+    colorValue,
+    updatedAt,
+    syncStatus,
+    remoteId,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is BodyPartState &&
           other.partKey == this.partKey &&
           other.level == this.level &&
+          other.score == this.score &&
           other.colorValue == this.colorValue &&
           other.updatedAt == this.updatedAt &&
           other.syncStatus == this.syncStatus &&
@@ -1537,6 +1579,7 @@ class BodyPartState extends DataClass implements Insertable<BodyPartState> {
 class BodyPartStatesCompanion extends UpdateCompanion<BodyPartState> {
   final Value<String> partKey;
   final Value<int> level;
+  final Value<double?> score;
   final Value<int?> colorValue;
   final Value<DateTime> updatedAt;
   final Value<String> syncStatus;
@@ -1545,6 +1588,7 @@ class BodyPartStatesCompanion extends UpdateCompanion<BodyPartState> {
   const BodyPartStatesCompanion({
     this.partKey = const Value.absent(),
     this.level = const Value.absent(),
+    this.score = const Value.absent(),
     this.colorValue = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -1554,6 +1598,7 @@ class BodyPartStatesCompanion extends UpdateCompanion<BodyPartState> {
   BodyPartStatesCompanion.insert({
     required String partKey,
     this.level = const Value.absent(),
+    this.score = const Value.absent(),
     this.colorValue = const Value.absent(),
     required DateTime updatedAt,
     this.syncStatus = const Value.absent(),
@@ -1564,6 +1609,7 @@ class BodyPartStatesCompanion extends UpdateCompanion<BodyPartState> {
   static Insertable<BodyPartState> custom({
     Expression<String>? partKey,
     Expression<int>? level,
+    Expression<double>? score,
     Expression<int>? colorValue,
     Expression<DateTime>? updatedAt,
     Expression<String>? syncStatus,
@@ -1573,6 +1619,7 @@ class BodyPartStatesCompanion extends UpdateCompanion<BodyPartState> {
     return RawValuesInsertable({
       if (partKey != null) 'part_key': partKey,
       if (level != null) 'level': level,
+      if (score != null) 'score': score,
       if (colorValue != null) 'color_value': colorValue,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -1584,6 +1631,7 @@ class BodyPartStatesCompanion extends UpdateCompanion<BodyPartState> {
   BodyPartStatesCompanion copyWith({
     Value<String>? partKey,
     Value<int>? level,
+    Value<double?>? score,
     Value<int?>? colorValue,
     Value<DateTime>? updatedAt,
     Value<String>? syncStatus,
@@ -1593,6 +1641,7 @@ class BodyPartStatesCompanion extends UpdateCompanion<BodyPartState> {
     return BodyPartStatesCompanion(
       partKey: partKey ?? this.partKey,
       level: level ?? this.level,
+      score: score ?? this.score,
       colorValue: colorValue ?? this.colorValue,
       updatedAt: updatedAt ?? this.updatedAt,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -1609,6 +1658,9 @@ class BodyPartStatesCompanion extends UpdateCompanion<BodyPartState> {
     }
     if (level.present) {
       map['level'] = Variable<int>(level.value);
+    }
+    if (score.present) {
+      map['score'] = Variable<double>(score.value);
     }
     if (colorValue.present) {
       map['color_value'] = Variable<int>(colorValue.value);
@@ -1633,6 +1685,7 @@ class BodyPartStatesCompanion extends UpdateCompanion<BodyPartState> {
     return (StringBuffer('BodyPartStatesCompanion(')
           ..write('partKey: $partKey, ')
           ..write('level: $level, ')
+          ..write('score: $score, ')
           ..write('colorValue: $colorValue, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncStatus: $syncStatus, ')
@@ -3959,6 +4012,1321 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $RewardStatesTable extends RewardStates
+    with TableInfo<$RewardStatesTable, RewardStateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RewardStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _planMeta = const VerificationMeta('plan');
+  @override
+  late final GeneratedColumn<String> plan = GeneratedColumn<String>(
+    'plan',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('free'),
+  );
+  static const VerificationMeta _planExpiresAtMeta = const VerificationMeta(
+    'planExpiresAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> planExpiresAt =
+      GeneratedColumn<DateTime>(
+        'plan_expires_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _tokenBalanceMeta = const VerificationMeta(
+    'tokenBalance',
+  );
+  @override
+  late final GeneratedColumn<int> tokenBalance = GeneratedColumn<int>(
+    'token_balance',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(140),
+  );
+  static const VerificationMeta _currentStreakMeta = const VerificationMeta(
+    'currentStreak',
+  );
+  @override
+  late final GeneratedColumn<int> currentStreak = GeneratedColumn<int>(
+    'current_streak',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _profileProgressMeta = const VerificationMeta(
+    'profileProgress',
+  );
+  @override
+  late final GeneratedColumn<int> profileProgress = GeneratedColumn<int>(
+    'profile_progress',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(140),
+  );
+  static const VerificationMeta _bodyProgressMeta = const VerificationMeta(
+    'bodyProgress',
+  );
+  @override
+  late final GeneratedColumn<int> bodyProgress = GeneratedColumn<int>(
+    'body_progress',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _calendarProgressMeta = const VerificationMeta(
+    'calendarProgress',
+  );
+  @override
+  late final GeneratedColumn<int> calendarProgress = GeneratedColumn<int>(
+    'calendar_progress',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastEvaluatedWeekMeta = const VerificationMeta(
+    'lastEvaluatedWeek',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastEvaluatedWeek =
+      GeneratedColumn<DateTime>(
+        'last_evaluated_week',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    plan,
+    planExpiresAt,
+    tokenBalance,
+    currentStreak,
+    profileProgress,
+    bodyProgress,
+    calendarProgress,
+    lastEvaluatedWeek,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reward_states';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RewardStateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('plan')) {
+      context.handle(
+        _planMeta,
+        plan.isAcceptableOrUnknown(data['plan']!, _planMeta),
+      );
+    }
+    if (data.containsKey('plan_expires_at')) {
+      context.handle(
+        _planExpiresAtMeta,
+        planExpiresAt.isAcceptableOrUnknown(
+          data['plan_expires_at']!,
+          _planExpiresAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('token_balance')) {
+      context.handle(
+        _tokenBalanceMeta,
+        tokenBalance.isAcceptableOrUnknown(
+          data['token_balance']!,
+          _tokenBalanceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('current_streak')) {
+      context.handle(
+        _currentStreakMeta,
+        currentStreak.isAcceptableOrUnknown(
+          data['current_streak']!,
+          _currentStreakMeta,
+        ),
+      );
+    }
+    if (data.containsKey('profile_progress')) {
+      context.handle(
+        _profileProgressMeta,
+        profileProgress.isAcceptableOrUnknown(
+          data['profile_progress']!,
+          _profileProgressMeta,
+        ),
+      );
+    }
+    if (data.containsKey('body_progress')) {
+      context.handle(
+        _bodyProgressMeta,
+        bodyProgress.isAcceptableOrUnknown(
+          data['body_progress']!,
+          _bodyProgressMeta,
+        ),
+      );
+    }
+    if (data.containsKey('calendar_progress')) {
+      context.handle(
+        _calendarProgressMeta,
+        calendarProgress.isAcceptableOrUnknown(
+          data['calendar_progress']!,
+          _calendarProgressMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_evaluated_week')) {
+      context.handle(
+        _lastEvaluatedWeekMeta,
+        lastEvaluatedWeek.isAcceptableOrUnknown(
+          data['last_evaluated_week']!,
+          _lastEvaluatedWeekMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RewardStateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RewardStateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      plan: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plan'],
+      )!,
+      planExpiresAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}plan_expires_at'],
+      ),
+      tokenBalance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}token_balance'],
+      )!,
+      currentStreak: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}current_streak'],
+      )!,
+      profileProgress: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}profile_progress'],
+      )!,
+      bodyProgress: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}body_progress'],
+      )!,
+      calendarProgress: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}calendar_progress'],
+      )!,
+      lastEvaluatedWeek: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_evaluated_week'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RewardStatesTable createAlias(String alias) {
+    return $RewardStatesTable(attachedDatabase, alias);
+  }
+}
+
+class RewardStateRow extends DataClass implements Insertable<RewardStateRow> {
+  final int id;
+  final String plan;
+  final DateTime? planExpiresAt;
+  final int tokenBalance;
+  final int currentStreak;
+  final int profileProgress;
+  final int bodyProgress;
+  final int calendarProgress;
+  final DateTime? lastEvaluatedWeek;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const RewardStateRow({
+    required this.id,
+    required this.plan,
+    this.planExpiresAt,
+    required this.tokenBalance,
+    required this.currentStreak,
+    required this.profileProgress,
+    required this.bodyProgress,
+    required this.calendarProgress,
+    this.lastEvaluatedWeek,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['plan'] = Variable<String>(plan);
+    if (!nullToAbsent || planExpiresAt != null) {
+      map['plan_expires_at'] = Variable<DateTime>(planExpiresAt);
+    }
+    map['token_balance'] = Variable<int>(tokenBalance);
+    map['current_streak'] = Variable<int>(currentStreak);
+    map['profile_progress'] = Variable<int>(profileProgress);
+    map['body_progress'] = Variable<int>(bodyProgress);
+    map['calendar_progress'] = Variable<int>(calendarProgress);
+    if (!nullToAbsent || lastEvaluatedWeek != null) {
+      map['last_evaluated_week'] = Variable<DateTime>(lastEvaluatedWeek);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  RewardStatesCompanion toCompanion(bool nullToAbsent) {
+    return RewardStatesCompanion(
+      id: Value(id),
+      plan: Value(plan),
+      planExpiresAt: planExpiresAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(planExpiresAt),
+      tokenBalance: Value(tokenBalance),
+      currentStreak: Value(currentStreak),
+      profileProgress: Value(profileProgress),
+      bodyProgress: Value(bodyProgress),
+      calendarProgress: Value(calendarProgress),
+      lastEvaluatedWeek: lastEvaluatedWeek == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastEvaluatedWeek),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory RewardStateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RewardStateRow(
+      id: serializer.fromJson<int>(json['id']),
+      plan: serializer.fromJson<String>(json['plan']),
+      planExpiresAt: serializer.fromJson<DateTime?>(json['planExpiresAt']),
+      tokenBalance: serializer.fromJson<int>(json['tokenBalance']),
+      currentStreak: serializer.fromJson<int>(json['currentStreak']),
+      profileProgress: serializer.fromJson<int>(json['profileProgress']),
+      bodyProgress: serializer.fromJson<int>(json['bodyProgress']),
+      calendarProgress: serializer.fromJson<int>(json['calendarProgress']),
+      lastEvaluatedWeek: serializer.fromJson<DateTime?>(
+        json['lastEvaluatedWeek'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'plan': serializer.toJson<String>(plan),
+      'planExpiresAt': serializer.toJson<DateTime?>(planExpiresAt),
+      'tokenBalance': serializer.toJson<int>(tokenBalance),
+      'currentStreak': serializer.toJson<int>(currentStreak),
+      'profileProgress': serializer.toJson<int>(profileProgress),
+      'bodyProgress': serializer.toJson<int>(bodyProgress),
+      'calendarProgress': serializer.toJson<int>(calendarProgress),
+      'lastEvaluatedWeek': serializer.toJson<DateTime?>(lastEvaluatedWeek),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  RewardStateRow copyWith({
+    int? id,
+    String? plan,
+    Value<DateTime?> planExpiresAt = const Value.absent(),
+    int? tokenBalance,
+    int? currentStreak,
+    int? profileProgress,
+    int? bodyProgress,
+    int? calendarProgress,
+    Value<DateTime?> lastEvaluatedWeek = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => RewardStateRow(
+    id: id ?? this.id,
+    plan: plan ?? this.plan,
+    planExpiresAt: planExpiresAt.present
+        ? planExpiresAt.value
+        : this.planExpiresAt,
+    tokenBalance: tokenBalance ?? this.tokenBalance,
+    currentStreak: currentStreak ?? this.currentStreak,
+    profileProgress: profileProgress ?? this.profileProgress,
+    bodyProgress: bodyProgress ?? this.bodyProgress,
+    calendarProgress: calendarProgress ?? this.calendarProgress,
+    lastEvaluatedWeek: lastEvaluatedWeek.present
+        ? lastEvaluatedWeek.value
+        : this.lastEvaluatedWeek,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  RewardStateRow copyWithCompanion(RewardStatesCompanion data) {
+    return RewardStateRow(
+      id: data.id.present ? data.id.value : this.id,
+      plan: data.plan.present ? data.plan.value : this.plan,
+      planExpiresAt: data.planExpiresAt.present
+          ? data.planExpiresAt.value
+          : this.planExpiresAt,
+      tokenBalance: data.tokenBalance.present
+          ? data.tokenBalance.value
+          : this.tokenBalance,
+      currentStreak: data.currentStreak.present
+          ? data.currentStreak.value
+          : this.currentStreak,
+      profileProgress: data.profileProgress.present
+          ? data.profileProgress.value
+          : this.profileProgress,
+      bodyProgress: data.bodyProgress.present
+          ? data.bodyProgress.value
+          : this.bodyProgress,
+      calendarProgress: data.calendarProgress.present
+          ? data.calendarProgress.value
+          : this.calendarProgress,
+      lastEvaluatedWeek: data.lastEvaluatedWeek.present
+          ? data.lastEvaluatedWeek.value
+          : this.lastEvaluatedWeek,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RewardStateRow(')
+          ..write('id: $id, ')
+          ..write('plan: $plan, ')
+          ..write('planExpiresAt: $planExpiresAt, ')
+          ..write('tokenBalance: $tokenBalance, ')
+          ..write('currentStreak: $currentStreak, ')
+          ..write('profileProgress: $profileProgress, ')
+          ..write('bodyProgress: $bodyProgress, ')
+          ..write('calendarProgress: $calendarProgress, ')
+          ..write('lastEvaluatedWeek: $lastEvaluatedWeek, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    plan,
+    planExpiresAt,
+    tokenBalance,
+    currentStreak,
+    profileProgress,
+    bodyProgress,
+    calendarProgress,
+    lastEvaluatedWeek,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RewardStateRow &&
+          other.id == this.id &&
+          other.plan == this.plan &&
+          other.planExpiresAt == this.planExpiresAt &&
+          other.tokenBalance == this.tokenBalance &&
+          other.currentStreak == this.currentStreak &&
+          other.profileProgress == this.profileProgress &&
+          other.bodyProgress == this.bodyProgress &&
+          other.calendarProgress == this.calendarProgress &&
+          other.lastEvaluatedWeek == this.lastEvaluatedWeek &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RewardStatesCompanion extends UpdateCompanion<RewardStateRow> {
+  final Value<int> id;
+  final Value<String> plan;
+  final Value<DateTime?> planExpiresAt;
+  final Value<int> tokenBalance;
+  final Value<int> currentStreak;
+  final Value<int> profileProgress;
+  final Value<int> bodyProgress;
+  final Value<int> calendarProgress;
+  final Value<DateTime?> lastEvaluatedWeek;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const RewardStatesCompanion({
+    this.id = const Value.absent(),
+    this.plan = const Value.absent(),
+    this.planExpiresAt = const Value.absent(),
+    this.tokenBalance = const Value.absent(),
+    this.currentStreak = const Value.absent(),
+    this.profileProgress = const Value.absent(),
+    this.bodyProgress = const Value.absent(),
+    this.calendarProgress = const Value.absent(),
+    this.lastEvaluatedWeek = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  RewardStatesCompanion.insert({
+    this.id = const Value.absent(),
+    this.plan = const Value.absent(),
+    this.planExpiresAt = const Value.absent(),
+    this.tokenBalance = const Value.absent(),
+    this.currentStreak = const Value.absent(),
+    this.profileProgress = const Value.absent(),
+    this.bodyProgress = const Value.absent(),
+    this.calendarProgress = const Value.absent(),
+    this.lastEvaluatedWeek = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<RewardStateRow> custom({
+    Expression<int>? id,
+    Expression<String>? plan,
+    Expression<DateTime>? planExpiresAt,
+    Expression<int>? tokenBalance,
+    Expression<int>? currentStreak,
+    Expression<int>? profileProgress,
+    Expression<int>? bodyProgress,
+    Expression<int>? calendarProgress,
+    Expression<DateTime>? lastEvaluatedWeek,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (plan != null) 'plan': plan,
+      if (planExpiresAt != null) 'plan_expires_at': planExpiresAt,
+      if (tokenBalance != null) 'token_balance': tokenBalance,
+      if (currentStreak != null) 'current_streak': currentStreak,
+      if (profileProgress != null) 'profile_progress': profileProgress,
+      if (bodyProgress != null) 'body_progress': bodyProgress,
+      if (calendarProgress != null) 'calendar_progress': calendarProgress,
+      if (lastEvaluatedWeek != null) 'last_evaluated_week': lastEvaluatedWeek,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  RewardStatesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? plan,
+    Value<DateTime?>? planExpiresAt,
+    Value<int>? tokenBalance,
+    Value<int>? currentStreak,
+    Value<int>? profileProgress,
+    Value<int>? bodyProgress,
+    Value<int>? calendarProgress,
+    Value<DateTime?>? lastEvaluatedWeek,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return RewardStatesCompanion(
+      id: id ?? this.id,
+      plan: plan ?? this.plan,
+      planExpiresAt: planExpiresAt ?? this.planExpiresAt,
+      tokenBalance: tokenBalance ?? this.tokenBalance,
+      currentStreak: currentStreak ?? this.currentStreak,
+      profileProgress: profileProgress ?? this.profileProgress,
+      bodyProgress: bodyProgress ?? this.bodyProgress,
+      calendarProgress: calendarProgress ?? this.calendarProgress,
+      lastEvaluatedWeek: lastEvaluatedWeek ?? this.lastEvaluatedWeek,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (plan.present) {
+      map['plan'] = Variable<String>(plan.value);
+    }
+    if (planExpiresAt.present) {
+      map['plan_expires_at'] = Variable<DateTime>(planExpiresAt.value);
+    }
+    if (tokenBalance.present) {
+      map['token_balance'] = Variable<int>(tokenBalance.value);
+    }
+    if (currentStreak.present) {
+      map['current_streak'] = Variable<int>(currentStreak.value);
+    }
+    if (profileProgress.present) {
+      map['profile_progress'] = Variable<int>(profileProgress.value);
+    }
+    if (bodyProgress.present) {
+      map['body_progress'] = Variable<int>(bodyProgress.value);
+    }
+    if (calendarProgress.present) {
+      map['calendar_progress'] = Variable<int>(calendarProgress.value);
+    }
+    if (lastEvaluatedWeek.present) {
+      map['last_evaluated_week'] = Variable<DateTime>(lastEvaluatedWeek.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RewardStatesCompanion(')
+          ..write('id: $id, ')
+          ..write('plan: $plan, ')
+          ..write('planExpiresAt: $planExpiresAt, ')
+          ..write('tokenBalance: $tokenBalance, ')
+          ..write('currentStreak: $currentStreak, ')
+          ..write('profileProgress: $profileProgress, ')
+          ..write('bodyProgress: $bodyProgress, ')
+          ..write('calendarProgress: $calendarProgress, ')
+          ..write('lastEvaluatedWeek: $lastEvaluatedWeek, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RewardEventsTable extends RewardEvents
+    with TableInfo<$RewardEventsTable, RewardEventRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RewardEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _badgeKeyMeta = const VerificationMeta(
+    'badgeKey',
+  );
+  @override
+  late final GeneratedColumn<String> badgeKey = GeneratedColumn<String>(
+    'badge_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _occurredOnMeta = const VerificationMeta(
+    'occurredOn',
+  );
+  @override
+  late final GeneratedColumn<DateTime> occurredOn = GeneratedColumn<DateTime>(
+    'occurred_on',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    badgeKey,
+    amount,
+    occurredOn,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reward_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RewardEventRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('badge_key')) {
+      context.handle(
+        _badgeKeyMeta,
+        badgeKey.isAcceptableOrUnknown(data['badge_key']!, _badgeKeyMeta),
+      );
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('occurred_on')) {
+      context.handle(
+        _occurredOnMeta,
+        occurredOn.isAcceptableOrUnknown(data['occurred_on']!, _occurredOnMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_occurredOnMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RewardEventRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RewardEventRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      badgeKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}badge_key'],
+      ),
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      occurredOn: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}occurred_on'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RewardEventsTable createAlias(String alias) {
+    return $RewardEventsTable(attachedDatabase, alias);
+  }
+}
+
+class RewardEventRow extends DataClass implements Insertable<RewardEventRow> {
+  final String id;
+  final String? badgeKey;
+  final int amount;
+  final DateTime occurredOn;
+  final DateTime createdAt;
+  const RewardEventRow({
+    required this.id,
+    this.badgeKey,
+    required this.amount,
+    required this.occurredOn,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || badgeKey != null) {
+      map['badge_key'] = Variable<String>(badgeKey);
+    }
+    map['amount'] = Variable<int>(amount);
+    map['occurred_on'] = Variable<DateTime>(occurredOn);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  RewardEventsCompanion toCompanion(bool nullToAbsent) {
+    return RewardEventsCompanion(
+      id: Value(id),
+      badgeKey: badgeKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(badgeKey),
+      amount: Value(amount),
+      occurredOn: Value(occurredOn),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory RewardEventRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RewardEventRow(
+      id: serializer.fromJson<String>(json['id']),
+      badgeKey: serializer.fromJson<String?>(json['badgeKey']),
+      amount: serializer.fromJson<int>(json['amount']),
+      occurredOn: serializer.fromJson<DateTime>(json['occurredOn']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'badgeKey': serializer.toJson<String?>(badgeKey),
+      'amount': serializer.toJson<int>(amount),
+      'occurredOn': serializer.toJson<DateTime>(occurredOn),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  RewardEventRow copyWith({
+    String? id,
+    Value<String?> badgeKey = const Value.absent(),
+    int? amount,
+    DateTime? occurredOn,
+    DateTime? createdAt,
+  }) => RewardEventRow(
+    id: id ?? this.id,
+    badgeKey: badgeKey.present ? badgeKey.value : this.badgeKey,
+    amount: amount ?? this.amount,
+    occurredOn: occurredOn ?? this.occurredOn,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  RewardEventRow copyWithCompanion(RewardEventsCompanion data) {
+    return RewardEventRow(
+      id: data.id.present ? data.id.value : this.id,
+      badgeKey: data.badgeKey.present ? data.badgeKey.value : this.badgeKey,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      occurredOn: data.occurredOn.present
+          ? data.occurredOn.value
+          : this.occurredOn,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RewardEventRow(')
+          ..write('id: $id, ')
+          ..write('badgeKey: $badgeKey, ')
+          ..write('amount: $amount, ')
+          ..write('occurredOn: $occurredOn, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, badgeKey, amount, occurredOn, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RewardEventRow &&
+          other.id == this.id &&
+          other.badgeKey == this.badgeKey &&
+          other.amount == this.amount &&
+          other.occurredOn == this.occurredOn &&
+          other.createdAt == this.createdAt);
+}
+
+class RewardEventsCompanion extends UpdateCompanion<RewardEventRow> {
+  final Value<String> id;
+  final Value<String?> badgeKey;
+  final Value<int> amount;
+  final Value<DateTime> occurredOn;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const RewardEventsCompanion({
+    this.id = const Value.absent(),
+    this.badgeKey = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.occurredOn = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RewardEventsCompanion.insert({
+    required String id,
+    this.badgeKey = const Value.absent(),
+    required int amount,
+    required DateTime occurredOn,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       amount = Value(amount),
+       occurredOn = Value(occurredOn),
+       createdAt = Value(createdAt);
+  static Insertable<RewardEventRow> custom({
+    Expression<String>? id,
+    Expression<String>? badgeKey,
+    Expression<int>? amount,
+    Expression<DateTime>? occurredOn,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (badgeKey != null) 'badge_key': badgeKey,
+      if (amount != null) 'amount': amount,
+      if (occurredOn != null) 'occurred_on': occurredOn,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RewardEventsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? badgeKey,
+    Value<int>? amount,
+    Value<DateTime>? occurredOn,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return RewardEventsCompanion(
+      id: id ?? this.id,
+      badgeKey: badgeKey ?? this.badgeKey,
+      amount: amount ?? this.amount,
+      occurredOn: occurredOn ?? this.occurredOn,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (badgeKey.present) {
+      map['badge_key'] = Variable<String>(badgeKey.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (occurredOn.present) {
+      map['occurred_on'] = Variable<DateTime>(occurredOn.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RewardEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('badgeKey: $badgeKey, ')
+          ..write('amount: $amount, ')
+          ..write('occurredOn: $occurredOn, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FeatureUnlocksTable extends FeatureUnlocks
+    with TableInfo<$FeatureUnlocksTable, FeatureUnlockRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FeatureUnlocksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _featureKeyMeta = const VerificationMeta(
+    'featureKey',
+  );
+  @override
+  late final GeneratedColumn<String> featureKey = GeneratedColumn<String>(
+    'feature_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _unlockedUntilMeta = const VerificationMeta(
+    'unlockedUntil',
+  );
+  @override
+  late final GeneratedColumn<DateTime> unlockedUntil =
+      GeneratedColumn<DateTime>(
+        'unlocked_until',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [featureKey, unlockedUntil, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'feature_unlocks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FeatureUnlockRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('feature_key')) {
+      context.handle(
+        _featureKeyMeta,
+        featureKey.isAcceptableOrUnknown(data['feature_key']!, _featureKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_featureKeyMeta);
+    }
+    if (data.containsKey('unlocked_until')) {
+      context.handle(
+        _unlockedUntilMeta,
+        unlockedUntil.isAcceptableOrUnknown(
+          data['unlocked_until']!,
+          _unlockedUntilMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_unlockedUntilMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {featureKey};
+  @override
+  FeatureUnlockRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FeatureUnlockRow(
+      featureKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feature_key'],
+      )!,
+      unlockedUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}unlocked_until'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FeatureUnlocksTable createAlias(String alias) {
+    return $FeatureUnlocksTable(attachedDatabase, alias);
+  }
+}
+
+class FeatureUnlockRow extends DataClass
+    implements Insertable<FeatureUnlockRow> {
+  final String featureKey;
+  final DateTime unlockedUntil;
+  final DateTime updatedAt;
+  const FeatureUnlockRow({
+    required this.featureKey,
+    required this.unlockedUntil,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['feature_key'] = Variable<String>(featureKey);
+    map['unlocked_until'] = Variable<DateTime>(unlockedUntil);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  FeatureUnlocksCompanion toCompanion(bool nullToAbsent) {
+    return FeatureUnlocksCompanion(
+      featureKey: Value(featureKey),
+      unlockedUntil: Value(unlockedUntil),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory FeatureUnlockRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FeatureUnlockRow(
+      featureKey: serializer.fromJson<String>(json['featureKey']),
+      unlockedUntil: serializer.fromJson<DateTime>(json['unlockedUntil']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'featureKey': serializer.toJson<String>(featureKey),
+      'unlockedUntil': serializer.toJson<DateTime>(unlockedUntil),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  FeatureUnlockRow copyWith({
+    String? featureKey,
+    DateTime? unlockedUntil,
+    DateTime? updatedAt,
+  }) => FeatureUnlockRow(
+    featureKey: featureKey ?? this.featureKey,
+    unlockedUntil: unlockedUntil ?? this.unlockedUntil,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  FeatureUnlockRow copyWithCompanion(FeatureUnlocksCompanion data) {
+    return FeatureUnlockRow(
+      featureKey: data.featureKey.present
+          ? data.featureKey.value
+          : this.featureKey,
+      unlockedUntil: data.unlockedUntil.present
+          ? data.unlockedUntil.value
+          : this.unlockedUntil,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FeatureUnlockRow(')
+          ..write('featureKey: $featureKey, ')
+          ..write('unlockedUntil: $unlockedUntil, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(featureKey, unlockedUntil, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FeatureUnlockRow &&
+          other.featureKey == this.featureKey &&
+          other.unlockedUntil == this.unlockedUntil &&
+          other.updatedAt == this.updatedAt);
+}
+
+class FeatureUnlocksCompanion extends UpdateCompanion<FeatureUnlockRow> {
+  final Value<String> featureKey;
+  final Value<DateTime> unlockedUntil;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const FeatureUnlocksCompanion({
+    this.featureKey = const Value.absent(),
+    this.unlockedUntil = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FeatureUnlocksCompanion.insert({
+    required String featureKey,
+    required DateTime unlockedUntil,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : featureKey = Value(featureKey),
+       unlockedUntil = Value(unlockedUntil),
+       updatedAt = Value(updatedAt);
+  static Insertable<FeatureUnlockRow> custom({
+    Expression<String>? featureKey,
+    Expression<DateTime>? unlockedUntil,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (featureKey != null) 'feature_key': featureKey,
+      if (unlockedUntil != null) 'unlocked_until': unlockedUntil,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FeatureUnlocksCompanion copyWith({
+    Value<String>? featureKey,
+    Value<DateTime>? unlockedUntil,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return FeatureUnlocksCompanion(
+      featureKey: featureKey ?? this.featureKey,
+      unlockedUntil: unlockedUntil ?? this.unlockedUntil,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (featureKey.present) {
+      map['feature_key'] = Variable<String>(featureKey.value);
+    }
+    if (unlockedUntil.present) {
+      map['unlocked_until'] = Variable<DateTime>(unlockedUntil.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FeatureUnlocksCompanion(')
+          ..write('featureKey: $featureKey, ')
+          ..write('unlockedUntil: $unlockedUntil, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3978,6 +5346,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $SpecialHabitGraphsTable(this);
   late final $ReductionPlansTable reductionPlans = $ReductionPlansTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $RewardStatesTable rewardStates = $RewardStatesTable(this);
+  late final $RewardEventsTable rewardEvents = $RewardEventsTable(this);
+  late final $FeatureUnlocksTable featureUnlocks = $FeatureUnlocksTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3991,6 +5362,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     specialHabitGraphs,
     reductionPlans,
     appSettings,
+    rewardStates,
+    rewardEvents,
+    featureUnlocks,
   ];
 }
 
@@ -5227,6 +6601,7 @@ typedef $$BodyPartStatesTableCreateCompanionBuilder =
     BodyPartStatesCompanion Function({
       required String partKey,
       Value<int> level,
+      Value<double?> score,
       Value<int?> colorValue,
       required DateTime updatedAt,
       Value<String> syncStatus,
@@ -5237,6 +6612,7 @@ typedef $$BodyPartStatesTableUpdateCompanionBuilder =
     BodyPartStatesCompanion Function({
       Value<String> partKey,
       Value<int> level,
+      Value<double?> score,
       Value<int?> colorValue,
       Value<DateTime> updatedAt,
       Value<String> syncStatus,
@@ -5260,6 +6636,11 @@ class $$BodyPartStatesTableFilterComposer
 
   ColumnFilters<int> get level => $composableBuilder(
     column: $table.level,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get score => $composableBuilder(
+    column: $table.score,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5303,6 +6684,11 @@ class $$BodyPartStatesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get score => $composableBuilder(
+    column: $table.score,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get colorValue => $composableBuilder(
     column: $table.colorValue,
     builder: (column) => ColumnOrderings(column),
@@ -5338,6 +6724,9 @@ class $$BodyPartStatesTableAnnotationComposer
 
   GeneratedColumn<int> get level =>
       $composableBuilder(column: $table.level, builder: (column) => column);
+
+  GeneratedColumn<double> get score =>
+      $composableBuilder(column: $table.score, builder: (column) => column);
 
   GeneratedColumn<int> get colorValue => $composableBuilder(
     column: $table.colorValue,
@@ -5391,6 +6780,7 @@ class $$BodyPartStatesTableTableManager
               ({
                 Value<String> partKey = const Value.absent(),
                 Value<int> level = const Value.absent(),
+                Value<double?> score = const Value.absent(),
                 Value<int?> colorValue = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
@@ -5399,6 +6789,7 @@ class $$BodyPartStatesTableTableManager
               }) => BodyPartStatesCompanion(
                 partKey: partKey,
                 level: level,
+                score: score,
                 colorValue: colorValue,
                 updatedAt: updatedAt,
                 syncStatus: syncStatus,
@@ -5409,6 +6800,7 @@ class $$BodyPartStatesTableTableManager
               ({
                 required String partKey,
                 Value<int> level = const Value.absent(),
+                Value<double?> score = const Value.absent(),
                 Value<int?> colorValue = const Value.absent(),
                 required DateTime updatedAt,
                 Value<String> syncStatus = const Value.absent(),
@@ -5417,6 +6809,7 @@ class $$BodyPartStatesTableTableManager
               }) => BodyPartStatesCompanion.insert(
                 partKey: partKey,
                 level: level,
+                score: score,
                 colorValue: colorValue,
                 updatedAt: updatedAt,
                 syncStatus: syncStatus,
@@ -7168,6 +8561,702 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSetting,
       PrefetchHooks Function()
     >;
+typedef $$RewardStatesTableCreateCompanionBuilder =
+    RewardStatesCompanion Function({
+      Value<int> id,
+      Value<String> plan,
+      Value<DateTime?> planExpiresAt,
+      Value<int> tokenBalance,
+      Value<int> currentStreak,
+      Value<int> profileProgress,
+      Value<int> bodyProgress,
+      Value<int> calendarProgress,
+      Value<DateTime?> lastEvaluatedWeek,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$RewardStatesTableUpdateCompanionBuilder =
+    RewardStatesCompanion Function({
+      Value<int> id,
+      Value<String> plan,
+      Value<DateTime?> planExpiresAt,
+      Value<int> tokenBalance,
+      Value<int> currentStreak,
+      Value<int> profileProgress,
+      Value<int> bodyProgress,
+      Value<int> calendarProgress,
+      Value<DateTime?> lastEvaluatedWeek,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$RewardStatesTableFilterComposer
+    extends Composer<_$AppDatabase, $RewardStatesTable> {
+  $$RewardStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plan => $composableBuilder(
+    column: $table.plan,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get planExpiresAt => $composableBuilder(
+    column: $table.planExpiresAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tokenBalance => $composableBuilder(
+    column: $table.tokenBalance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get currentStreak => $composableBuilder(
+    column: $table.currentStreak,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get profileProgress => $composableBuilder(
+    column: $table.profileProgress,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bodyProgress => $composableBuilder(
+    column: $table.bodyProgress,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get calendarProgress => $composableBuilder(
+    column: $table.calendarProgress,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastEvaluatedWeek => $composableBuilder(
+    column: $table.lastEvaluatedWeek,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RewardStatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RewardStatesTable> {
+  $$RewardStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get plan => $composableBuilder(
+    column: $table.plan,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get planExpiresAt => $composableBuilder(
+    column: $table.planExpiresAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tokenBalance => $composableBuilder(
+    column: $table.tokenBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get currentStreak => $composableBuilder(
+    column: $table.currentStreak,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get profileProgress => $composableBuilder(
+    column: $table.profileProgress,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bodyProgress => $composableBuilder(
+    column: $table.bodyProgress,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get calendarProgress => $composableBuilder(
+    column: $table.calendarProgress,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastEvaluatedWeek => $composableBuilder(
+    column: $table.lastEvaluatedWeek,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RewardStatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RewardStatesTable> {
+  $$RewardStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get plan =>
+      $composableBuilder(column: $table.plan, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get planExpiresAt => $composableBuilder(
+    column: $table.planExpiresAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get tokenBalance => $composableBuilder(
+    column: $table.tokenBalance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get currentStreak => $composableBuilder(
+    column: $table.currentStreak,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get profileProgress => $composableBuilder(
+    column: $table.profileProgress,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get bodyProgress => $composableBuilder(
+    column: $table.bodyProgress,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get calendarProgress => $composableBuilder(
+    column: $table.calendarProgress,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastEvaluatedWeek => $composableBuilder(
+    column: $table.lastEvaluatedWeek,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$RewardStatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RewardStatesTable,
+          RewardStateRow,
+          $$RewardStatesTableFilterComposer,
+          $$RewardStatesTableOrderingComposer,
+          $$RewardStatesTableAnnotationComposer,
+          $$RewardStatesTableCreateCompanionBuilder,
+          $$RewardStatesTableUpdateCompanionBuilder,
+          (
+            RewardStateRow,
+            BaseReferences<_$AppDatabase, $RewardStatesTable, RewardStateRow>,
+          ),
+          RewardStateRow,
+          PrefetchHooks Function()
+        > {
+  $$RewardStatesTableTableManager(_$AppDatabase db, $RewardStatesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RewardStatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RewardStatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RewardStatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> plan = const Value.absent(),
+                Value<DateTime?> planExpiresAt = const Value.absent(),
+                Value<int> tokenBalance = const Value.absent(),
+                Value<int> currentStreak = const Value.absent(),
+                Value<int> profileProgress = const Value.absent(),
+                Value<int> bodyProgress = const Value.absent(),
+                Value<int> calendarProgress = const Value.absent(),
+                Value<DateTime?> lastEvaluatedWeek = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => RewardStatesCompanion(
+                id: id,
+                plan: plan,
+                planExpiresAt: planExpiresAt,
+                tokenBalance: tokenBalance,
+                currentStreak: currentStreak,
+                profileProgress: profileProgress,
+                bodyProgress: bodyProgress,
+                calendarProgress: calendarProgress,
+                lastEvaluatedWeek: lastEvaluatedWeek,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> plan = const Value.absent(),
+                Value<DateTime?> planExpiresAt = const Value.absent(),
+                Value<int> tokenBalance = const Value.absent(),
+                Value<int> currentStreak = const Value.absent(),
+                Value<int> profileProgress = const Value.absent(),
+                Value<int> bodyProgress = const Value.absent(),
+                Value<int> calendarProgress = const Value.absent(),
+                Value<DateTime?> lastEvaluatedWeek = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => RewardStatesCompanion.insert(
+                id: id,
+                plan: plan,
+                planExpiresAt: planExpiresAt,
+                tokenBalance: tokenBalance,
+                currentStreak: currentStreak,
+                profileProgress: profileProgress,
+                bodyProgress: bodyProgress,
+                calendarProgress: calendarProgress,
+                lastEvaluatedWeek: lastEvaluatedWeek,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RewardStatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RewardStatesTable,
+      RewardStateRow,
+      $$RewardStatesTableFilterComposer,
+      $$RewardStatesTableOrderingComposer,
+      $$RewardStatesTableAnnotationComposer,
+      $$RewardStatesTableCreateCompanionBuilder,
+      $$RewardStatesTableUpdateCompanionBuilder,
+      (
+        RewardStateRow,
+        BaseReferences<_$AppDatabase, $RewardStatesTable, RewardStateRow>,
+      ),
+      RewardStateRow,
+      PrefetchHooks Function()
+    >;
+typedef $$RewardEventsTableCreateCompanionBuilder =
+    RewardEventsCompanion Function({
+      required String id,
+      Value<String?> badgeKey,
+      required int amount,
+      required DateTime occurredOn,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$RewardEventsTableUpdateCompanionBuilder =
+    RewardEventsCompanion Function({
+      Value<String> id,
+      Value<String?> badgeKey,
+      Value<int> amount,
+      Value<DateTime> occurredOn,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$RewardEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $RewardEventsTable> {
+  $$RewardEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get badgeKey => $composableBuilder(
+    column: $table.badgeKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get occurredOn => $composableBuilder(
+    column: $table.occurredOn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RewardEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RewardEventsTable> {
+  $$RewardEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get badgeKey => $composableBuilder(
+    column: $table.badgeKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get occurredOn => $composableBuilder(
+    column: $table.occurredOn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RewardEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RewardEventsTable> {
+  $$RewardEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get badgeKey =>
+      $composableBuilder(column: $table.badgeKey, builder: (column) => column);
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get occurredOn => $composableBuilder(
+    column: $table.occurredOn,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$RewardEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RewardEventsTable,
+          RewardEventRow,
+          $$RewardEventsTableFilterComposer,
+          $$RewardEventsTableOrderingComposer,
+          $$RewardEventsTableAnnotationComposer,
+          $$RewardEventsTableCreateCompanionBuilder,
+          $$RewardEventsTableUpdateCompanionBuilder,
+          (
+            RewardEventRow,
+            BaseReferences<_$AppDatabase, $RewardEventsTable, RewardEventRow>,
+          ),
+          RewardEventRow,
+          PrefetchHooks Function()
+        > {
+  $$RewardEventsTableTableManager(_$AppDatabase db, $RewardEventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RewardEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RewardEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RewardEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> badgeKey = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<DateTime> occurredOn = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RewardEventsCompanion(
+                id: id,
+                badgeKey: badgeKey,
+                amount: amount,
+                occurredOn: occurredOn,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> badgeKey = const Value.absent(),
+                required int amount,
+                required DateTime occurredOn,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RewardEventsCompanion.insert(
+                id: id,
+                badgeKey: badgeKey,
+                amount: amount,
+                occurredOn: occurredOn,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RewardEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RewardEventsTable,
+      RewardEventRow,
+      $$RewardEventsTableFilterComposer,
+      $$RewardEventsTableOrderingComposer,
+      $$RewardEventsTableAnnotationComposer,
+      $$RewardEventsTableCreateCompanionBuilder,
+      $$RewardEventsTableUpdateCompanionBuilder,
+      (
+        RewardEventRow,
+        BaseReferences<_$AppDatabase, $RewardEventsTable, RewardEventRow>,
+      ),
+      RewardEventRow,
+      PrefetchHooks Function()
+    >;
+typedef $$FeatureUnlocksTableCreateCompanionBuilder =
+    FeatureUnlocksCompanion Function({
+      required String featureKey,
+      required DateTime unlockedUntil,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$FeatureUnlocksTableUpdateCompanionBuilder =
+    FeatureUnlocksCompanion Function({
+      Value<String> featureKey,
+      Value<DateTime> unlockedUntil,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$FeatureUnlocksTableFilterComposer
+    extends Composer<_$AppDatabase, $FeatureUnlocksTable> {
+  $$FeatureUnlocksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get featureKey => $composableBuilder(
+    column: $table.featureKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get unlockedUntil => $composableBuilder(
+    column: $table.unlockedUntil,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FeatureUnlocksTableOrderingComposer
+    extends Composer<_$AppDatabase, $FeatureUnlocksTable> {
+  $$FeatureUnlocksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get featureKey => $composableBuilder(
+    column: $table.featureKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get unlockedUntil => $composableBuilder(
+    column: $table.unlockedUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FeatureUnlocksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FeatureUnlocksTable> {
+  $$FeatureUnlocksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get featureKey => $composableBuilder(
+    column: $table.featureKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get unlockedUntil => $composableBuilder(
+    column: $table.unlockedUntil,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$FeatureUnlocksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FeatureUnlocksTable,
+          FeatureUnlockRow,
+          $$FeatureUnlocksTableFilterComposer,
+          $$FeatureUnlocksTableOrderingComposer,
+          $$FeatureUnlocksTableAnnotationComposer,
+          $$FeatureUnlocksTableCreateCompanionBuilder,
+          $$FeatureUnlocksTableUpdateCompanionBuilder,
+          (
+            FeatureUnlockRow,
+            BaseReferences<
+              _$AppDatabase,
+              $FeatureUnlocksTable,
+              FeatureUnlockRow
+            >,
+          ),
+          FeatureUnlockRow,
+          PrefetchHooks Function()
+        > {
+  $$FeatureUnlocksTableTableManager(
+    _$AppDatabase db,
+    $FeatureUnlocksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FeatureUnlocksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FeatureUnlocksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FeatureUnlocksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> featureKey = const Value.absent(),
+                Value<DateTime> unlockedUntil = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FeatureUnlocksCompanion(
+                featureKey: featureKey,
+                unlockedUntil: unlockedUntil,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String featureKey,
+                required DateTime unlockedUntil,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FeatureUnlocksCompanion.insert(
+                featureKey: featureKey,
+                unlockedUntil: unlockedUntil,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FeatureUnlocksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FeatureUnlocksTable,
+      FeatureUnlockRow,
+      $$FeatureUnlocksTableFilterComposer,
+      $$FeatureUnlocksTableOrderingComposer,
+      $$FeatureUnlocksTableAnnotationComposer,
+      $$FeatureUnlocksTableCreateCompanionBuilder,
+      $$FeatureUnlocksTableUpdateCompanionBuilder,
+      (
+        FeatureUnlockRow,
+        BaseReferences<_$AppDatabase, $FeatureUnlocksTable, FeatureUnlockRow>,
+      ),
+      FeatureUnlockRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7188,4 +9277,10 @@ class $AppDatabaseManager {
       $$ReductionPlansTableTableManager(_db, _db.reductionPlans);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$RewardStatesTableTableManager get rewardStates =>
+      $$RewardStatesTableTableManager(_db, _db.rewardStates);
+  $$RewardEventsTableTableManager get rewardEvents =>
+      $$RewardEventsTableTableManager(_db, _db.rewardEvents);
+  $$FeatureUnlocksTableTableManager get featureUnlocks =>
+      $$FeatureUnlocksTableTableManager(_db, _db.featureUnlocks);
 }

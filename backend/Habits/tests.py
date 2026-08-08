@@ -1,6 +1,12 @@
+import re
+
 from django.apps import apps
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core import mail
 from django.test import SimpleTestCase
+from django.test.utils import override_settings
+from rest_framework.test import APITestCase
 
 from .serializers import SyncRequestSerializer
 
@@ -51,3 +57,49 @@ class SyncRequestSerializerTests(SimpleTestCase):
 
         self.assertFalse(serializer.is_valid())
         self.assertIn('non_field_errors', serializer.errors)
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class EmailSignupTests(APITestCase):
+    def test_email_is_verified_before_password_and_login_uses_email(self):
+        start = self.client.post(
+            '/api/v1/auth/email/start/',
+            {'email': 'Person@Example.com'},
+            format='json',
+        )
+        self.assertEqual(start.status_code, 202)
+        self.assertEqual(len(mail.outbox), 1)
+        code = re.search(r'\b(\d{6})\b', mail.outbox[0].body).group(1)
+
+        verify = self.client.post(
+            '/api/v1/auth/email/verify/',
+            {'challenge_id': start.data['challenge_id'], 'code': code},
+            format='json',
+        )
+        self.assertEqual(verify.status_code, 200)
+
+        complete = self.client.post(
+            '/api/v1/auth/email/complete/',
+            {
+                'challenge_id': start.data['challenge_id'],
+                'setup_token': verify.data['setup_token'],
+                'password': 'A-long-test-password-2048!',
+            },
+            format='json',
+        )
+        self.assertEqual(complete.status_code, 201)
+        self.assertIn('token', complete.data)
+        self.assertTrue(
+            get_user_model().objects.filter(email='person@example.com').exists()
+        )
+
+        login = self.client.post(
+            '/api/v1/auth/email/login/',
+            {
+                'email': 'person@example.com',
+                'password': 'A-long-test-password-2048!',
+            },
+            format='json',
+        )
+        self.assertEqual(login.status_code, 200)
+        self.assertIn('token', login.data)

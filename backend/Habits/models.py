@@ -11,6 +11,26 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
 
 
+class EmailSignupChallenge(models.Model):
+    """Short-lived proof that a person controls an email address."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(db_index=True)
+    code_hash = models.CharField(max_length=128)
+    setup_token_hash = models.CharField(max_length=128, blank=True)
+    expires_at = models.DateTimeField(db_index=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+
+        return timezone.now() >= self.expires_at
+
+
 class SyncRecord(models.Model):
     """Shared conflict and deletion fields for data originating on a device."""
 

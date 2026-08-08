@@ -48,8 +48,10 @@ replacing Django's default user model later.
 All API endpoints use JSON and are versioned under `/api/v1/`:
 
 - `GET /api/v1/health/` — unauthenticated health check
-- `POST /api/v1/auth/register/` — create an account and return an API token
-- `POST /api/v1/auth/login/` — return an API token
+- `POST /api/v1/auth/email/start/` — email a six-digit verification code
+- `POST /api/v1/auth/email/verify/` — verify the code and receive a short-lived password setup token
+- `POST /api/v1/auth/email/complete/` — create the password and receive an API token
+- `POST /api/v1/auth/email/login/` — log in with email and password
 - `POST /api/v1/auth/logout/` — invalidate the current token
 - `GET|PATCH /api/v1/me/` — read or update the signed-in user
 - `POST /api/v1/sync/` — push pending local changes and pull server changes
@@ -64,6 +66,15 @@ Authorization: Token <token returned by register or login>
 
 Use HTTPS outside local development because API tokens must not travel over an
 unencrypted connection.
+
+## Verification email delivery
+
+Local development uses Django's console email backend, so verification messages
+and codes appear in the terminal running `python manage.py runserver`. To send
+real messages, set `DJANGO_EMAIL_BACKEND` to
+`django.core.mail.backends.smtp.EmailBackend` and fill the `EMAIL_*` values in
+`backend/.env`. Use the SMTP credentials supplied by your email provider; do not
+commit them to the repository.
 
 ## Offline sync contract
 

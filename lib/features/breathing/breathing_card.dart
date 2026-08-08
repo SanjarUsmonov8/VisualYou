@@ -6,7 +6,9 @@ import 'package:visualyou/l10n/app_strings.dart';
 enum _BreathingPhase { inhale, holdAfterInhale, exhale, holdAfterExhale }
 
 class BreathingCard extends StatefulWidget {
-  const BreathingCard({super.key});
+  const BreathingCard({this.onThreeMinutesReached, super.key});
+
+  final VoidCallback? onThreeMinutesReached;
 
   @override
   State<BreathingCard> createState() => _BreathingCardState();
@@ -19,6 +21,8 @@ class _BreathingCardState extends State<BreathingCard>
   bool _isRunning = false;
   _BreathingPhase _phase = _BreathingPhase.inhale;
   int _secondsRemaining = 4;
+  int _totalBreathingSeconds = 0;
+  bool _threeMinuteRewardSent = false;
 
   @override
   void initState() {
@@ -206,6 +210,11 @@ class _BreathingCardState extends State<BreathingCard>
     }
     _phaseTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || !_isRunning) return;
+      _totalBreathingSeconds++;
+      if (_totalBreathingSeconds >= 180 && !_threeMinuteRewardSent) {
+        _threeMinuteRewardSent = true;
+        widget.onThreeMinutesReached?.call();
+      }
       if (_secondsRemaining > 1) {
         setState(() => _secondsRemaining--);
       } else {
