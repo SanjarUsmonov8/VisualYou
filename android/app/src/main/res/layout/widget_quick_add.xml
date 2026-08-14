@@ -1,0 +1,28 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical">
+
+    <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Quick Add" android:textColor="@color/widget_text" android:textSize="17sp" android:textStyle="bold" />
+    <TextView android:id="@+id/widget_subtitle" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginBottom="7dp" android:text="Visual You" android:textColor="@color/widget_text_muted" android:textSize="11sp" />
+
+    <LinearLayout android:id="@+id/quick_row_0" style="@style/WidgetHabitRow">
+        <TextView android:id="@+id/quick_name_0" style="@style/WidgetHabitName" />
+        <TextView android:id="@+id/quick_positive_0" style="@style/WidgetHabitAction" android:text="👍" />
+        <TextView android:id="@+id/quick_negative_0" style="@style/WidgetHabitAction" android:text="👎" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/quick_row_1" style="@style/WidgetHabitRow">
+        <TextView android:id="@+id/quick_name_1" style="@style/WidgetHabitName" />
+        <TextView android:id="@+id/quick_positive_1" style="@style/WidgetHabitAction" android:text="👍" />
+        <TextView android:id="@+id/quick_negative_1" style="@style/WidgetHabitAction" android:text="👎" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/quick_row_2" style="@style/WidgetHabitRow">
+        <TextView android:id="@+id/quick_name_2" style="@style/WidgetHabitName" />
+        <TextView android:id="@+id/quick_positive_2" style="@style/WidgetHabitAction" android:text="👍" />
+        <TextView android:id="@+id/quick_negative_2" style="@style/WidgetHabitAction" android:text="👎" />
+    </LinearLayout>
+</LinearLayout>

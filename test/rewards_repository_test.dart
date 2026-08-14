@@ -89,6 +89,7 @@ void main() {
       await rewards.setPlan(MembershipPlan.plus, now: DateTime(2026, 8, 20));
       final snapshot = await rewards.loadSnapshot(now: DateTime(2026, 8, 20));
       expect(snapshot.isPlus, isTrue);
+      expect(snapshot.planExpiresAt, DateTime(2026, 9, 20));
       expect(snapshot.tokenBalance, 210);
       expect(snapshot.profileProgress, 210);
       expect(

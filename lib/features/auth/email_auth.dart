@@ -87,6 +87,27 @@ class EmailAuthApi {
     await _saveToken(data);
   }
 
+  Future<bool> logout() async {
+    final token = await _secureStorage.read(key: _tokenKey);
+    if (token == null || token.isEmpty) return false;
+    try {
+      await _client
+          .post(
+            Uri.parse('$_baseUrl/auth/logout/'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Token $token',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (_) {
+      // Local sign-out must still work while the backend is unavailable.
+    } finally {
+      await _secureStorage.delete(key: _tokenKey);
+    }
+    return true;
+  }
+
   Future<void> _saveToken(Map<String, dynamic> data) async {
     final token = data['token'];
     if (token is! String || token.isEmpty) {

@@ -390,7 +390,8 @@ class DriftHabitRepository implements HabitRepository {
     final customHabits =
         await (database.select(database.habitDefinitions)..where(
               (habit) =>
-                  habit.category.isIn(const ['custom_good', 'custom_bad']),
+                  habit.category.isIn(const ['custom_good', 'custom_bad']) &
+                  habit.deletedAt.isNull(),
             ))
             .get();
     if (customHabits.length >= 2) {
@@ -410,6 +411,80 @@ class DriftHabitRepository implements HabitRepository {
           ),
         );
     return id;
+  }
+
+  @override
+  Future<void> updateCustomHabit({
+    required String habitId,
+    required String name,
+    required bool isUnwanted,
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) throw ArgumentError.value(name, 'name');
+    final existing =
+        await (database.select(database.habitDefinitions)..where(
+              (habit) => habit.id.equals(habitId) & habit.deletedAt.isNull(),
+            ))
+            .getSingleOrNull();
+    if (existing == null ||
+        !const ['custom_good', 'custom_bad'].contains(existing.category)) {
+      throw StateError('Custom habit not found.');
+    }
+    final now = DateTime.now();
+    await (database.update(
+      database.habitDefinitions,
+    )..where((habit) => habit.id.equals(habitId))).write(
+      HabitDefinitionsCompanion(
+        nameKey: Value(trimmed),
+        category: Value(isUnwanted ? 'custom_bad' : 'custom_good'),
+        updatedAt: Value(now),
+        syncStatus: const Value('pending'),
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteCustomHabit(String habitId) async {
+    final existing =
+        await (database.select(database.habitDefinitions)..where(
+              (habit) => habit.id.equals(habitId) & habit.deletedAt.isNull(),
+            ))
+            .getSingleOrNull();
+    if (existing == null ||
+        !const ['custom_good', 'custom_bad'].contains(existing.category)) {
+      throw StateError('Custom habit not found.');
+    }
+    final now = DateTime.now();
+    await database.transaction(() async {
+      await (database.delete(
+        database.customGraphRules,
+      )..where((row) => row.habitId.equals(habitId))).go();
+      await (database.delete(
+        database.specialHabitGraphs,
+      )..where((row) => row.habitId.equals(habitId))).go();
+      await (database.update(database.reductionPlans)..where(
+            (row) => row.habitId.equals(habitId) & row.deletedAt.isNull(),
+          ))
+          .write(
+            ReductionPlansCompanion(
+              isActive: const Value(false),
+              deletedAt: Value(now),
+              updatedAt: Value(now),
+              syncStatus: const Value('pending'),
+            ),
+          );
+      await (database.update(
+        database.habitDefinitions,
+      )..where((habit) => habit.id.equals(habitId))).write(
+        HabitDefinitionsCompanion(
+          isActive: const Value(false),
+          isFavorite: const Value(false),
+          deletedAt: Value(now),
+          updatedAt: Value(now),
+          syncStatus: const Value('pending'),
+        ),
+      );
+    });
   }
 
   @override

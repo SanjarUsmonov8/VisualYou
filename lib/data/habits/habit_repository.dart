@@ -121,6 +121,14 @@ abstract interface class HabitRepository {
     required bool isUnwanted,
   });
 
+  Future<void> updateCustomHabit({
+    required String habitId,
+    required String name,
+    required bool isUnwanted,
+  });
+
+  Future<void> deleteCustomHabit(String habitId);
+
   Stream<List<DailyProgressPoint>> watchGraphHistory({
     String metricKey = 'total_actions',
     String? habitId,

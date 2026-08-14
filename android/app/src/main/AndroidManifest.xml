@@ -25,7 +25,33 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.LAUNCH" />
+            </intent-filter>
         </activity>
+        <receiver android:name=".QuickAddWidgetProvider" android:exported="true" android:label="@string/quick_add_widget_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_add_widget_info" />
+        </receiver>
+        <receiver android:name=".SingleHabitWidgetProvider" android:exported="true" android:label="@string/single_habit_widget_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/single_habit_widget_info" />
+        </receiver>
+        <receiver android:name=".ReductionCalendarWidgetProvider" android:exported="true" android:label="@string/reduction_widget_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/reduction_calendar_widget_info" />
+        </receiver>
+        <receiver android:name=".MainCalendarWidgetProvider" android:exported="true" android:label="@string/main_calendar_widget_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/main_calendar_widget_info" />
+        </receiver>
+        <receiver android:name=".StreakCalendarWidgetProvider" android:exported="true" android:label="@string/streak_calendar_widget_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/streak_calendar_widget_info" />
+        </receiver>
+        <receiver android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver" android:exported="true">
+            <intent-filter><action android:name="es.antonborri.home_widget.action.BACKGROUND" /></intent-filter>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

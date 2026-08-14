@@ -624,6 +624,30 @@ const Map<String, Map<String, String>> _translations = {
     'Next': 'Next',
     'Previous': 'Previous',
     'Choose language': 'Choose language',
+    'App appearance': 'App appearance',
+    'Theme': 'Theme',
+    'Choose how the app looks.': 'Choose how the app looks.',
+    'Used throughout the app.': 'Used throughout the app.',
+    'Language used throughout the app.': 'Language used throughout the app.',
+    'Rewards and access': 'Rewards and access',
+    'Token markers show the cost of optional changes or extended features. Choose tokens or a rewarded ad when offered.':
+        'Token markers show the cost of optional changes or extended features. Choose tokens or a rewarded ad when offered.',
+    'Badges grow with profile, body, and calendar progress. Completing milestones can award tokens.':
+        'Badges grow with profile, body, and calendar progress. Completing milestones can award tokens.',
+    'Ads': 'Ads',
+    'Rewarded ads are an optional alternative to tokens. Plus includes fewer on-board ads.':
+        'Rewarded ads are an optional alternative to tokens. Plus includes fewer on-board ads.',
+    'Free and Plus access': 'Free and Plus access',
+    'Free includes limited core features. Plus makes core features unlimited, while premium extensions can still require the displayed token amount or an ad.':
+        'Free includes limited core features. Plus makes core features unlimited, while premium extensions can still require the displayed token amount or an ad.',
+    'Privacy and policies': 'Privacy and policies',
+    'Log out': 'Log out',
+    'Sign out of the account on this device. Local habit data stays on the phone.':
+        'Sign out of the account on this device. Local habit data stays on the phone.',
+    'Log out of this account on this device?':
+        'Log out of this account on this device?',
+    'Logged out': 'Logged out',
+    'No signed-in account': 'No signed-in account',
     'Welcome page preview': 'Welcome page preview',
     'Open the welcome pages without resetting your onboarding progress.':
         'Open the welcome pages without resetting your onboarding progress.',
@@ -889,6 +913,30 @@ const Map<String, Map<String, String>> _translations = {
     'Next': 'Siguiente',
     'Previous': 'Anterior',
     'Choose language': 'Elegir idioma',
+    'App appearance': 'Apariencia de la aplicación',
+    'Theme': 'Tema',
+    'Choose how the app looks.': 'Elige cómo se ve la aplicación.',
+    'Used throughout the app.': 'Se usa en toda la aplicación.',
+    'Language used throughout the app.': 'Idioma usado en toda la aplicación.',
+    'Rewards and access': 'Recompensas y acceso',
+    'Token markers show the cost of optional changes or extended features. Choose tokens or a rewarded ad when offered.':
+        'Los indicadores de fichas muestran el coste de cambios opcionales o funciones ampliadas. Elige fichas o un anuncio con recompensa cuando esté disponible.',
+    'Badges grow with profile, body, and calendar progress. Completing milestones can award tokens.':
+        'Las insignias avanzan con el perfil, el cuerpo y el calendario. Completar objetivos puede otorgar fichas.',
+    'Ads': 'Anuncios',
+    'Rewarded ads are an optional alternative to tokens. Plus includes fewer on-board ads.':
+        'Los anuncios con recompensa son una alternativa opcional a las fichas. Plus incluye menos anuncios integrados.',
+    'Free and Plus access': 'Acceso Free y Plus',
+    'Free includes limited core features. Plus makes core features unlimited, while premium extensions can still require the displayed token amount or an ad.':
+        'Free incluye funciones principales limitadas. Plus hace ilimitadas las funciones principales, aunque las extensiones premium aún pueden requerir las fichas indicadas o un anuncio.',
+    'Privacy and policies': 'Privacidad y políticas',
+    'Log out': 'Cerrar sesión',
+    'Sign out of the account on this device. Local habit data stays on the phone.':
+        'Cierra la sesión de la cuenta en este dispositivo. Los datos locales de hábitos permanecen en el teléfono.',
+    'Log out of this account on this device?':
+        '¿Cerrar la sesión de esta cuenta en este dispositivo?',
+    'Logged out': 'Sesión cerrada',
+    'No signed-in account': 'No hay una cuenta con sesión iniciada',
     'Welcome page preview': 'Vista previa de bienvenida',
     'Open the welcome pages without resetting your onboarding progress.':
         'Abre las páginas de bienvenida sin restablecer tu progreso de introducción.',
@@ -1153,6 +1201,30 @@ const Map<String, Map<String, String>> _translations = {
     'Next': 'Далее',
     'Previous': 'Назад',
     'Choose language': 'Выбрать язык',
+    'App appearance': 'Внешний вид приложения',
+    'Theme': 'Тема',
+    'Choose how the app looks.': 'Выберите внешний вид приложения.',
+    'Used throughout the app.': 'Используется во всём приложении.',
+    'Language used throughout the app.': 'Язык всего приложения.',
+    'Rewards and access': 'Награды и доступ',
+    'Token markers show the cost of optional changes or extended features. Choose tokens or a rewarded ad when offered.':
+        'Значки жетонов показывают стоимость дополнительных изменений и функций. Используйте жетоны или рекламу с вознаграждением, когда она доступна.',
+    'Badges grow with profile, body, and calendar progress. Completing milestones can award tokens.':
+        'Значки развиваются вместе с прогрессом профиля, тела и календаря. За достижение целей можно получить жетоны.',
+    'Ads': 'Реклама',
+    'Rewarded ads are an optional alternative to tokens. Plus includes fewer on-board ads.':
+        'Реклама с вознаграждением — необязательная альтернатива жетонам. В Plus меньше встроенной рекламы.',
+    'Free and Plus access': 'Доступ Free и Plus',
+    'Free includes limited core features. Plus makes core features unlimited, while premium extensions can still require the displayed token amount or an ad.':
+        'Free включает ограниченные основные функции. В Plus основные функции не ограничены, но премиум-расширения всё ещё могут требовать указанное число жетонов или рекламу.',
+    'Privacy and policies': 'Конфиденциальность и правила',
+    'Log out': 'Выйти',
+    'Sign out of the account on this device. Local habit data stays on the phone.':
+        'Выйдите из аккаунта на этом устройстве. Локальные данные привычек останутся на телефоне.',
+    'Log out of this account on this device?':
+        'Выйти из этого аккаунта на данном устройстве?',
+    'Logged out': 'Вы вышли из аккаунта',
+    'No signed-in account': 'Нет аккаунта с активным входом',
     'Welcome page preview': 'Просмотр страниц приветствия',
     'Open the welcome pages without resetting your onboarding progress.':
         'Откройте страницы приветствия, не сбрасывая прогресс знакомства с приложением.',
@@ -1418,6 +1490,31 @@ const Map<String, Map<String, String>> _translations = {
     'Next': 'Suivant',
     'Previous': 'Précédent',
     'Choose language': 'Choisir la langue',
+    'App appearance': 'Apparence de l’application',
+    'Theme': 'Thème',
+    'Choose how the app looks.': 'Choisissez l’apparence de l’application.',
+    'Used throughout the app.': 'Utilisé dans toute l’application.',
+    'Language used throughout the app.':
+        'Langue utilisée dans toute l’application.',
+    'Rewards and access': 'Récompenses et accès',
+    'Token markers show the cost of optional changes or extended features. Choose tokens or a rewarded ad when offered.':
+        'Les marqueurs de jetons indiquent le coût des modifications facultatives ou des fonctions étendues. Choisissez des jetons ou une publicité récompensée lorsqu’elle est proposée.',
+    'Badges grow with profile, body, and calendar progress. Completing milestones can award tokens.':
+        'Les badges progressent avec le profil, le corps et le calendrier. Atteindre des objectifs peut rapporter des jetons.',
+    'Ads': 'Publicités',
+    'Rewarded ads are an optional alternative to tokens. Plus includes fewer on-board ads.':
+        'Les publicités récompensées sont une alternative facultative aux jetons. Plus contient moins de publicités intégrées.',
+    'Free and Plus access': 'Accès Free et Plus',
+    'Free includes limited core features. Plus makes core features unlimited, while premium extensions can still require the displayed token amount or an ad.':
+        'Free comprend des fonctions principales limitées. Plus rend les fonctions principales illimitées, mais les extensions premium peuvent encore demander le nombre de jetons affiché ou une publicité.',
+    'Privacy and policies': 'Confidentialité et politiques',
+    'Log out': 'Se déconnecter',
+    'Sign out of the account on this device. Local habit data stays on the phone.':
+        'Déconnectez le compte sur cet appareil. Les données locales des habitudes restent sur le téléphone.',
+    'Log out of this account on this device?':
+        'Se déconnecter de ce compte sur cet appareil ?',
+    'Logged out': 'Déconnexion effectuée',
+    'No signed-in account': 'Aucun compte connecté',
     'Welcome page preview': 'Aperçu des pages de bienvenue',
     'Open the welcome pages without resetting your onboarding progress.':
         'Ouvrez les pages de bienvenue sans réinitialiser votre progression.',
@@ -1684,6 +1781,30 @@ const Map<String, Map<String, String>> _translations = {
     'Next': 'Keyingi',
     'Previous': 'Oldingi',
     'Choose language': 'Tilni tanlash',
+    'App appearance': 'Ilova ko‘rinishi',
+    'Theme': 'Mavzu',
+    'Choose how the app looks.': 'Ilova qanday ko‘rinishini tanlang.',
+    'Used throughout the app.': 'Butun ilovada ishlatiladi.',
+    'Language used throughout the app.': 'Butun ilovada ishlatiladigan til.',
+    'Rewards and access': 'Mukofotlar va kirish',
+    'Token markers show the cost of optional changes or extended features. Choose tokens or a rewarded ad when offered.':
+        'Token belgisi ixtiyoriy o‘zgarish yoki kengaytirilgan imkoniyat narxini ko‘rsatadi. Taklif qilinganda token yoki mukofotli reklamani tanlang.',
+    'Badges grow with profile, body, and calendar progress. Completing milestones can award tokens.':
+        'Nishonlar profil, tana va taqvim taraqqiyoti bilan rivojlanadi. Maqsadlarni bajarish token berishi mumkin.',
+    'Ads': 'Reklamalar',
+    'Rewarded ads are an optional alternative to tokens. Plus includes fewer on-board ads.':
+        'Mukofotli reklamalar tokenlarga ixtiyoriy muqobildir. Plus ichki reklamalarni kamaytiradi.',
+    'Free and Plus access': 'Free va Plus kirishi',
+    'Free includes limited core features. Plus makes core features unlimited, while premium extensions can still require the displayed token amount or an ad.':
+        'Free cheklangan asosiy imkoniyatlarni o‘z ichiga oladi. Plus asosiy imkoniyatlarni cheksiz qiladi, ammo premium kengaytmalar ko‘rsatilgan token miqdori yoki reklamani talab qilishi mumkin.',
+    'Privacy and policies': 'Maxfiylik va siyosatlar',
+    'Log out': 'Hisobdan chiqish',
+    'Sign out of the account on this device. Local habit data stays on the phone.':
+        'Ushbu qurilmadagi hisobdan chiqing. Mahalliy odat ma’lumotlari telefonda qoladi.',
+    'Log out of this account on this device?':
+        'Ushbu qurilmadagi hisobdan chiqilsinmi?',
+    'Logged out': 'Hisobdan chiqildi',
+    'No signed-in account': 'Kirilgan hisob yo‘q',
     'Welcome page preview': 'Xush kelibsiz sahifalari ko‘rinishi',
     'Open the welcome pages without resetting your onboarding progress.':
         'Boshlang‘ich sozlash jarayonini qayta tiklamasdan xush kelibsiz sahifalarini oching.',

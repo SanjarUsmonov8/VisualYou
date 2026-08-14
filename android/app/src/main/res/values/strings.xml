@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">visualyou</string>
+    <string name="quick_add_widget_name">Visual You Quick Add</string>
+    <string name="quick_add_widget_description">Track favorite habits from your home screen.</string>
+    <string name="single_habit_widget_name">Visual You Habit</string>
+    <string name="single_habit_widget_description">Track one favorite habit from your home screen.</string>
+    <string name="reduction_widget_name">Visual You Gradual Reduction</string>
+    <string name="reduction_widget_description">Track today in your gradual-reduction plan.</string>
+    <string name="main_calendar_widget_name">Visual You Calendar</string>
+    <string name="main_calendar_widget_description">See your current performance calendar.</string>
+    <string name="streak_calendar_widget_name">Visual You Streak</string>
+    <string name="streak_calendar_widget_description">See your current streak calendar.</string>
+</resources>

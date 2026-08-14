@@ -10,6 +10,7 @@ import 'package:visualyou/data/habits/drift_habit_repository.dart';
 import 'package:visualyou/data/habits/habit_repository.dart';
 import 'package:visualyou/data/local/app_database.dart';
 import 'package:visualyou/features/auth/email_auth_sheet.dart';
+import 'package:visualyou/features/auth/email_auth.dart';
 import 'package:visualyou/features/body/body.dart';
 import 'package:visualyou/features/breathing/breathing_card.dart';
 import 'package:visualyou/features/calendar/calendar_repository.dart';
@@ -18,6 +19,7 @@ import 'package:visualyou/features/custom_graph/custom_graph.dart';
 import 'package:visualyou/features/custom_graph/custom_graph_repository.dart';
 import 'package:visualyou/features/female_body/female_body.dart';
 import 'package:visualyou/features/habit_info/habit_info_cards.dart';
+import 'package:visualyou/features/home_widgets/home_widget_service.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar_repository.dart';
 import 'package:visualyou/features/rewards/premium_page.dart';
@@ -28,7 +30,11 @@ import 'package:visualyou/features/rewards/rewards_repository.dart';
 import 'package:visualyou/features/rewards/rewards_widgets.dart';
 import 'package:visualyou/l10n/app_strings.dart';
 
-void main() => runApp(const VisualYouApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await HomeWidgetService.initialize();
+  runApp(const VisualYouApp());
+}
 
 class VisualYouApp extends StatefulWidget {
   const VisualYouApp({
@@ -63,6 +69,12 @@ class _VisualYouAppState extends State<VisualYouApp>
   bool _onboardingComplete = false;
   Object? _storageError;
   bool _refreshingDailyRecovery = false;
+  final GlobalKey<_HomePageState> _homePageKey = GlobalKey<_HomePageState>();
+  StreamSubscription<Uri?>? _widgetClickSubscription;
+  final List<StreamSubscription<Object?>> _widgetDataSubscriptions = [];
+  Uri? _pendingWidgetLaunch;
+  bool _syncingWidgets = false;
+  bool _syncWidgetsAgain = false;
 
   @override
   void initState() {
@@ -71,6 +83,7 @@ class _VisualYouAppState extends State<VisualYouApp>
     final injectedRepository = widget.habitRepository;
     if (injectedRepository != null) {
       final database = (injectedRepository as DriftHabitRepository).database;
+      _database = database;
       _habitRepository = injectedRepository;
       _customGraphRepository =
           widget.customGraphRepository ?? DriftCustomGraphRepository(database);
@@ -82,6 +95,7 @@ class _VisualYouAppState extends State<VisualYouApp>
       _rewardsController = RewardsController(RewardsRepository(database));
     } else {
       final database = AppDatabase.defaults();
+      _database = database;
       _ownedDatabase = database;
       _habitRepository = DriftHabitRepository(database);
       _customGraphRepository =
@@ -93,6 +107,10 @@ class _VisualYouAppState extends State<VisualYouApp>
           DriftReductionCalendarRepository(database);
       _rewardsController = RewardsController(RewardsRepository(database));
     }
+    _widgetClickSubscription = HomeWidgetService.clicked.listen(
+      _handleWidgetLaunch,
+    );
+    unawaited(HomeWidgetService.initiallyLaunched().then(_handleWidgetLaunch));
     unawaited(_initializeStorage());
   }
 
@@ -111,6 +129,11 @@ class _VisualYouAppState extends State<VisualYouApp>
         _storageError = null;
         _onboardingComplete = onboardingComplete;
       });
+      _startWidgetDataObservers();
+      _scheduleWidgetSync();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _deliverPendingWidgetLaunch();
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -125,9 +148,71 @@ class _VisualYouAppState extends State<VisualYouApp>
     WidgetsBinding.instance.removeObserver(this);
     final database = _ownedDatabase;
     if (database != null) unawaited(database.close());
+    _themeController.removeListener(_scheduleWidgetSync);
     _themeController.dispose();
+    _rewardsController.removeListener(_scheduleWidgetSync);
     _rewardsController.dispose();
+    unawaited(_widgetClickSubscription?.cancel());
+    for (final subscription in _widgetDataSubscriptions) {
+      unawaited(subscription.cancel());
+    }
     super.dispose();
+  }
+
+  late final AppDatabase _database;
+
+  void _startWidgetDataObservers() {
+    if (_widgetDataSubscriptions.isNotEmpty) return;
+    _widgetDataSubscriptions.addAll([
+      _habitRepository.watchHabitPreferences().listen(
+        (_) => _scheduleWidgetSync(),
+      ),
+      _calendarRepository
+          .watchMonth(DateTime.now())
+          .listen((_) => _scheduleWidgetSync()),
+      _reductionCalendarRepository
+          .watchPlansMonth(DateTime.now())
+          .listen((_) => _scheduleWidgetSync()),
+    ]);
+    _rewardsController.addListener(_scheduleWidgetSync);
+    _themeController.addListener(_scheduleWidgetSync);
+  }
+
+  void _scheduleWidgetSync() {
+    if (!_storageReady || _storageError != null) return;
+    if (_syncingWidgets) {
+      _syncWidgetsAgain = true;
+      return;
+    }
+    _syncingWidgets = true;
+    unawaited(() async {
+      try {
+        await HomeWidgetService.syncFromDatabase(_database);
+      } catch (error) {
+        debugPrint('Could not refresh home-screen widgets: $error');
+      } finally {
+        _syncingWidgets = false;
+        if (_syncWidgetsAgain) {
+          _syncWidgetsAgain = false;
+          _scheduleWidgetSync();
+        }
+      }
+    }());
+  }
+
+  void _handleWidgetLaunch(Uri? uri) {
+    if (uri == null || uri.host != 'open') return;
+    _pendingWidgetLaunch = uri;
+    _deliverPendingWidgetLaunch();
+  }
+
+  void _deliverPendingWidgetLaunch() {
+    if (!_storageReady || !_onboardingComplete) return;
+    final uri = _pendingWidgetLaunch;
+    final state = _homePageKey.currentState;
+    if (uri == null || state == null) return;
+    _pendingWidgetLaunch = null;
+    state.openWidgetTarget(uri);
   }
 
   @override
@@ -189,6 +274,7 @@ class _VisualYouAppState extends State<VisualYouApp>
                 onFinished: _finishOnboarding,
               )
             : HomePage(
+                key: _homePageKey,
                 themeController: _themeController,
                 habitRepository: _habitRepository,
                 customGraphRepository: _customGraphRepository,
@@ -2200,6 +2286,62 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   final GlobalKey _addButtonKey = GlobalKey();
+  final GlobalKey _quickAddKey = GlobalKey();
+  final GlobalKey _reductionCalendarKey = GlobalKey();
+
+  void openWidgetTarget(Uri uri) {
+    final target = uri.pathSegments.firstOrNull;
+    switch (target) {
+      case 'quick-add':
+        setState(() => _selectedIndex = 0);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final targetContext = _quickAddKey.currentContext;
+          if (targetContext != null) {
+            Scrollable.ensureVisible(
+              targetContext,
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
+              alignment: .08,
+            );
+          }
+        });
+        break;
+      case 'single-habit':
+        setState(() => _selectedIndex = 0);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showAddPage(context);
+        });
+        break;
+      case 'calendar':
+        setState(() => _selectedIndex = 2);
+        break;
+      case 'reduction':
+        setState(() => _selectedIndex = 2);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final targetContext = _reductionCalendarKey.currentContext;
+          if (targetContext != null) {
+            Scrollable.ensureVisible(
+              targetContext,
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
+              alignment: .08,
+            );
+          }
+        });
+        break;
+      case 'streak':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ProfilePage(
+              themeController: widget.themeController,
+              rewardsController: widget.rewardsController,
+              scrollToStreak: true,
+            ),
+          ),
+        );
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2211,6 +2353,7 @@ class _HomePageState extends State<HomePage> {
               index: _selectedIndex,
               children: [
                 _HomeContent(
+                  quickAddKey: _quickAddKey,
                   themeController: widget.themeController,
                   habitRepository: widget.habitRepository,
                   customGraphRepository: widget.customGraphRepository,
@@ -2251,6 +2394,7 @@ class _HomePageState extends State<HomePage> {
                                 children: [
                                   const SizedBox(height: 14),
                                   RewardFeatureGate(
+                                    key: _reductionCalendarKey,
                                     controller: widget.rewardsController,
                                     feature: GatedFeature.reductionCalendar,
                                     title: context.tr(
@@ -2458,12 +2602,14 @@ class _GradientPageTitle extends StatelessWidget {
 
 class _HomeContent extends StatelessWidget {
   const _HomeContent({
+    required this.quickAddKey,
     required this.themeController,
     required this.habitRepository,
     required this.customGraphRepository,
     required this.rewardsController,
   });
 
+  final GlobalKey quickAddKey;
   final ThemeController themeController;
   final HabitRepository habitRepository;
   final CustomGraphRepository customGraphRepository;
@@ -2530,6 +2676,7 @@ class _HomeContent extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Container(
+                key: quickAddKey,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: quickPanelColor,
@@ -3281,18 +3428,9 @@ class _AddHabitPageState extends State<AddHabitPage> {
               _buildSection(
                 context,
                 title: 'Good habits',
-                options: _goodHabits,
+                options: [..._goodHabits, ...customGood],
                 preferences: preferences,
               ),
-              if (customGood.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildSection(
-                  context,
-                  title: 'Your good habits',
-                  options: customGood,
-                  preferences: preferences,
-                ),
-              ],
               const SizedBox(height: 12),
               _buildSection(
                 context,
@@ -3305,20 +3443,10 @@ class _AddHabitPageState extends State<AddHabitPage> {
               _buildSection(
                 context,
                 title: 'Bad habits',
-                options: _badHabits,
+                options: [..._badHabits, ...customBad],
                 preferences: preferences,
                 isUnwanted: true,
               ),
-              if (customBad.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildSection(
-                  context,
-                  title: 'Your unwanted habits',
-                  options: customBad,
-                  preferences: preferences,
-                  isUnwanted: true,
-                ),
-              ],
             ],
           );
         },
@@ -3334,9 +3462,12 @@ class _AddHabitPageState extends State<AddHabitPage> {
     bool inCard = false,
     bool isUnwanted = false,
   }) {
+    final availableOptions = !widget.rewardsController.isPlus && !_editing
+        ? options.where((option) => !_isPremiumHabit(option.id)).toList()
+        : options;
     final visibleOptions = _editing
-        ? options
-        : options
+        ? availableOptions
+        : availableOptions
               .where((option) => preferences[option.id]?.isActive ?? true)
               .toList();
     if (visibleOptions.isEmpty && !_editing) {
@@ -3364,7 +3495,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
           childAspectRatio: _editing ? 2.55 : (inCard ? 3.5 : 3.2),
           children: [
             for (final option in visibleOptions)
-              if ((option.id == 'consuming_sugar' || option.id == 'studying') &&
+              if (_isPremiumHabit(option.id) &&
                   !widget.rewardsController.isPlus)
                 _PremiumHabitTile(
                   label: context.tr(option.nameKey),
@@ -3391,6 +3522,13 @@ class _AddHabitPageState extends State<AddHabitPage> {
                       favorite,
                     ),
                   ),
+                  onEdit: option.id.startsWith('custom_')
+                      ? () => _editCustomHabit(context, preferences[option.id]!)
+                      : null,
+                  onDelete: option.id.startsWith('custom_')
+                      ? () =>
+                            _deleteCustomHabit(context, preferences[option.id]!)
+                      : null,
                 )
               else if (inCard)
                 _ExerciseRow(
@@ -3458,65 +3596,16 @@ class _AddHabitPageState extends State<AddHabitPage> {
   }
 
   Future<void> _createCustomHabit(BuildContext context) async {
-    var name = '';
-    var unwanted = false;
-    final shouldCreate =
-        await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => StatefulBuilder(
-            builder: (context, setDialogState) => AlertDialog(
-              title: Text(context.tr('Create your own habit')),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    autofocus: true,
-                    maxLength: 40,
-                    textCapitalization: TextCapitalization.sentences,
-                    onChanged: (value) => name = value,
-                    decoration: InputDecoration(
-                      labelText: context.tr('Habit name'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SegmentedButton<bool>(
-                    segments: [
-                      ButtonSegment(
-                        value: false,
-                        label: Text(context.tr('Good habit')),
-                        icon: const Icon(Icons.thumb_up_alt_outlined),
-                      ),
-                      ButtonSegment(
-                        value: true,
-                        label: Text(context.tr('Unwanted habit')),
-                        icon: const Icon(Icons.thumb_down_alt_outlined),
-                      ),
-                    ],
-                    selected: {unwanted},
-                    onSelectionChanged: (selection) =>
-                        setDialogState(() => unwanted = selection.first),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: Text(context.tr('Cancel')),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(dialogContext, true),
-                  child: Text(context.tr('Create')),
-                ),
-              ],
-            ),
-          ),
-        ) ??
-        false;
-    if (!shouldCreate || name.trim().isEmpty) return;
+    final draft = await _showCustomHabitDialog(
+      context,
+      title: context.tr('Create your own habit'),
+      action: context.tr('Create'),
+    );
+    if (draft == null) return;
     try {
       await widget.habitRepository.createCustomHabit(
-        name: name,
-        isUnwanted: unwanted,
+        name: draft.name,
+        isUnwanted: draft.isUnwanted,
       );
     } catch (_) {
       if (!context.mounted) return;
@@ -3525,6 +3614,142 @@ class _AddHabitPageState extends State<AddHabitPage> {
       );
     }
   }
+
+  Future<void> _editCustomHabit(
+    BuildContext context,
+    HabitPreference habit,
+  ) async {
+    final draft = await _showCustomHabitDialog(
+      context,
+      title: context.tr('Edit habits'),
+      action: context.tr('Save'),
+      initialName: habit.nameKey,
+      initialUnwanted: habit.category == 'custom_bad',
+    );
+    if (draft == null) return;
+    try {
+      await widget.habitRepository.updateCustomHabit(
+        habitId: habit.id,
+        name: draft.name,
+        isUnwanted: draft.isUnwanted,
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      _showStorageFailure(context);
+    }
+  }
+
+  Future<void> _deleteCustomHabit(
+    BuildContext context,
+    HabitPreference habit,
+  ) async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(context.tr('Remove habit')),
+            content: Text('${context.tr('Remove habit')}: “${habit.nameKey}”?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(context.tr('Cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(context.tr('Remove habit')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+    try {
+      await widget.habitRepository.deleteCustomHabit(habit.id);
+    } catch (_) {
+      if (!context.mounted) return;
+      _showStorageFailure(context);
+    }
+  }
+
+  Future<_CustomHabitDraft?> _showCustomHabitDialog(
+    BuildContext context, {
+    required String title,
+    required String action,
+    String initialName = '',
+    bool initialUnwanted = false,
+  }) async {
+    final controller = TextEditingController(text: initialName);
+    var unwanted = initialUnwanted;
+    final result = await showDialog<_CustomHabitDraft>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 40,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: context.tr('Habit name'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SegmentedButton<bool>(
+                segments: [
+                  ButtonSegment(
+                    value: false,
+                    label: Text(context.tr('Good habit')),
+                    icon: const Icon(Icons.thumb_up_alt_outlined),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    label: Text(context.tr('Unwanted habit')),
+                    icon: const Icon(Icons.thumb_down_alt_outlined),
+                  ),
+                ],
+                selected: {unwanted},
+                onSelectionChanged: (selection) =>
+                    setDialogState(() => unwanted = selection.first),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(context.tr('Cancel')),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = controller.text.trim();
+                if (name.isEmpty) return;
+                Navigator.pop(
+                  dialogContext,
+                  _CustomHabitDraft(name: name, isUnwanted: unwanted),
+                );
+              },
+              child: Text(action),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  bool _isPremiumHabit(String habitId) =>
+      habitId == 'consuming_sugar' || habitId == 'studying';
+}
+
+class _CustomHabitDraft {
+  const _CustomHabitDraft({required this.name, required this.isUnwanted});
+
+  final String name;
+  final bool isUnwanted;
 }
 
 class _PremiumHabitTile extends StatelessWidget {
@@ -3586,6 +3811,8 @@ class _HabitManagementTile extends StatelessWidget {
     required this.isFavorite,
     required this.onActiveChanged,
     required this.onFavoriteChanged,
+    this.onEdit,
+    this.onDelete,
   });
 
   final String label;
@@ -3594,6 +3821,8 @@ class _HabitManagementTile extends StatelessWidget {
   final bool isFavorite;
   final ValueChanged<bool> onActiveChanged;
   final ValueChanged<bool> onFavoriteChanged;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -3632,23 +3861,62 @@ class _HabitManagementTile extends StatelessWidget {
               color: isFavorite ? colors.primary : colors.onSurfaceVariant,
             ),
           ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-            padding: EdgeInsets.zero,
-            tooltip: context.tr(isActive ? 'Remove habit' : 'Restore habit'),
-            onPressed: () => onActiveChanged(!isActive),
-            icon: Icon(
-              isActive ? Icons.remove_circle_outline : Icons.add_circle_outline,
-              size: 20,
-              color: isActive ? colors.error : colors.primary,
+          if (onEdit != null && onDelete != null)
+            PopupMenuButton<_CustomHabitAction>(
+              tooltip: context.tr('Edit habits'),
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.more_vert_rounded, size: 20),
+              onSelected: (action) {
+                switch (action) {
+                  case _CustomHabitAction.edit:
+                    onEdit!();
+                    break;
+                  case _CustomHabitAction.delete:
+                    onDelete!();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: _CustomHabitAction.edit,
+                  child: ListTile(
+                    leading: const Icon(Icons.edit_rounded),
+                    title: Text(context.tr('Edit habits')),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: _CustomHabitAction.delete,
+                  child: ListTile(
+                    leading: Icon(Icons.delete_outline, color: colors.error),
+                    title: Text(context.tr('Remove habit')),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            )
+          else
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+              padding: EdgeInsets.zero,
+              tooltip: context.tr(isActive ? 'Remove habit' : 'Restore habit'),
+              onPressed: () => onActiveChanged(!isActive),
+              icon: Icon(
+                isActive
+                    ? Icons.remove_circle_outline
+                    : Icons.add_circle_outline,
+                size: 20,
+                color: isActive ? colors.error : colors.primary,
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 }
+
+enum _CustomHabitAction { edit, delete }
 
 class _HabitTile extends StatelessWidget {
   const _HabitTile({
@@ -4040,11 +4308,13 @@ class ProfilePage extends StatelessWidget {
   const ProfilePage({
     required this.themeController,
     required this.rewardsController,
+    this.scrollToStreak = false,
     super.key,
   });
 
   final ThemeController themeController;
   final RewardsController rewardsController;
+  final bool scrollToStreak;
 
   @override
   Widget build(BuildContext context) {
@@ -4052,6 +4322,7 @@ class ProfilePage extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      extendBody: true,
       body: AnimatedBuilder(
         animation: Listenable.merge([themeController, rewardsController]),
         builder: (context, _) => DecoratedBox(
@@ -4069,8 +4340,14 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
           child: SafeArea(
+            bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                8,
+                20,
+                MediaQuery.paddingOf(context).bottom + 24,
+              ),
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -4082,11 +4359,7 @@ class ProfilePage extends StatelessWidget {
                           onPressed: () => Navigator.of(context).pop(),
                           icon: const Icon(Icons.arrow_back_rounded),
                         ),
-                        Expanded(
-                          child: Center(
-                            child: _GradientPageTitle(context.tr('Profile')),
-                          ),
-                        ),
+                        const Spacer(),
                         IconButton.filledTonal(
                           tooltip: context.tr('Edit profile'),
                           onPressed: () => _showEditProfileDialog(context),
@@ -4094,7 +4367,7 @@ class ProfilePage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 8),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -4119,8 +4392,9 @@ class ProfilePage extends StatelessWidget {
                                       height: 1.1,
                                     ),
                               ),
-                              const SizedBox(height: 18),
+                              const SizedBox(height: 14),
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
                                     child: _ProfileFact(
@@ -4133,7 +4407,7 @@ class ProfilePage extends StatelessWidget {
                                       },
                                     ),
                                   ),
-                                  const SizedBox(width: 14),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: _ProfileFact(
                                       label: context.tr('Age'),
@@ -4143,8 +4417,9 @@ class ProfilePage extends StatelessWidget {
                                           context.tr('Not set'),
                                     ),
                                   ),
-                                  const SizedBox(width: 14),
+                                  const SizedBox(width: 8),
                                   Expanded(
+                                    flex: 2,
                                     child: _ProfileFact(
                                       label: context.tr('Plan'),
                                       value: _profilePlanText(
@@ -4160,7 +4435,12 @@ class ProfilePage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    RewardsProfileSection(controller: rewardsController),
+                    _AutoReveal(
+                      enabled: scrollToStreak,
+                      child: RewardsProfileSection(
+                        controller: rewardsController,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -4275,6 +4555,36 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
+class _AutoReveal extends StatefulWidget {
+  const _AutoReveal({required this.enabled, required this.child});
+  final bool enabled;
+  final Widget child;
+
+  @override
+  State<_AutoReveal> createState() => _AutoRevealState();
+}
+
+class _AutoRevealState extends State<_AutoReveal> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.enabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Scrollable.ensureVisible(
+          context,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+          alignment: .05,
+        );
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 class _ProfileEditResult {
   const _ProfileEditResult({
     required this.name,
@@ -4296,10 +4606,10 @@ String _numericDate(DateTime date) {
 String _profilePlanText(BuildContext context, RewardsController controller) {
   final snapshot = controller.snapshot;
   if (snapshot == null || !snapshot.isPlus) return context.tr('Free');
-  final remaining = snapshot.remainingPlanTime(DateTime.now());
-  if (remaining == null) return context.tr('Plus');
-  final days = (remaining.inHours / 24).ceil();
-  return '${context.tr('Plus')}\n$days ${context.tr(days == 1 ? 'day left' : 'days left')}';
+  final expiresAt = snapshot.planExpiresAt;
+  if (expiresAt == null) return context.tr('Plus');
+  final date = MaterialLocalizations.of(context).formatShortDate(expiresAt);
+  return '${context.tr('Plus')}\n$date';
 }
 
 class _ProfileFact extends StatelessWidget {
@@ -4343,219 +4653,590 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: _GradientPageTitle(context.tr('Settings'))),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      body: AnimatedBuilder(
+        animation: themeController,
+        builder: (context, _) => ListView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 36),
+          children: [
+            _SettingsSectionTitle(context.tr('App appearance')),
+            const SizedBox(height: 8),
+            _SettingsGroupCard(
+              children: [
+                _CompactSettingRow(
+                  icon: Icons.brightness_6_rounded,
+                  title: context.tr('Theme'),
+                  description: context.tr('Choose how the app looks.'),
+                  trailing: PopupMenuButton<ThemeMode>(
+                    key: const Key('themeSelector'),
+                    tooltip: context.tr('Theme'),
+                    initialValue: themeController.mode,
+                    onSelected: themeController.setMode,
+                    itemBuilder: (context) => [
+                      _themeMenuItem(
+                        context,
+                        ThemeMode.light,
+                        Icons.light_mode_rounded,
+                        'Light',
+                      ),
+                      _themeMenuItem(
+                        context,
+                        ThemeMode.system,
+                        Icons.brightness_auto_rounded,
+                        'System',
+                      ),
+                      _themeMenuItem(
+                        context,
+                        ThemeMode.dark,
+                        Icons.dark_mode_rounded,
+                        'Dark',
+                      ),
+                    ],
+                    child: _CompactPickerButton(
+                      icon: _themeIcon(themeController.mode),
+                      label: context.tr(_themeLabel(themeController.mode)),
+                    ),
+                  ),
+                ),
+                const _SettingsDivider(),
+                _CompactSettingRow(
+                  icon: Icons.palette_outlined,
+                  title: context.tr('Color theme'),
+                  description: context.tr('Used throughout the app.'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _AccentTextButton(
+                        key: const Key('accentBlueButton'),
+                        label: context.tr('Blue'),
+                        color: const Color(0xFF526DFF),
+                        selected: themeController.accent == AppAccent.blue,
+                        onTap: () => themeController.setAccent(AppAccent.blue),
+                      ),
+                      const SizedBox(width: 6),
+                      _AccentTextButton(
+                        key: const Key('accentPinkButton'),
+                        label: context.tr('Pink'),
+                        color: const Color(0xFFE5478D),
+                        selected: themeController.accent == AppAccent.pink,
+                        onTap: () => themeController.setAccent(AppAccent.pink),
+                      ),
+                    ],
+                  ),
+                ),
+                const _SettingsDivider(),
+                _CompactSettingRow(
+                  icon: Icons.language_rounded,
+                  title: context.tr('Language'),
+                  description: context.tr('Language used throughout the app.'),
+                  trailing: SizedBox(
+                    width: 132,
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<AppLanguage>(
+                        key: ValueKey(themeController.language),
+                        isExpanded: true,
+                        value: themeController.language,
+                        borderRadius: BorderRadius.circular(16),
+                        items: [
+                          for (final language in AppLanguage.values)
+                            DropdownMenuItem(
+                              value: language,
+                              child: Text(
+                                language.displayLabel(context),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                        ],
+                        onChanged: (language) {
+                          if (language != null) {
+                            themeController.setLanguage(language);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _SettingsSectionTitle(context.tr('Rewards and access')),
+            const SizedBox(height: 8),
+            _SettingsGroupCard(
+              children: [
+                _SettingsNote(
+                  icon: Icons.toll_rounded,
+                  title: context.tr('Tokens'),
+                  body: context.tr(
+                    'Token markers show the cost of optional changes or extended features. Choose tokens or a rewarded ad when offered.',
+                  ),
+                ),
+                const _SettingsDivider(),
+                _SettingsNote(
+                  icon: Icons.workspace_premium_rounded,
+                  title: context.tr('Badges'),
+                  body: context.tr(
+                    'Badges grow with profile, body, and calendar progress. Completing milestones can award tokens.',
+                  ),
+                ),
+                const _SettingsDivider(),
+                _SettingsNote(
+                  icon: Icons.ondemand_video_rounded,
+                  title: context.tr('Ads'),
+                  body: context.tr(
+                    'Rewarded ads are an optional alternative to tokens. Plus includes fewer on-board ads.',
+                  ),
+                ),
+                const _SettingsDivider(),
+                _SettingsNote(
+                  icon: Icons.diamond_outlined,
+                  title: context.tr('Free and Plus access'),
+                  body: context.tr(
+                    'Free includes limited core features. Plus makes core features unlimited, while premium extensions can still require the displayed token amount or an ad.',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _SettingsSectionTitle(context.tr('Privacy and policies')),
+            const SizedBox(height: 8),
+            _SettingsGroupCard(
+              children: [
+                _SettingsNote(
+                  icon: Icons.fact_check_outlined,
+                  title: context.tr('Track honestly and consistently'),
+                  body: context.tr('agreement_honesty_note'),
+                ),
+                const _SettingsDivider(),
+                _SettingsNote(
+                  icon: Icons.health_and_safety_outlined,
+                  title: context.tr('Understand symbolic progress'),
+                  body: context.tr('agreement_symbolic_note'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _SettingsActionCard(
+              icon: Icons.logout_rounded,
+              title: context.tr('Log out'),
+              description: context.tr(
+                'Sign out of the account on this device. Local habit data stays on the phone.',
+              ),
+              destructive: true,
+              onTap: () => _logOut(context),
+            ),
+            const SizedBox(height: 12),
+            _SettingsActionCard(
+              key: const Key('previewWelcomePagesButton'),
+              icon: Icons.slideshow_rounded,
+              title: context.tr('Welcome page preview'),
+              description: context.tr(
+                'Open the welcome pages without resetting your onboarding progress.',
+              ),
+              onTap: () => _openWelcomePreview(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<ThemeMode> _themeMenuItem(
+    BuildContext context,
+    ThemeMode mode,
+    IconData icon,
+    String label,
+  ) {
+    return PopupMenuItem(
+      value: mode,
+      child: Row(
         children: [
-          Text(
-            context.tr('Language'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr('Choose the language used throughout VisualYou.'),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          Icon(icon, size: 20),
+          const SizedBox(width: 10),
+          Text(context.tr(label)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _logOut(BuildContext context) async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(context.tr('Log out')),
+            content: Text(
+              context.tr('Log out of this account on this device?'),
             ),
-          ),
-          const SizedBox(height: 20),
-          AnimatedBuilder(
-            animation: themeController,
-            builder: (context, _) => DropdownButtonFormField<AppLanguage>(
-              key: ValueKey(themeController.language),
-              isExpanded: true,
-              initialValue: themeController.language,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.language_rounded),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(context.tr('Cancel')),
               ),
-              items: [
-                for (final language in AppLanguage.values)
-                  DropdownMenuItem(
-                    value: language,
-                    child: Text(language.displayLabel(context)),
-                  ),
-              ],
-              onChanged: (language) {
-                if (language != null) themeController.setLanguage(language);
-              },
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            context.tr('Appearance'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr(
-              'Choose how VisualYou looks. Your choice applies throughout the app.',
-            ),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 20),
-          AnimatedBuilder(
-            animation: themeController,
-            builder: (context, _) => SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<ThemeMode>(
-                key: const Key('themeSelector'),
-                showSelectedIcon: true,
-                segments: [
-                  ButtonSegment(
-                    value: ThemeMode.light,
-                    icon: const Icon(Icons.light_mode_rounded),
-                    label: Text(context.tr('Light')),
-                  ),
-                  ButtonSegment(
-                    value: ThemeMode.system,
-                    icon: const Icon(Icons.brightness_auto_rounded),
-                    label: Text(context.tr('System')),
-                  ),
-                  ButtonSegment(
-                    value: ThemeMode.dark,
-                    icon: const Icon(Icons.dark_mode_rounded),
-                    label: Text(context.tr('Dark')),
-                  ),
-                ],
-                selected: {themeController.mode},
-                onSelectionChanged: (selection) {
-                  themeController.setMode(selection.first);
-                },
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(context.tr('Log out')),
               ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !context.mounted) return;
+
+    final api = EmailAuthApi();
+    final hadSession = await api.logout();
+    api.close();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr(hadSession ? 'Logged out' : 'No signed-in account'),
+          ),
+        ),
+      );
+  }
+
+  void _openWelcomePreview(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (previewContext) => WelcomeFlow(
+          themeController: themeController,
+          previewMode: true,
+          onFinished: () async {
+            if (previewContext.mounted) {
+              Navigator.of(previewContext).pop();
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsSectionTitle extends StatelessWidget {
+  const _SettingsSectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        text,
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+      ),
+    );
+  }
+}
+
+class _SettingsGroupCard extends StatelessWidget {
+  const _SettingsGroupCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF282C33)
+            : Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Theme.of(
+                context,
+              ).colorScheme.shadow.withValues(alpha: .09),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            context.tr('Color theme'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr('This accent color is used across VisualYou.'),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: children),
+    );
+  }
+}
+
+class _SettingsDivider extends StatelessWidget {
+  const _SettingsDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Divider(
+      height: 1,
+      indent: 56,
+      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .5),
+    );
+  }
+}
+
+class _CompactSettingRow extends StatelessWidget {
+  const _CompactSettingRow({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 11, 10, 11),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: colors.primaryContainer.withValues(alpha: .72),
+              borderRadius: BorderRadius.circular(11),
             ),
+            child: Icon(icon, size: 19, color: colors.primary),
           ),
-          const SizedBox(height: 20),
-          AnimatedBuilder(
-            animation: themeController,
-            builder: (context, _) => SegmentedButton<AppAccent>(
-              key: const Key('accentSelector'),
-              showSelectedIcon: true,
-              segments: [
-                ButtonSegment(
-                  value: AppAccent.blue,
-                  icon: const Icon(
-                    Icons.water_drop_rounded,
-                    color: Color(0xFF526DFF),
-                  ),
-                  label: Text(context.tr('Blue')),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                ButtonSegment(
-                  value: AppAccent.pink,
-                  icon: const Icon(
-                    Icons.favorite_rounded,
-                    color: Color(0xFFE5478D),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    height: 1.2,
                   ),
-                  label: Text(context.tr('Pink')),
                 ),
               ],
-              selected: {themeController.accent},
-              onSelectionChanged: (selection) {
-                themeController.setAccent(selection.first);
-              },
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(width: 8),
+          trailing,
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactPickerButton extends StatelessWidget {
+  const _CompactPickerButton({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: colors.primary),
+          const SizedBox(width: 5),
           Text(
-            context.tr('Gender'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr(
-              'Choose the body displayed on Home and Body Statistics.',
-            ),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 20),
-          AnimatedBuilder(
-            animation: themeController,
-            builder: (context, _) => SegmentedButton<AppGender>(
-              key: const Key('genderSelector'),
-              showSelectedIcon: true,
-              segments: [
-                ButtonSegment(
-                  value: AppGender.male,
-                  icon: const Icon(Icons.male_rounded),
-                  label: Text(context.tr('Male')),
-                ),
-                ButtonSegment(
-                  value: AppGender.female,
-                  icon: const Icon(Icons.female_rounded),
-                  label: Text(context.tr('Female')),
-                ),
-              ],
-              selected: {themeController.gender},
-              onSelectionChanged: (selection) {
-                themeController.setGender(selection.first);
-              },
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            context.tr('Welcome page preview'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr(
-              'Open the welcome pages without resetting your onboarding progress.',
-            ),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.tonalIcon(
-            key: const Key('previewWelcomePagesButton'),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (previewContext) => WelcomeFlow(
-                    themeController: themeController,
-                    previewMode: true,
-                    onFinished: () async {
-                      if (previewContext.mounted) {
-                        Navigator.of(previewContext).pop();
-                      }
-                    },
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.slideshow_rounded),
-            label: Text(context.tr('Preview welcome pages')),
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
           ),
         ],
       ),
     );
   }
 }
+
+class _AccentTextButton extends StatelessWidget {
+  const _AccentTextButton({
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+    super.key,
+  });
+
+  final String label;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = Colors.white;
+    return InkWell(
+      borderRadius: BorderRadius.circular(13),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: selected ? 1 : .46),
+          borderRadius: BorderRadius.circular(13),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: .28),
+                    blurRadius: 9,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: foreground,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsNote extends StatelessWidget {
+  const _SettingsNote({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 21, color: colors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  body,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsActionCard extends StatelessWidget {
+  const _SettingsActionCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+    this.destructive = false,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final foreground = destructive ? colors.error : colors.primary;
+    return Material(
+      color: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF282C33)
+          : colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(22),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),
+          child: Row(
+            children: [
+              Icon(icon, color: foreground),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: destructive ? foreground : null,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+IconData _themeIcon(ThemeMode mode) => switch (mode) {
+  ThemeMode.light => Icons.light_mode_rounded,
+  ThemeMode.system => Icons.brightness_auto_rounded,
+  ThemeMode.dark => Icons.dark_mode_rounded,
+};
+
+String _themeLabel(ThemeMode mode) => switch (mode) {
+  ThemeMode.light => 'Light',
+  ThemeMode.system => 'System',
+  ThemeMode.dark => 'Dark',
+};

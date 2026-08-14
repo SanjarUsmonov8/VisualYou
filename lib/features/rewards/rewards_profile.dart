@@ -95,7 +95,7 @@ class RewardsProfileSection extends StatelessWidget {
 
 Color _rewardCardColor(BuildContext context) =>
     Theme.of(context).brightness == Brightness.dark
-    ? const Color(0xFF3B404A)
+    ? const Color(0xFF282C33)
     : Colors.white;
 
 List<BoxShadow> _rewardShadow(BuildContext context) => [
@@ -188,6 +188,19 @@ class _StreakCalendarState extends State<_StreakCalendar> {
         value.day == day.day,
   );
 
+  DateTime get _streakStartedOn {
+    final joined = DateTime(
+      widget.joinedAt.year,
+      widget.joinedAt.month,
+      widget.joinedAt.day,
+    );
+    if (widget.activityDays.isEmpty) return joined;
+    final firstActivity = widget.activityDays
+        .map((day) => DateTime(day.year, day.month, day.day))
+        .reduce((first, day) => day.isBefore(first) ? day : first);
+    return firstActivity.isBefore(joined) ? firstActivity : joined;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -268,14 +281,8 @@ class _StreakCalendarState extends State<_StreakCalendar> {
                 active: active,
                 frozen:
                     !active &&
-                    !day.isAfter(_today) &&
-                    !day.isBefore(
-                      DateTime(
-                        widget.joinedAt.year,
-                        widget.joinedAt.month,
-                        widget.joinedAt.day,
-                      ),
-                    ),
+                    day.isBefore(_today) &&
+                    !day.isBefore(_streakStartedOn),
                 connectLeft:
                     active &&
                     index % 7 != 0 &&
@@ -313,7 +320,7 @@ class _StreakDay extends StatelessWidget {
     final color = active
         ? activeColor
         : frozen
-        ? const Color(0xFF72C7F2)
+        ? const Color(0xFFBFEAFF)
         : Theme.of(context).colorScheme.surfaceContainerHighest;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -340,15 +347,17 @@ class _StreakDay extends StatelessWidget {
               height: diameter,
               alignment: Alignment.center,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              child: frozen
-                  ? const Text('❄', style: TextStyle(fontSize: 13))
-                  : Text(
-                      '$day',
-                      style: TextStyle(
-                        color: active ? Colors.white : null,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+              child: Text(
+                '$day',
+                style: TextStyle(
+                  color: active
+                      ? Colors.white
+                      : frozen
+                      ? const Color(0xFF245A73)
+                      : null,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
           ],
         );

@@ -511,6 +511,8 @@ class _PerformanceScale extends StatelessWidget {
     Color(0xFF1E88E5),
   ];
 
+  static const _levelLabels = ['Terrible', 'Bad', 'OK', 'Good', 'Excellent'];
+
   final Color backgroundColor;
   final bool showShadow;
 
@@ -544,36 +546,31 @@ class _PerformanceScale extends StatelessWidget {
           const SizedBox(height: 9),
           Row(
             children: [
-              for (var index = 0; index < _levelColors.length; index++) ...[
-                if (index > 0) const SizedBox(width: 4),
+              for (var index = 0; index < _levelColors.length; index++)
                 Expanded(
-                  child: Container(
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: _levelColors[index],
-                      borderRadius: BorderRadius.circular(99),
-                    ),
+                  child: Column(
+                    children: [
+                      Container(
+                        height: 12,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: _levelColors[index],
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        context.tr(_levelLabels[index]),
+                        maxLines: 1,
+                        overflow: TextOverflow.fade,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 5),
-          Row(
-            children: [
-              Text(
-                context.tr('Bad'),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                context.tr('Good'),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
             ],
           ),
         ],

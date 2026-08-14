@@ -556,6 +556,7 @@ class _ReductionPathPainter extends CustomPainter {
       if (number < 1 || number > daysInMonth) return false;
       final day = dateFor(number);
       if (day.isBefore(plan.startedOn)) return false;
+      if (day.isAfter(today)) return false;
       return !isReductionViolation(plan, day);
     }
 

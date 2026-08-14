@@ -64,4 +64,31 @@ void main() {
       throwsA(isA<StateError>()),
     );
   });
+
+  test('custom habits can be edited and deleted to free a slot', () async {
+    final id = await repository.createCustomHabit(
+      name: 'Read',
+      isUnwanted: false,
+    );
+    await repository.updateCustomHabit(
+      habitId: id,
+      name: 'Read daily',
+      isUnwanted: true,
+    );
+
+    var preferences = await repository.watchHabitPreferences().first;
+    final edited = preferences.singleWhere((habit) => habit.id == id);
+    expect(edited.nameKey, 'Read daily');
+    expect(edited.category, 'custom_bad');
+
+    await repository.deleteCustomHabit(id);
+    preferences = await repository.watchHabitPreferences().first;
+    expect(preferences.any((habit) => habit.id == id), isFalse);
+
+    final replacement = await repository.createCustomHabit(
+      name: 'Replacement',
+      isUnwanted: false,
+    );
+    expect(replacement, startsWith('custom_replacement_'));
+  });
 }

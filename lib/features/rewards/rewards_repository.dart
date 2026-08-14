@@ -157,9 +157,7 @@ class RewardsRepository {
       RewardStatesCompanion(
         plan: Value(plan.name),
         planExpiresAt: Value(
-          plan == MembershipPlan.plus
-              ? current.add(const Duration(days: 30))
-              : null,
+          plan == MembershipPlan.plus ? _sameDayNextMonth(current) : null,
         ),
         updatedAt: Value(current),
       ),
@@ -173,6 +171,24 @@ class RewardsRepository {
         now: current,
       );
     }
+  }
+
+  static DateTime _sameDayNextMonth(DateTime date) {
+    final firstOfFollowingMonth = DateTime(date.year, date.month + 2);
+    final lastDayOfNextMonth = firstOfFollowingMonth.subtract(
+      const Duration(days: 1),
+    );
+    final day = math.min(date.day, lastDayOfNextMonth.day);
+    return DateTime(
+      lastDayOfNextMonth.year,
+      lastDayOfNextMonth.month,
+      day,
+      date.hour,
+      date.minute,
+      date.second,
+      date.millisecond,
+      date.microsecond,
+    );
   }
 
   Future<bool> spendTokens({

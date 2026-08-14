@@ -1,0 +1,17 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_background" android:gravity="center" android:orientation="vertical">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Visual You"
+        android:textColor="@color/widget_text_muted" android:textSize="11sp" />
+    <TextView android:id="@+id/single_name" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:gravity="center" android:maxLines="2" android:text="Choose a favorite habit"
+        android:textAlignment="center" android:textColor="@color/widget_text" android:textSize="16sp" android:textStyle="bold" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="42dp" android:orientation="horizontal">
+        <TextView android:id="@+id/single_positive" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_marginEnd="3dp" android:layout_weight="1" android:background="@drawable/widget_action_background"
+            android:gravity="center" android:text="👍" android:textSize="19sp" />
+        <TextView android:id="@+id/single_negative" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_marginStart="3dp" android:layout_weight="1" android:background="@drawable/widget_action_background"
+            android:gravity="center" android:text="👎" android:textSize="19sp" />
+    </LinearLayout>
+</LinearLayout>
