@@ -93,6 +93,31 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'Choose token or ad': 'Choose token or ad',
     'Three-minute breathing reward added':
         'Three-minute breathing reward added',
+    'Ask AI': 'Ask AI',
+    'Send': 'Send',
+    'Stop': 'Stop',
+    'Add image': 'Add image',
+    'Ask about your habits, routines, progress, or gradual-reduction plans.':
+        'Ask about your habits, routines, progress, or gradual-reduction plans.',
+    'How can I reduce an unwanted habit gradually?':
+        'How can I reduce an unwanted habit gradually?',
+    'How can I build a consistent workout routine?':
+        'How can I build a consistent workout routine?',
+    'How can I make drinking water easier to remember?':
+        'How can I make drinking water easier to remember?',
+    'What can I learn from my weekly progress?':
+        'What can I learn from my weekly progress?',
+    'This is a preview response. I can help you reflect on habits and build small, realistic next steps. The live AI service will be connected later, and my guidance will remain educational rather than medical advice.':
+        'This is a preview response. I can help you reflect on habits and build small, realistic next steps. The live AI service will be connected later, and my guidance will remain educational rather than medical advice.',
+    'New chat': 'New chat',
+    'History': 'History',
+    'No previous chats yet': 'No previous chats yet',
+    'Image conversation': 'Image conversation',
+    'Sign in to use the AI coach.': 'Sign in to use the AI coach.',
+    'Could not connect to the AI coach. Check your connection and try again.':
+        'Could not connect to the AI coach. Check your connection and try again.',
+    'The AI coach could not complete that request.':
+        'The AI coach could not complete that request.',
   },
   'es': {
     'Plus': 'Plus',
@@ -124,6 +149,32 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'Choose token or ad': 'Elegir fichas o anuncio',
     'Three-minute breathing reward added':
         'Recompensa de respiración de tres minutos añadida',
+    'Ask AI': 'Preguntar a la IA',
+    'Send': 'Enviar',
+    'Stop': 'Detener',
+    'Add image': 'Añadir imagen',
+    'Ask about your habits, routines, progress, or gradual-reduction plans.':
+        'Pregunta sobre tus hábitos, rutinas, progreso o planes de reducción gradual.',
+    'How can I reduce an unwanted habit gradually?':
+        '¿Cómo puedo reducir gradualmente un hábito no deseado?',
+    'How can I build a consistent workout routine?':
+        '¿Cómo puedo crear una rutina de ejercicio constante?',
+    'How can I make drinking water easier to remember?':
+        '¿Cómo puedo recordar más fácilmente beber agua?',
+    'What can I learn from my weekly progress?':
+        '¿Qué puedo aprender de mi progreso semanal?',
+    'This is a preview response. I can help you reflect on habits and build small, realistic next steps. The live AI service will be connected later, and my guidance will remain educational rather than medical advice.':
+        'Esta es una respuesta de vista previa. Puedo ayudarte a reflexionar sobre tus hábitos y crear próximos pasos pequeños y realistas. El servicio de IA se conectará más adelante y la orientación seguirá siendo educativa, no un consejo médico.',
+    'New chat': 'Nuevo chat',
+    'History': 'Historial',
+    'No previous chats yet': 'Aún no hay chats anteriores',
+    'Image conversation': 'Conversación con imagen',
+    'Sign in to use the AI coach.':
+        'Inicia sesión para usar el entrenador de IA.',
+    'Could not connect to the AI coach. Check your connection and try again.':
+        'No se pudo conectar con el entrenador de IA. Comprueba tu conexión e inténtalo de nuevo.',
+    'The AI coach could not complete that request.':
+        'El entrenador de IA no pudo completar esa solicitud.',
   },
   'ru': {
     'Plus': 'Plus',
@@ -155,6 +206,31 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'Choose token or ad': 'Выбрать жетоны или рекламу',
     'Three-minute breathing reward added':
         'Награда за три минуты дыхания добавлена',
+    'Ask AI': 'Спросить ИИ',
+    'Send': 'Отправить',
+    'Stop': 'Остановить',
+    'Add image': 'Добавить изображение',
+    'Ask about your habits, routines, progress, or gradual-reduction plans.':
+        'Спросите о привычках, распорядке, прогрессе или планах постепенного сокращения.',
+    'How can I reduce an unwanted habit gradually?':
+        'Как постепенно сократить нежелательную привычку?',
+    'How can I build a consistent workout routine?':
+        'Как выработать постоянный режим тренировок?',
+    'How can I make drinking water easier to remember?':
+        'Как легче не забывать пить воду?',
+    'What can I learn from my weekly progress?':
+        'Что можно узнать из моего недельного прогресса?',
+    'This is a preview response. I can help you reflect on habits and build small, realistic next steps. The live AI service will be connected later, and my guidance will remain educational rather than medical advice.':
+        'Это предварительный ответ. Я могу помочь проанализировать привычки и выбрать небольшие реалистичные следующие шаги. Сервис ИИ будет подключён позже, а рекомендации останутся образовательными и не будут медицинской консультацией.',
+    'New chat': 'Новый чат',
+    'History': 'История',
+    'No previous chats yet': 'Предыдущих чатов пока нет',
+    'Image conversation': 'Разговор с изображением',
+    'Sign in to use the AI coach.': 'Войдите, чтобы использовать ИИ-тренера.',
+    'Could not connect to the AI coach. Check your connection and try again.':
+        'Не удалось подключиться к ИИ-тренеру. Проверьте соединение и повторите попытку.',
+    'The AI coach could not complete that request.':
+        'ИИ-тренеру не удалось выполнить этот запрос.',
   },
   'fr': {
     'Plus': 'Plus',
@@ -186,6 +262,31 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'Choose token or ad': 'Choisir jetons ou publicité',
     'Three-minute breathing reward added':
         'Récompense de respiration de trois minutes ajoutée',
+    'Ask AI': 'Demander à l’IA',
+    'Send': 'Envoyer',
+    'Stop': 'Arrêter',
+    'Add image': 'Ajouter une image',
+    'Ask about your habits, routines, progress, or gradual-reduction plans.':
+        'Posez vos questions sur vos habitudes, routines, progrès ou plans de réduction progressive.',
+    'How can I reduce an unwanted habit gradually?':
+        'Comment réduire progressivement une habitude indésirable ?',
+    'How can I build a consistent workout routine?':
+        'Comment créer une routine sportive régulière ?',
+    'How can I make drinking water easier to remember?':
+        'Comment penser plus facilement à boire de l’eau ?',
+    'What can I learn from my weekly progress?':
+        'Que puis-je apprendre de mes progrès hebdomadaires ?',
+    'This is a preview response. I can help you reflect on habits and build small, realistic next steps. The live AI service will be connected later, and my guidance will remain educational rather than medical advice.':
+        'Ceci est une réponse d’aperçu. Je peux vous aider à réfléchir à vos habitudes et à définir de petites étapes réalistes. Le service d’IA sera connecté plus tard et mes conseils resteront éducatifs, sans constituer un avis médical.',
+    'New chat': 'Nouvelle discussion',
+    'History': 'Historique',
+    'No previous chats yet': 'Aucune discussion précédente',
+    'Image conversation': 'Discussion avec image',
+    'Sign in to use the AI coach.': 'Connectez-vous pour utiliser le coach IA.',
+    'Could not connect to the AI coach. Check your connection and try again.':
+        'Impossible de se connecter au coach IA. Vérifiez votre connexion et réessayez.',
+    'The AI coach could not complete that request.':
+        'Le coach IA n’a pas pu traiter cette demande.',
   },
   'uz': {
     'Plus': 'Plus',
@@ -217,6 +318,32 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'Choose token or ad': 'Token yoki reklamani tanlang',
     'Three-minute breathing reward added':
         'Uch daqiqalik nafas mukofoti qo‘shildi',
+    'Ask AI': 'AI’dan so‘rang',
+    'Send': 'Yuborish',
+    'Stop': 'To‘xtatish',
+    'Add image': 'Rasm qo‘shish',
+    'Ask about your habits, routines, progress, or gradual-reduction plans.':
+        'Odatlaringiz, kun tartibingiz, rivojlanishingiz yoki bosqichma-bosqich kamaytirish rejalari haqida so‘rang.',
+    'How can I reduce an unwanted habit gradually?':
+        'Keraksiz odatni qanday qilib asta-sekin kamaytirishim mumkin?',
+    'How can I build a consistent workout routine?':
+        'Qanday qilib muntazam mashq qilish tartibini yaratsam bo‘ladi?',
+    'How can I make drinking water easier to remember?':
+        'Suv ichishni eslab qolishni qanday osonlashtirsam bo‘ladi?',
+    'What can I learn from my weekly progress?':
+        'Haftalik rivojlanishimdan nimalarni bilib olishim mumkin?',
+    'This is a preview response. I can help you reflect on habits and build small, realistic next steps. The live AI service will be connected later, and my guidance will remain educational rather than medical advice.':
+        'Bu sinov javobi. Men odatlaringizni tahlil qilishga va kichik, amalga oshirish mumkin bo‘lgan keyingi qadamlarni tanlashga yordam beraman. Jonli AI xizmati keyinroq ulanadi va tavsiyalarim tibbiy maslahat emas, faqat ma’rifiy yo‘nalishda bo‘ladi.',
+    'New chat': 'Yangi chat',
+    'History': 'Tarix',
+    'No previous chats yet': 'Hozircha oldingi chatlar yo‘q',
+    'Image conversation': 'Rasmli suhbat',
+    'Sign in to use the AI coach.':
+        'AI murabbiydan foydalanish uchun tizimga kiring.',
+    'Could not connect to the AI coach. Check your connection and try again.':
+        'AI murabbiyga ulanib bo‘lmadi. Internet aloqangizni tekshirib, qayta urinib ko‘ring.',
+    'The AI coach could not complete that request.':
+        'AI murabbiy bu so‘rovni bajara olmadi.',
   },
 };
 

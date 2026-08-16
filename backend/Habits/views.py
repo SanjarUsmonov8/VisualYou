@@ -19,6 +19,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .models import AIConversation, AIMessage, EmailSignupChallenge
+from .ai_provider import AIProviderError, generate_reply
 from .serializers import (
     AIConversationSerializer,
     AIMessageSerializer,
@@ -248,6 +249,12 @@ class SyncView(APIView):
 class AIConversationViewSet(viewsets.ModelViewSet):
     serializer_class = AIConversationSerializer
 
+    def get_throttles(self):
+        if self.action == 'messages' and self.request.method == 'POST':
+            self.throttle_scope = 'ai_message'
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
+
     def get_queryset(self):
         return AIConversation.objects.filter(user=self.request.user).prefetch_related('messages')
 
@@ -267,8 +274,35 @@ class AIConversationViewSet(viewsets.ModelViewSet):
             role=AIMessage.Role.USER,
             content=serializer.validated_data['content'],
         )
+        if not conversation.title:
+            title = serializer.validated_data['content'].strip()
+            conversation.title = (title or 'Image conversation')[:160]
+        conversation.save(update_fields=('title', 'updated_at'))
+        try:
+            reply = generate_reply(
+                conversation.messages.all(),
+                image_base64=serializer.validated_data['image_base64'],
+                image_mime_type=serializer.validated_data['image_mime_type'],
+            )
+        except AIProviderError as exc:
+            logger.warning('AI provider request failed: %s', exc)
+            return Response(
+                {
+                    'detail': str(exc),
+                    'user_message': AIMessageSerializer(message).data,
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        assistant_message = AIMessage.objects.create(
+            conversation=conversation,
+            role=AIMessage.Role.ASSISTANT,
+            content=reply,
+        )
         conversation.save(update_fields=('updated_at',))
         return Response(
-            AIMessageSerializer(message).data,
+            {
+                'user_message': AIMessageSerializer(message).data,
+                'assistant_message': AIMessageSerializer(assistant_message).data,
+            },
             status=status.HTTP_201_CREATED,
         )

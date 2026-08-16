@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:visualyou/data/habits/drift_habit_repository.dart';
 import 'package:visualyou/data/habits/habit_repository.dart';
 import 'package:visualyou/data/local/app_database.dart';
+import 'package:visualyou/features/ai/ai_chat_api.dart';
 import 'package:visualyou/features/auth/email_auth_sheet.dart';
 import 'package:visualyou/features/auth/email_auth.dart';
 import 'package:visualyou/features/body/body.dart';
@@ -2288,6 +2289,24 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey _addButtonKey = GlobalKey();
   final GlobalKey _quickAddKey = GlobalKey();
   final GlobalKey _reductionCalendarKey = GlobalKey();
+  final TextEditingController _aiTextController = TextEditingController();
+  final FocusNode _aiFocusNode = FocusNode();
+  final AiChatApi _aiApi = AiChatApi();
+  final List<_AiChatMessage> _aiMessages = [];
+  final List<_AiChatSession> _aiHistory = [];
+  String? _aiConversationId;
+  Uint8List? _aiImageBytes;
+  String? _aiImageMimeType;
+  bool _aiRequestCancelled = false;
+  bool _aiWorking = false;
+
+  @override
+  void dispose() {
+    _aiApi.close();
+    _aiTextController.dispose();
+    _aiFocusNode.dispose();
+    super.dispose();
+  }
 
   void openWidgetTarget(Uri uri) {
     final target = uri.pathSegments.firstOrNull;
@@ -2346,6 +2365,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: Stack(
         children: [
           Positioned.fill(
@@ -2416,11 +2436,18 @@ class _HomePageState extends State<HomePage> {
                   topAligned: true,
                   gradientTitle: true,
                 ),
-                _NavigationPage(
-                  title: context.tr('AI coach'),
-                  icon: const Icon(Icons.auto_awesome_rounded, size: 68),
+                _AiCoachPage(
                   themeController: widget.themeController,
                   rewardsController: widget.rewardsController,
+                  messages: _aiMessages,
+                  working: _aiWorking,
+                  onBack: () {
+                    _aiFocusNode.unfocus();
+                    setState(() => _selectedIndex = 0);
+                  },
+                  onNewChat: _startNewAiChat,
+                  onHistory: _showAiHistory,
+                  onPromptSelected: _selectAiPrompt,
                 ),
               ],
             ),
@@ -2429,18 +2456,291 @@ class _HomePageState extends State<HomePage> {
             left: 0,
             right: 0,
             bottom: 0,
-            child: VisualYouNavigationBar(
-              addButtonKey: _addButtonKey,
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (index) {
-                setState(() => _selectedIndex = index);
-              },
-              onAddPressed: () => _showAddPage(context),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 360),
+              reverseDuration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: .92, end: 1).animate(animation),
+                  alignment: Alignment.bottomCenter,
+                  child: child,
+                ),
+              ),
+              child: _selectedIndex == 3
+                  ? _AiComposer(
+                      key: const ValueKey('aiComposer'),
+                      controller: _aiTextController,
+                      focusNode: _aiFocusNode,
+                      working: _aiWorking,
+                      hasImage: _aiImageBytes != null,
+                      onImagePressed: _pickAiImage,
+                      onSendPressed: _aiWorking ? _stopAiReply : _sendAiMessage,
+                    )
+                  : VisualYouNavigationBar(
+                      key: const ValueKey('mainNavigation'),
+                      addButtonKey: _addButtonKey,
+                      selectedIndex: _selectedIndex,
+                      onDestinationSelected: (index) {
+                        setState(() => _selectedIndex = index);
+                      },
+                      onAddPressed: () => _showAddPage(context),
+                    ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _selectAiPrompt(String prompt) {
+    _aiTextController.text = prompt;
+    _aiTextController.selection = TextSelection.collapsed(
+      offset: prompt.length,
+    );
+    _aiFocusNode.requestFocus();
+  }
+
+  Future<void> _pickAiImage() async {
+    try {
+      final image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 82,
+        maxWidth: 1600,
+      );
+      if (image == null || !mounted) return;
+      final bytes = await image.readAsBytes();
+      if (!mounted) return;
+      final name = image.name.toLowerCase();
+      setState(() {
+        _aiImageBytes = bytes;
+        _aiImageMimeType = name.endsWith('.png')
+            ? 'image/png'
+            : name.endsWith('.webp')
+            ? 'image/webp'
+            : 'image/jpeg';
+      });
+    } catch (_) {
+      if (mounted) _showStorageFailure(context);
+    }
+  }
+
+  Future<void> _sendAiMessage() async {
+    final text = _aiTextController.text.trim();
+    final image = _aiImageBytes;
+    if ((text.isEmpty && image == null) || _aiWorking) return;
+    final imageMimeType = _aiImageMimeType;
+    _aiRequestCancelled = false;
+    setState(() {
+      _aiMessages.add(
+        _AiChatMessage(text: text, fromUser: true, imageBytes: image),
+      );
+      _aiTextController.clear();
+      _aiImageBytes = null;
+      _aiImageMimeType = null;
+      _aiWorking = true;
+    });
+    _aiFocusNode.unfocus();
+    try {
+      final conversationId =
+          _aiConversationId ??
+          await _aiApi.createConversation(
+            title: text.isEmpty ? context.tr('Image conversation') : text,
+          );
+      _aiConversationId = conversationId;
+      final reply = await _aiApi.sendMessage(
+        conversationId: conversationId,
+        content: text,
+        imageBytes: image,
+        imageMimeType: imageMimeType,
+      );
+      if (!mounted || _aiRequestCancelled) return;
+      setState(() {
+        _aiMessages.add(_AiChatMessage(text: reply.content, fromUser: false));
+      });
+    } on AiApiException catch (error) {
+      if (!mounted || _aiRequestCancelled) return;
+      setState(() {
+        _aiMessages.add(
+          _AiChatMessage(text: context.tr(error.message), fromUser: false),
+        );
+      });
+    } finally {
+      if (mounted && !_aiRequestCancelled) {
+        setState(() => _aiWorking = false);
+      }
+    }
+  }
+
+  void _stopAiReply() {
+    _aiRequestCancelled = true;
+    _aiApi.cancelActiveRequest();
+    setState(() => _aiWorking = false);
+  }
+
+  void _startNewAiChat() {
+    _archiveCurrentAiChat();
+    _aiRequestCancelled = true;
+    _aiApi.cancelActiveRequest();
+    _aiFocusNode.unfocus();
+    setState(() {
+      _aiConversationId = null;
+      _aiMessages.clear();
+      _aiTextController.clear();
+      _aiImageBytes = null;
+      _aiImageMimeType = null;
+      _aiWorking = false;
+    });
+  }
+
+  void _archiveCurrentAiChat() {
+    if (_aiMessages.isEmpty || _aiConversationId != null) return;
+    _aiHistory.add(
+      _AiChatSession(
+        createdAt: DateTime.now(),
+        messages: List<_AiChatMessage>.of(_aiMessages),
+      ),
+    );
+  }
+
+  Future<void> _showAiHistory() async {
+    _aiFocusNode.unfocus();
+    var remoteHistory = const <AiConversationSummary>[];
+    String? historyError;
+    try {
+      remoteHistory = await _aiApi.listConversations();
+    } on AiApiException catch (error) {
+      historyError = error.message;
+    }
+    if (!mounted) return;
+    final localHistory = _aiHistory.reversed.toList();
+    final selection = await showModalBottomSheet<Object>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 2, 18, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                sheetContext.tr('History'),
+                style: Theme.of(sheetContext).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (remoteHistory.isEmpty && localHistory.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  child: Center(
+                    child: Text(
+                      historyError == null
+                          ? sheetContext.tr('No previous chats yet')
+                          : sheetContext.tr(historyError),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(
+                          sheetContext,
+                        ).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 360),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: remoteHistory.length + localHistory.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final item = index < remoteHistory.length
+                          ? remoteHistory[index]
+                          : localHistory[index - remoteHistory.length];
+                      final title = switch (item) {
+                        AiConversationSummary() =>
+                          item.title.isEmpty
+                              ? context.tr('Image conversation')
+                              : item.title,
+                        _AiChatSession() => context.tr(item.preview),
+                        _ => '',
+                      };
+                      final updatedAt = switch (item) {
+                        AiConversationSummary() => item.updatedAt,
+                        _AiChatSession() => item.createdAt,
+                        _ => DateTime.now(),
+                      };
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.history_rounded),
+                        title: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          MaterialLocalizations.of(
+                            context,
+                          ).formatTimeOfDay(TimeOfDay.fromDateTime(updatedAt)),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => Navigator.of(context).pop(item),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selection == null || !mounted) return;
+    _aiRequestCancelled = true;
+    _aiApi.cancelActiveRequest();
+    if (selection is AiConversationSummary) {
+      try {
+        final messages = await _aiApi.loadMessages(selection.id);
+        if (!mounted) return;
+        setState(() {
+          _aiConversationId = selection.id;
+          _aiMessages
+            ..clear()
+            ..addAll(
+              messages.map(
+                (message) => _AiChatMessage(
+                  text: message.content,
+                  fromUser: message.role == 'user',
+                ),
+              ),
+            );
+          _aiTextController.clear();
+          _aiImageBytes = null;
+          _aiImageMimeType = null;
+          _aiWorking = false;
+        });
+      } on AiApiException catch (error) {
+        if (!mounted) return;
+        _showHabitToast(context, context.tr(error.message));
+      }
+      return;
+    }
+    if (selection is _AiChatSession) {
+      setState(() {
+        _aiConversationId = null;
+        _aiMessages
+          ..clear()
+          ..addAll(selection.messages);
+        _aiTextController.clear();
+        _aiImageBytes = null;
+        _aiImageMimeType = null;
+        _aiWorking = false;
+      });
+    }
   }
 
   void _showAddPage(BuildContext context) {
@@ -3172,6 +3472,525 @@ class _NavigationPage extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AiChatMessage {
+  const _AiChatMessage({
+    required this.text,
+    required this.fromUser,
+    this.imageBytes,
+  });
+
+  final String text;
+  final bool fromUser;
+  final Uint8List? imageBytes;
+}
+
+class _AiChatSession {
+  const _AiChatSession({required this.createdAt, required this.messages});
+
+  final DateTime createdAt;
+  final List<_AiChatMessage> messages;
+
+  String get preview {
+    for (final message in messages) {
+      if (message.fromUser && message.text.trim().isNotEmpty) {
+        return message.text.trim();
+      }
+    }
+    return 'Image conversation';
+  }
+}
+
+class _AiCoachPage extends StatelessWidget {
+  const _AiCoachPage({
+    required this.themeController,
+    required this.rewardsController,
+    required this.messages,
+    required this.working,
+    required this.onBack,
+    required this.onNewChat,
+    required this.onHistory,
+    required this.onPromptSelected,
+  });
+
+  final ThemeController themeController;
+  final RewardsController rewardsController;
+  final List<_AiChatMessage> messages;
+  final bool working;
+  final VoidCallback onBack;
+  final VoidCallback onNewChat;
+  final VoidCallback onHistory;
+  final ValueChanged<String> onPromptSelected;
+
+  static const _prompts = [
+    'How can I reduce an unwanted habit gradually?',
+    'How can I build a consistent workout routine?',
+    'How can I make drinking water easier to remember?',
+    'What can I learn from my weekly progress?',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBody: true,
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: Column(
+            children: [
+              _AiTopHeader(
+                themeController: themeController,
+                rewardsController: rewardsController,
+                onBack: onBack,
+                onNewChat: onNewChat,
+                onHistory: onHistory,
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: messages.isEmpty && !working
+                    ? _AiEmptyState(onPromptSelected: onPromptSelected)
+                    : ListView.builder(
+                        reverse: true,
+                        padding: const EdgeInsets.only(top: 8, bottom: 104),
+                        itemCount: messages.length + (working ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (working && index == 0) {
+                            return const _AiThinkingBubble();
+                          }
+                          final messageIndex =
+                              messages.length - 1 - (index - (working ? 1 : 0));
+                          return _AiMessageBubble(
+                            message: messages[messageIndex],
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AiTopHeader extends StatelessWidget {
+  const _AiTopHeader({
+    required this.themeController,
+    required this.rewardsController,
+    required this.onBack,
+    required this.onNewChat,
+    required this.onHistory,
+  });
+
+  final ThemeController themeController;
+  final RewardsController rewardsController;
+  final VoidCallback onBack;
+  final VoidCallback onNewChat;
+  final VoidCallback onHistory;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            IconButton.filledTonal(
+              tooltip: context.tr('Back'),
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+            const SizedBox(width: 7),
+            InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ProfilePage(
+                    themeController: themeController,
+                    rewardsController: rewardsController,
+                  ),
+                ),
+              ),
+              child: _HeaderAvatar(themeController: themeController),
+            ),
+            const Spacer(),
+            Material(
+              color: colors.primaryContainer.withValues(alpha: .72),
+              borderRadius: BorderRadius.circular(28),
+              clipBehavior: Clip.antiAlias,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PremiumButton(controller: rewardsController),
+                  Container(
+                    width: 1,
+                    height: 25,
+                    color: colors.outlineVariant.withValues(alpha: .7),
+                  ),
+                  IconButton(
+                    tooltip: context.tr('Settings'),
+                    icon: const Icon(Icons.settings_rounded),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            SettingsPage(themeController: themeController),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 118,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _AiHeaderButton(
+                icon: Icons.add_comment_rounded,
+                label: context.tr('New chat'),
+                onPressed: onNewChat,
+              ),
+              const SizedBox(height: 5),
+              _AiHeaderButton(
+                icon: Icons.history_rounded,
+                label: context.tr('History'),
+                onPressed: onHistory,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AiHeaderButton extends StatelessWidget {
+  const _AiHeaderButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.primaryContainer.withValues(alpha: .58),
+      borderRadius: BorderRadius.circular(15),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 17, color: colors.primary),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AiEmptyState extends StatelessWidget {
+  const _AiEmptyState({required this.onPromptSelected});
+  final ValueChanged<String> onPromptSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 96),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: MediaQuery.sizeOf(context).height - 245,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF59D4FF),
+                    Color(0xFF7968E8),
+                    Color(0xFFF06F9B),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.primary.withValues(alpha: .24),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                size: 43,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ShaderMask(
+              blendMode: BlendMode.srcIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [
+                  Color(0xFF59D4FF),
+                  Color(0xFF7968E8),
+                  Color(0xFFF06F9B),
+                ],
+              ).createShader(bounds),
+              child: Text(
+                context.tr('AI coach'),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              context.tr(
+                'Ask about your habits, routines, progress, or gradual-reduction plans.',
+              ),
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 24),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final prompt in _AiCoachPage._prompts)
+                  ActionChip(
+                    avatar: Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 16,
+                      color: colors.primary,
+                    ),
+                    label: Text(context.tr(prompt)),
+                    onPressed: () => onPromptSelected(context.tr(prompt)),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AiMessageBubble extends StatelessWidget {
+  const _AiMessageBubble({required this.message});
+  final _AiChatMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Align(
+      alignment: message.fromUser
+          ? Alignment.centerRight
+          : Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * .78,
+        ),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: message.fromUser
+              ? colors.primaryContainer
+              : colors.surfaceContainerHighest,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(message.fromUser ? 20 : 5),
+            bottomRight: Radius.circular(message.fromUser ? 5 : 20),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (message.imageBytes != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.memory(
+                  message.imageBytes!,
+                  width: 190,
+                  height: 130,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              if (message.text.isNotEmpty) const SizedBox(height: 9),
+            ],
+            if (message.text.isNotEmpty)
+              Text(message.text, style: const TextStyle(height: 1.35)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AiThinkingBubble extends StatelessWidget {
+  const _AiThinkingBubble();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: SizedBox(
+          width: 42,
+          child: LinearProgressIndicator(
+            minHeight: 3,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AiComposer extends StatelessWidget {
+  const _AiComposer({
+    required this.controller,
+    required this.focusNode,
+    required this.working,
+    required this.hasImage,
+    required this.onImagePressed,
+    required this.onSendPressed,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool working;
+  final bool hasImage;
+  final VoidCallback onImagePressed;
+  final VoidCallback onSendPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+      child: Row(
+        children: [
+          Expanded(
+            child: _BlurredCapsule(
+              height: 55,
+              colors: colors,
+              child: Row(
+                children: [
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      minLines: 1,
+                      maxLines: 3,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) {
+                        if (!working) onSendPressed();
+                      },
+                      decoration: InputDecoration.collapsed(
+                        hintText: context.tr('Ask AI'),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: context.tr(working ? 'Stop' : 'Send'),
+                    onPressed: onSendPressed,
+                    icon: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: Icon(
+                        working
+                            ? Icons.stop_circle_rounded
+                            : Icons.arrow_upward_rounded,
+                        key: ValueKey(working),
+                      ),
+                    ),
+                    color: colors.primary,
+                  ),
+                  const SizedBox(width: 3),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _BlurredCapsule(
+            width: 55,
+            height: 55,
+            colors: colors,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  tooltip: context.tr('Add image'),
+                  onPressed: onImagePressed,
+                  icon: const Icon(Icons.add_rounded, size: 28),
+                  color: colors.primary,
+                ),
+                if (hasImage)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: colors.tertiary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

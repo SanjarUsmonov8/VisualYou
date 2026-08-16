@@ -1,3 +1,6 @@
+import base64
+import binascii
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -59,7 +62,47 @@ class AIMessageSerializer(serializers.ModelSerializer):
 
 
 class AIUserMessageSerializer(serializers.Serializer):
-    content = serializers.CharField(max_length=4000, trim_whitespace=True)
+    content = serializers.CharField(
+        max_length=4000,
+        trim_whitespace=True,
+        required=False,
+        allow_blank=True,
+        default='',
+    )
+    image_base64 = serializers.CharField(
+        max_length=6_000_000,
+        required=False,
+        allow_blank=True,
+        write_only=True,
+        default='',
+    )
+    image_mime_type = serializers.ChoiceField(
+        choices=('image/jpeg', 'image/png', 'image/webp'),
+        required=False,
+        allow_blank=True,
+        write_only=True,
+        default='',
+    )
+
+    def validate(self, attrs):
+        content = attrs.get('content', '').strip()
+        image_data = attrs.get('image_base64', '')
+        image_mime_type = attrs.get('image_mime_type', '')
+        if not content and not image_data:
+            raise serializers.ValidationError('A message or image is required.')
+        if bool(image_data) != bool(image_mime_type):
+            raise serializers.ValidationError(
+                'Image data and image MIME type must be provided together.'
+            )
+        if image_data:
+            try:
+                decoded = base64.b64decode(image_data, validate=True)
+            except (binascii.Error, ValueError) as exc:
+                raise serializers.ValidationError('The image data is invalid.') from exc
+            if len(decoded) > 4 * 1024 * 1024:
+                raise serializers.ValidationError('The image must be 4 MB or smaller.')
+        attrs['content'] = content
+        return attrs
 
 
 class AIConversationSerializer(serializers.ModelSerializer):

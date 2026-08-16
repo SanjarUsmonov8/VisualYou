@@ -1,4 +1,7 @@
+import json
 import re
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.apps import apps
 from django.conf import settings
@@ -8,7 +11,9 @@ from django.test import SimpleTestCase
 from django.test.utils import override_settings
 from rest_framework.test import APITestCase
 
-from .serializers import SyncRequestSerializer
+from .ai_provider import generate_reply
+from .models import AIMessage
+from .serializers import AIUserMessageSerializer, SyncRequestSerializer
 
 
 class BackendConfigurationTests(SimpleTestCase):
@@ -57,6 +62,81 @@ class SyncRequestSerializerTests(SimpleTestCase):
 
         self.assertFalse(serializer.is_valid())
         self.assertIn('non_field_errors', serializer.errors)
+
+
+class AIMessageSerializerTests(SimpleTestCase):
+    def test_rejects_invalid_image_data(self):
+        serializer = AIUserMessageSerializer(
+            data={
+                'content': 'What is shown here?',
+                'image_base64': 'not-base64',
+                'image_mime_type': 'image/jpeg',
+            }
+        )
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('non_field_errors', serializer.errors)
+
+
+@override_settings(
+    GEMINI_API_KEY='test-key',
+    GEMINI_MODEL='gemini-test',
+    GEMINI_TIMEOUT_SECONDS=5,
+    GEMINI_MAX_OUTPUT_TOKENS=200,
+    GEMINI_HISTORY_MESSAGE_LIMIT=20,
+)
+class GeminiProviderTests(SimpleTestCase):
+    @patch('Habits.ai_provider.request.urlopen')
+    def test_uses_native_gemini_endpoint_and_api_key_header(self, mocked_urlopen):
+        response = mocked_urlopen.return_value.__enter__.return_value
+        response.read.return_value = json.dumps(
+            {
+                'candidates': [
+                    {'content': {'parts': [{'text': 'A helpful response.'}]}}
+                ]
+            }
+        ).encode()
+        messages = [SimpleNamespace(role='user', content='Help me build a habit.')]
+
+        result = generate_reply(messages)
+
+        self.assertEqual(result, 'A helpful response.')
+        sent_request = mocked_urlopen.call_args.args[0]
+        self.assertIn('gemini-test:generateContent', sent_request.full_url)
+        self.assertEqual(sent_request.get_header('X-goog-api-key'), 'test-key')
+
+
+class AIConversationApiTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='ai-user',
+            email='ai@example.com',
+            password='A-long-test-password-2048!',
+        )
+        self.client.force_authenticate(self.user)
+
+    @patch('Habits.views.generate_reply', return_value='Start with one small step.')
+    def test_message_endpoint_stores_user_and_assistant_messages(self, generate):
+        conversation = self.client.post(
+            '/api/v1/ai/conversations/',
+            {'title': ''},
+            format='json',
+        )
+        self.assertEqual(conversation.status_code, 201)
+
+        response = self.client.post(
+            f"/api/v1/ai/conversations/{conversation.data['id']}/messages/",
+            {'content': 'How can I start?'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.data['assistant_message']['content'],
+            'Start with one small step.',
+        )
+        self.assertEqual(AIMessage.objects.filter(conversation_id=conversation.data['id']).count(), 2)
+        generate.assert_called_once()
 
 
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')

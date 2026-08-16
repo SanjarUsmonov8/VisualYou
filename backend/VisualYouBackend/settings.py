@@ -137,6 +137,7 @@ REST_FRAMEWORK = {
         'email_signup_verify': '20/hour',
         'email_signup_complete': '10/hour',
         'email_login': '20/hour',
+        'ai_message': '30/hour',
     },
 }
 
@@ -157,6 +158,14 @@ EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', False)
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Visual You <no-reply@visualyou.app>')
 EMAIL_SIGNUP_CODE_TTL_MINUTES = int(os.getenv('EMAIL_SIGNUP_CODE_TTL_MINUTES', '10'))
+
+# Gemini is called only by the Django backend. Never expose this key to Flutter.
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.6-flash')
+GEMINI_TIMEOUT_SECONDS = int(os.getenv('GEMINI_TIMEOUT_SECONDS', '45'))
+GEMINI_MAX_OUTPUT_TOKENS = int(os.getenv('GEMINI_MAX_OUTPUT_TOKENS', '700'))
+GEMINI_HISTORY_MESSAGE_LIMIT = int(os.getenv('GEMINI_HISTORY_MESSAGE_LIMIT', '20'))
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv('DATA_UPLOAD_MAX_MEMORY_SIZE', str(8 * 1024 * 1024)))
 
 
 # Password validation

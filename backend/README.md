@@ -115,6 +115,15 @@ same seven collections. If `has_more` is true, call sync again with the returned
 cursor until it becomes false. After a successful response, the Flutter client
 can mark uploaded rows as synced and store returned `remote_id` values.
 
-AI conversations and messages are stored relationally in PostgreSQL. Calling an
-external AI model is intentionally not enabled yet; that requires a provider,
-secret API key, cost limits, and the app's non-diagnostic safety policy.
+AI conversations and messages are stored relationally in PostgreSQL. Gemini is
+called only by Django through Google's native API. Generate a private Gemini
+key in Google AI Studio and place it in `backend/.env` as `GEMINI_API_KEY`.
+Never place this key in Flutter, commit it to Git, or send it to users. Optional
+settings are `GEMINI_MODEL`, `GEMINI_TIMEOUT_SECONDS`,
+`GEMINI_MAX_OUTPUT_TOKENS`, and `GEMINI_HISTORY_MESSAGE_LIMIT`.
+
+The AI coach uses a server-side safety instruction: body colors remain symbolic,
+responses must not diagnose medical conditions, and urgent health or safety
+concerns are directed to qualified local help. AI responses are generated
+content and must be presented as educational guidance rather than medical
+advice.
