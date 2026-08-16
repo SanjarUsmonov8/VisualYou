@@ -104,6 +104,8 @@ class GeminiProviderTests(SimpleTestCase):
         sent_request = mocked_urlopen.call_args.args[0]
         self.assertIn('gemini-test:generateContent', sent_request.full_url)
         self.assertEqual(sent_request.get_header('X-goog-api-key'), 'test-key')
+        payload = json.loads(sent_request.data)
+        self.assertNotIn('temperature', payload['generationConfig'])
 
 
 class AIConversationApiTests(APITestCase):

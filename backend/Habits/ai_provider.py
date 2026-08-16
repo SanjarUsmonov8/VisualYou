@@ -1,8 +1,12 @@
 import json
+import logging
 import re
 from urllib import error, parse, request
 
 from django.conf import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_INSTRUCTION = '''
@@ -58,7 +62,6 @@ def generate_reply(messages, *, image_base64='', image_mime_type=''):
         'system_instruction': {'parts': [{'text': SYSTEM_INSTRUCTION}]},
         'contents': contents,
         'generationConfig': {
-            'temperature': 0.45,
             'maxOutputTokens': settings.GEMINI_MAX_OUTPUT_TOKENS,
         },
     }
@@ -95,10 +98,23 @@ def generate_reply(messages, *, image_base64='', image_mime_type=''):
 
 
 def _provider_error_detail(exc):
+    provider_message = ''
+    try:
+        payload = json.loads(exc.read().decode('utf-8'))
+        provider_message = str(payload.get('error', {}).get('message', '')).strip()
+    except (AttributeError, UnicodeDecodeError, json.JSONDecodeError):
+        pass
+    logger.warning(
+        'Gemini API returned HTTP %s: %s',
+        exc.code,
+        provider_message[:500] or exc.reason,
+    )
     if exc.code in (401, 403):
         return 'The AI service credentials were rejected.'
     if exc.code == 429:
         return 'The AI usage limit has been reached. Please try again later.'
+    if exc.code == 404:
+        return 'The configured AI model is unavailable.'
     if 500 <= exc.code < 600:
         return 'The AI service is temporarily unavailable.'
     return 'The AI service could not process that request.'
