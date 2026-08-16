@@ -139,6 +139,10 @@ class AIConversationApiTests(APITestCase):
         )
         self.assertEqual(AIMessage.objects.filter(conversation_id=conversation.data['id']).count(), 2)
         generate.assert_called_once()
+        message_history = generate.call_args.args[0]
+        self.assertEqual(len(message_history), 1)
+        self.assertEqual(message_history[0].role, AIMessage.Role.USER)
+        self.assertEqual(message_history[0].content, 'How can I start?')
 
 
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')

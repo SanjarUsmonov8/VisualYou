@@ -278,9 +278,12 @@ class AIConversationViewSet(viewsets.ModelViewSet):
             title = serializer.validated_data['content'].strip()
             conversation.title = (title or 'Image conversation')[:160]
         conversation.save(update_fields=('title', 'updated_at'))
+        message_history = list(
+            AIMessage.objects.filter(conversation=conversation).order_by('created_at')
+        )
         try:
             reply = generate_reply(
-                conversation.messages.all(),
+                message_history,
                 image_base64=serializer.validated_data['image_base64'],
                 image_mime_type=serializer.validated_data['image_mime_type'],
             )
