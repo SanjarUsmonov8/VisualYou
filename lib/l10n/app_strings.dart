@@ -19,7 +19,10 @@ class AppStrings {
   }
 
   String text(String key) {
-    return _newFeatureTranslations[locale.languageCode]?[key] ??
+    return _authTranslations[locale.languageCode]?[key] ??
+        _onboardingTranslations[locale.languageCode]?[key] ??
+        _adTranslations[locale.languageCode]?[key] ??
+        _newFeatureTranslations[locale.languageCode]?[key] ??
         _rewardTranslations[locale.languageCode]?[key] ??
         _translations[locale.languageCode]?[key] ??
         _translations['en']![key] ??
@@ -61,6 +64,185 @@ extension AppStringsContext on BuildContext {
 
   String habitAdded(String habit) => AppStrings.of(this).added(habit);
 }
+
+const Map<String, Map<String, String>> _authTranslations = {
+  'en': {
+    'Forgot password?': 'Forgot password?',
+    'Verify reset code': 'Verify reset code',
+    'Create a new password': 'Create a new password',
+    'Enter your account email and we will send a six-digit reset code.':
+        'Enter your account email and we will send a six-digit reset code.',
+    'Enter the reset code sent to your email. It expires in 10 minutes.':
+        'Enter the reset code sent to your email. It expires in 10 minutes.',
+    'Choose a secure new password for your account.':
+        'Choose a secure new password for your account.',
+    'Send code': 'Send code',
+    'Send a new code': 'Send a new code',
+    'A new code was sent.': 'A new code was sent.',
+    'New password': 'New password',
+    'Change password': 'Change password',
+    'Your password was changed. Log in with your new password.':
+        'Your password was changed. Log in with your new password.',
+  },
+  'es': {
+    'Forgot password?': '¿Olvidaste tu contraseña?',
+    'Verify reset code': 'Verificar código',
+    'Create a new password': 'Crear una contraseña nueva',
+    'Enter your account email and we will send a six-digit reset code.':
+        'Introduce el correo de tu cuenta y enviaremos un código de seis dígitos.',
+    'Enter the reset code sent to your email. It expires in 10 minutes.':
+        'Introduce el código enviado a tu correo. Caduca en 10 minutos.',
+    'Choose a secure new password for your account.':
+        'Elige una contraseña nueva y segura para tu cuenta.',
+    'Send code': 'Enviar código',
+    'Send a new code': 'Enviar otro código',
+    'A new code was sent.': 'Se envió un código nuevo.',
+    'New password': 'Contraseña nueva',
+    'Change password': 'Cambiar contraseña',
+    'Your password was changed. Log in with your new password.':
+        'Tu contraseña se cambió. Inicia sesión con la contraseña nueva.',
+  },
+  'ru': {
+    'Forgot password?': 'Забыли пароль?',
+    'Verify reset code': 'Проверка кода',
+    'Create a new password': 'Создайте новый пароль',
+    'Enter your account email and we will send a six-digit reset code.':
+        'Введите почту аккаунта, и мы отправим шестизначный код сброса.',
+    'Enter the reset code sent to your email. It expires in 10 minutes.':
+        'Введите код из письма. Он действует 10 минут.',
+    'Choose a secure new password for your account.':
+        'Выберите новый надёжный пароль для аккаунта.',
+    'Send code': 'Отправить код',
+    'Send a new code': 'Отправить новый код',
+    'A new code was sent.': 'Новый код отправлен.',
+    'New password': 'Новый пароль',
+    'Change password': 'Изменить пароль',
+    'Your password was changed. Log in with your new password.':
+        'Пароль изменён. Войдите с новым паролем.',
+  },
+  'fr': {
+    'Forgot password?': 'Mot de passe oublié ?',
+    'Verify reset code': 'Vérifier le code',
+    'Create a new password': 'Créer un nouveau mot de passe',
+    'Enter your account email and we will send a six-digit reset code.':
+        'Saisissez l’e-mail du compte et nous enverrons un code à six chiffres.',
+    'Enter the reset code sent to your email. It expires in 10 minutes.':
+        'Saisissez le code reçu par e-mail. Il expire dans 10 minutes.',
+    'Choose a secure new password for your account.':
+        'Choisissez un nouveau mot de passe sécurisé pour votre compte.',
+    'Send code': 'Envoyer le code',
+    'Send a new code': 'Renvoyer un code',
+    'A new code was sent.': 'Un nouveau code a été envoyé.',
+    'New password': 'Nouveau mot de passe',
+    'Change password': 'Changer le mot de passe',
+    'Your password was changed. Log in with your new password.':
+        'Votre mot de passe a été modifié. Connectez-vous avec le nouveau.',
+  },
+  'uz': {
+    'Forgot password?': 'Parolni unutdingizmi?',
+    'Verify reset code': 'Kodni tasdiqlash',
+    'Create a new password': 'Yangi parol yarating',
+    'Enter your account email and we will send a six-digit reset code.':
+        'Hisobingiz emailini kiriting, olti xonali tiklash kodini yuboramiz.',
+    'Enter the reset code sent to your email. It expires in 10 minutes.':
+        'Emailga yuborilgan kodni kiriting. U 10 daqiqada tugaydi.',
+    'Choose a secure new password for your account.':
+        'Hisobingiz uchun yangi xavfsiz parol tanlang.',
+    'Send code': 'Kod yuborish',
+    'Send a new code': 'Yangi kod yuborish',
+    'A new code was sent.': 'Yangi kod yuborildi.',
+    'New password': 'Yangi parol',
+    'Change password': 'Parolni o‘zgartirish',
+    'Your password was changed. Log in with your new password.':
+        'Parolingiz o‘zgartirildi. Yangi parol bilan tizimga kiring.',
+  },
+};
+
+const Map<String, Map<String, String>> _onboardingTranslations = {
+  'en': {
+    'Your profile': 'Your profile',
+    'Personal details': 'Personal details',
+    'What are your habits?': 'What are your habits?',
+    'Choose the habits you want to track now. You can add the others later with the pen button.':
+        'Choose the habits you want to track now. You can add the others later with the pen button.',
+    'Select at least one habit': 'Select at least one habit',
+  },
+  'es': {
+    'Your profile': 'Tu perfil',
+    'Personal details': 'Datos personales',
+    'What are your habits?': '¿Cuáles son tus hábitos?',
+    'Choose the habits you want to track now. You can add the others later with the pen button.':
+        'Elige los hábitos que quieres registrar ahora. Puedes añadir los demás más tarde con el botón del lápiz.',
+    'Select at least one habit': 'Selecciona al menos un hábito',
+  },
+  'ru': {
+    'Your profile': 'Ваш профиль',
+    'Personal details': 'Личные данные',
+    'What are your habits?': 'Какие у вас привычки?',
+    'Choose the habits you want to track now. You can add the others later with the pen button.':
+        'Выберите привычки, которые хотите отслеживать сейчас. Остальные можно добавить позже кнопкой с карандашом.',
+    'Select at least one habit': 'Выберите хотя бы одну привычку',
+  },
+  'fr': {
+    'Your profile': 'Votre profil',
+    'Personal details': 'Informations personnelles',
+    'What are your habits?': 'Quelles sont vos habitudes ?',
+    'Choose the habits you want to track now. You can add the others later with the pen button.':
+        'Choisissez les habitudes à suivre maintenant. Vous pourrez ajouter les autres plus tard avec le bouton crayon.',
+    'Select at least one habit': 'Sélectionnez au moins une habitude',
+  },
+  'uz': {
+    'Your profile': 'Profilingiz',
+    'Personal details': 'Shaxsiy ma’lumotlar',
+    'What are your habits?': 'Odatlaringiz qaysilar?',
+    'Choose the habits you want to track now. You can add the others later with the pen button.':
+        'Hozir kuzatmoqchi bo‘lgan odatlaringizni tanlang. Qolganlarini keyinroq qalam tugmasi orqali qo‘shishingiz mumkin.',
+    'Select at least one habit': 'Kamida bitta odatni tanlang',
+  },
+};
+
+const Map<String, Map<String, String>> _adTranslations = {
+  'en': {
+    'Watch ad': 'Watch ad',
+    'Loading rewarded ad...': 'Loading rewarded ad...',
+    'Watch the complete ad to receive the reward.':
+        'Watch the complete ad to receive the reward.',
+    'The rewarded ad is not ready. Please try again.':
+        'The rewarded ad is not ready. Please try again.',
+  },
+  'es': {
+    'Watch ad': 'Ver anuncio',
+    'Loading rewarded ad...': 'Cargando anuncio recompensado...',
+    'Watch the complete ad to receive the reward.':
+        'Mira el anuncio completo para recibir la recompensa.',
+    'The rewarded ad is not ready. Please try again.':
+        'El anuncio recompensado no está listo. Inténtalo de nuevo.',
+  },
+  'ru': {
+    'Watch ad': 'Посмотреть рекламу',
+    'Loading rewarded ad...': 'Загрузка рекламы с вознаграждением...',
+    'Watch the complete ad to receive the reward.':
+        'Посмотрите рекламу полностью, чтобы получить награду.',
+    'The rewarded ad is not ready. Please try again.':
+        'Реклама с вознаграждением пока не готова. Попробуйте ещё раз.',
+  },
+  'fr': {
+    'Watch ad': 'Regarder une publicité',
+    'Loading rewarded ad...': 'Chargement de la publicité récompensée...',
+    'Watch the complete ad to receive the reward.':
+        'Regardez la publicité en entier pour recevoir la récompense.',
+    'The rewarded ad is not ready. Please try again.':
+        'La publicité récompensée n’est pas prête. Réessayez.',
+  },
+  'uz': {
+    'Watch ad': 'Reklamani ko‘rish',
+    'Loading rewarded ad...': 'Mukofotli reklama yuklanmoqda...',
+    'Watch the complete ad to receive the reward.':
+        'Mukofotni olish uchun reklamani oxirigacha ko‘ring.',
+    'The rewarded ad is not ready. Please try again.':
+        'Mukofotli reklama hali tayyor emas. Qayta urinib ko‘ring.',
+  },
+};
 
 const Map<String, Map<String, String>> _newFeatureTranslations = {
   'en': {

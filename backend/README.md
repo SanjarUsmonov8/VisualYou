@@ -52,6 +52,9 @@ All API endpoints use JSON and are versioned under `/api/v1/`:
 - `POST /api/v1/auth/email/verify/` — verify the code and receive a short-lived password setup token
 - `POST /api/v1/auth/email/complete/` — create the password and receive an API token
 - `POST /api/v1/auth/email/login/` — log in with email and password
+- `POST /api/v1/auth/email/password-reset/start/` — request a six-digit reset code
+- `POST /api/v1/auth/email/password-reset/verify/` — verify the reset code
+- `POST /api/v1/auth/email/password-reset/complete/` — set a new password
 - `POST /api/v1/auth/logout/` — invalidate the current token
 - `GET|PATCH /api/v1/me/` — read or update the signed-in user
 - `POST /api/v1/sync/` — push pending local changes and pull server changes

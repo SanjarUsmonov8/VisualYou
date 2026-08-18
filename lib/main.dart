@@ -24,6 +24,8 @@ import 'package:visualyou/features/home_widgets/home_widget_service.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar_repository.dart';
 import 'package:visualyou/features/rewards/premium_page.dart';
+import 'package:visualyou/features/rewards/native_ad_card.dart';
+import 'package:visualyou/features/rewards/rewarded_ad_service.dart';
 import 'package:visualyou/features/rewards/rewards_controller.dart';
 import 'package:visualyou/features/rewards/rewards_models.dart';
 import 'package:visualyou/features/rewards/rewards_profile.dart';
@@ -81,6 +83,9 @@ class _VisualYouAppState extends State<VisualYouApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(RewardedAdService.instance.initialize());
+    });
     final injectedRepository = widget.habitRepository;
     if (injectedRepository != null) {
       final database = (injectedRepository as DriftHabitRepository).database;
@@ -318,6 +323,43 @@ class _VisualYouAppState extends State<VisualYouApp>
   }
 }
 
+const _standardGoodHabits = [
+  _HabitOption('water', 'Drinking water', Icons.water_drop_rounded),
+  _HabitOption('healthy_eating', 'Eating healthy', Icons.eco_rounded),
+  _HabitOption('studying', 'Studying', Icons.school_rounded),
+];
+
+const _standardExercises = [
+  _HabitOption('workout_arms', 'Arm', Icons.fitness_center_rounded),
+  _HabitOption(
+    'workout_shoulders_back',
+    'Shoulder / Back',
+    Icons.accessibility_new_rounded,
+  ),
+  _HabitOption('workout_chest', 'Chest', Icons.monitor_heart_outlined),
+  _HabitOption('workout_abs', 'Abs', Icons.grid_view_rounded),
+  _HabitOption('workout_legs', 'Legs', Icons.directions_run_rounded),
+];
+
+const _standardBadHabits = [
+  _HabitOption('smoking', 'Smoking', Icons.smoke_free_rounded),
+  _HabitOption('vaping', 'Vaping', Icons.air_rounded),
+  _HabitOption('alcohol', 'Alcohol', Icons.local_bar_rounded),
+  _HabitOption('unhealthy_eating', 'Unhealthy eating', Icons.fastfood_rounded),
+  _HabitOption('adult_videos', 'Adult videos', Icons.visibility_off_rounded),
+  _HabitOption('masturbation', 'Masturbation', Icons.self_improvement_rounded),
+  _HabitOption('consuming_sugar', 'Consuming sugar', Icons.cake_rounded),
+];
+
+const _allStandardHabits = [
+  ..._standardGoodHabits,
+  ..._standardExercises,
+  ..._standardBadHabits,
+];
+
+bool _isPremiumHabitId(String habitId) =>
+    habitId == 'consuming_sugar' || habitId == 'studying';
+
 class WelcomeFlow extends StatefulWidget {
   const WelcomeFlow({
     required this.themeController,
@@ -336,9 +378,12 @@ class WelcomeFlow extends StatefulWidget {
 
 class _WelcomeFlowState extends State<WelcomeFlow> {
   static const int _profileSetupPageIndex = 6;
+  static const int _habitSelectionPageIndex = 7;
   final PageController _pageController = PageController();
   final GlobalKey<_WelcomeProfileSetupSlideState> _profileSetupKey =
       GlobalKey<_WelcomeProfileSetupSlideState>();
+  final GlobalKey<_WelcomeHabitSelectionSlideState> _habitSelectionKey =
+      GlobalKey<_WelcomeHabitSelectionSlideState>();
   final GlobalKey<_WelcomeAgreementSlideState> _agreementKey =
       GlobalKey<_WelcomeAgreementSlideState>();
   int _currentPage = 0;
@@ -354,6 +399,11 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
     _WelcomeProfileSetupSlide(
       key: _profileSetupKey,
       themeController: widget.themeController,
+    ),
+    _WelcomeHabitSelectionSlide(
+      key: _habitSelectionKey,
+      habitRepository: widget.themeController.habitRepository,
+      previewMode: widget.previewMode,
     ),
     _WelcomeAgreementSlide(
       key: _agreementKey,
@@ -375,6 +425,11 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
       } else {
         _profileSetupKey.currentState?.saveDraft();
       }
+    }
+    if (_currentPage == _habitSelectionPageIndex) {
+      final habitsReady = await _habitSelectionKey.currentState
+          ?.validateAndSave();
+      if (habitsReady == false) return;
     }
     if (_currentPage < _pages.length - 1) {
       await _pageController.nextPage(
@@ -417,6 +472,7 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
 
   Future<void> _saveWelcomeSettings() async {
     _profileSetupKey.currentState?.saveDraft();
+    await _habitSelectionKey.currentState?.saveDraft();
     await widget.themeController.flushPersistence();
   }
 
@@ -1299,186 +1355,491 @@ class _WelcomeProfileSetupSlideState extends State<_WelcomeProfileSetupSlide> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                TextField(
-                  key: const Key('welcomeProfileName'),
-                  controller: _nameController,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.done,
-                  onChanged: (_) => saveDraft(),
-                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
-                  decoration: InputDecoration(
-                    labelText: context.tr('Name'),
-                    prefixIcon: const Icon(Icons.person_outline_rounded),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _SettingsSectionTitle(context.tr('Your profile')),
                 ),
-                const SizedBox(height: 16),
-                AnimatedBuilder(
-                  animation: controller,
-                  builder: (context, _) => SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<AppGender>(
-                      segments: [
-                        ButtonSegment(
-                          value: AppGender.male,
-                          icon: const Icon(Icons.male_rounded),
-                          label: Text(context.tr('Male')),
-                        ),
-                        ButtonSegment(
-                          value: AppGender.female,
-                          icon: const Icon(Icons.female_rounded),
-                          label: Text(context.tr('Female')),
-                        ),
-                      ],
-                      selected: {controller.gender},
-                      onSelectionChanged: (selection) {
-                        controller.setGender(selection.first);
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
+                const SizedBox(height: 8),
+                _SettingsGroupCard(
                   children: [
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        key: ValueKey('day-$_day-$_month-$_year'),
-                        initialValue: _day,
-                        isExpanded: true,
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: TextField(
+                        key: const Key('welcomeProfileName'),
+                        controller: _nameController,
+                        textCapitalization: TextCapitalization.words,
+                        textInputAction: TextInputAction.done,
+                        onChanged: (_) => saveDraft(),
+                        onSubmitted: (_) => FocusScope.of(context).unfocus(),
                         decoration: InputDecoration(
-                          labelText: context.tr('Day'),
-                          border: const OutlineInputBorder(),
+                          labelText: context.tr('Name'),
+                          prefixIcon: const Icon(Icons.person_outline_rounded),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
                         ),
-                        items: [
-                          for (var day = 1; day <= _daysInSelectedMonth; day++)
-                            DropdownMenuItem(value: day, child: Text('$day')),
-                        ],
-                        onChanged: (value) {
-                          setState(() => _day = value);
-                          saveDraft();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        initialValue: _month,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Month'),
-                          border: const OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (var month = 1; month <= 12; month++)
-                            DropdownMenuItem(
-                              value: month,
-                              child: Text('$month'),
-                            ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _month = value;
-                            _keepDayValid();
-                          });
-                          saveDraft();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        initialValue: _year,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Year'),
-                          border: const OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (
-                            var year = currentYear;
-                            year >= currentYear - 120;
-                            year--
-                          )
-                            DropdownMenuItem(value: year, child: Text('$year')),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _year = value;
-                            _keepDayValid();
-                          });
-                          saveDraft();
-                        },
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
-                AnimatedBuilder(
-                  animation: controller,
-                  builder: (context, _) => SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<ThemeMode>(
-                      segments: [
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          icon: const Icon(Icons.light_mode_rounded),
-                          label: Text(context.tr('Light')),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          icon: const Icon(Icons.brightness_auto_rounded),
-                          label: Text(context.tr('System')),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          icon: const Icon(Icons.dark_mode_rounded),
-                          label: Text(context.tr('Dark')),
-                        ),
-                      ],
-                      selected: {controller.mode},
-                      onSelectionChanged: (selection) {
-                        controller.setMode(selection.first);
-                      },
-                    ),
-                  ),
+                const SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _SettingsSectionTitle(context.tr('Personal details')),
                 ),
-                const SizedBox(height: 14),
-                AnimatedBuilder(
-                  animation: controller,
-                  builder: (context, _) => SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<AppAccent>(
-                      segments: [
-                        ButtonSegment(
-                          value: AppAccent.blue,
-                          icon: const Icon(
-                            Icons.water_drop_rounded,
-                            color: Color(0xFF526DFF),
+                const SizedBox(height: 8),
+                _SettingsGroupCard(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: AnimatedBuilder(
+                        animation: controller,
+                        builder: (context, _) => SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<AppGender>(
+                            segments: [
+                              ButtonSegment(
+                                value: AppGender.male,
+                                icon: const Icon(Icons.male_rounded),
+                                label: Text(context.tr('Male')),
+                              ),
+                              ButtonSegment(
+                                value: AppGender.female,
+                                icon: const Icon(Icons.female_rounded),
+                                label: Text(context.tr('Female')),
+                              ),
+                            ],
+                            selected: {controller.gender},
+                            onSelectionChanged: (selection) {
+                              controller.setGender(selection.first);
+                            },
                           ),
-                          label: Text(context.tr('Blue')),
                         ),
-                        ButtonSegment(
-                          value: AppAccent.pink,
-                          icon: const Icon(
-                            Icons.favorite_rounded,
-                            color: Color(0xFFE5478D),
-                          ),
-                          label: Text(context.tr('Pink')),
-                        ),
-                      ],
-                      selected: {controller.accent},
-                      onSelectionChanged: (selection) {
-                        controller.setAccent(selection.first);
-                      },
+                      ),
                     ),
-                  ),
+                    const _SettingsDivider(),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              key: ValueKey('day-$_day-$_month-$_year'),
+                              initialValue: _day,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: context.tr('Day'),
+                                border: const OutlineInputBorder(),
+                              ),
+                              items: [
+                                for (
+                                  var day = 1;
+                                  day <= _daysInSelectedMonth;
+                                  day++
+                                )
+                                  DropdownMenuItem(
+                                    value: day,
+                                    child: Text('$day'),
+                                  ),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _day = value);
+                                saveDraft();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              initialValue: _month,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: context.tr('Month'),
+                                border: const OutlineInputBorder(),
+                              ),
+                              items: [
+                                for (var month = 1; month <= 12; month++)
+                                  DropdownMenuItem(
+                                    value: month,
+                                    child: Text('$month'),
+                                  ),
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  _month = value;
+                                  _keepDayValid();
+                                });
+                                saveDraft();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              initialValue: _year,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: context.tr('Year'),
+                                border: const OutlineInputBorder(),
+                              ),
+                              items: [
+                                for (
+                                  var year = currentYear;
+                                  year >= currentYear - 120;
+                                  year--
+                                )
+                                  DropdownMenuItem(
+                                    value: year,
+                                    child: Text('$year'),
+                                  ),
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  _year = value;
+                                  _keepDayValid();
+                                });
+                                saveDraft();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _SettingsSectionTitle(context.tr('App appearance')),
+                ),
+                const SizedBox(height: 8),
+                _SettingsGroupCard(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: AnimatedBuilder(
+                        animation: controller,
+                        builder: (context, _) => SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<ThemeMode>(
+                            segments: [
+                              ButtonSegment(
+                                value: ThemeMode.light,
+                                icon: const Icon(Icons.light_mode_rounded),
+                                label: Text(context.tr('Light')),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.system,
+                                icon: const Icon(Icons.brightness_auto_rounded),
+                                label: Text(context.tr('System')),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.dark,
+                                icon: const Icon(Icons.dark_mode_rounded),
+                                label: Text(context.tr('Dark')),
+                              ),
+                            ],
+                            selected: {controller.mode},
+                            onSelectionChanged: (selection) {
+                              controller.setMode(selection.first);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    const _SettingsDivider(),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: AnimatedBuilder(
+                        animation: controller,
+                        builder: (context, _) => SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<AppAccent>(
+                            segments: [
+                              ButtonSegment(
+                                value: AppAccent.blue,
+                                icon: const Icon(
+                                  Icons.water_drop_rounded,
+                                  color: Color(0xFF526DFF),
+                                ),
+                                label: Text(context.tr('Blue')),
+                              ),
+                              ButtonSegment(
+                                value: AppAccent.pink,
+                                icon: const Icon(
+                                  Icons.favorite_rounded,
+                                  color: Color(0xFFE5478D),
+                                ),
+                                label: Text(context.tr('Pink')),
+                              ),
+                            ],
+                            selected: {controller.accent},
+                            onSelectionChanged: (selection) {
+                              controller.setAccent(selection.first);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WelcomeHabitSelectionSlide extends StatefulWidget {
+  const _WelcomeHabitSelectionSlide({
+    required this.habitRepository,
+    required this.previewMode,
+    super.key,
+  });
+
+  final HabitRepository? habitRepository;
+  final bool previewMode;
+
+  @override
+  State<_WelcomeHabitSelectionSlide> createState() =>
+      _WelcomeHabitSelectionSlideState();
+}
+
+class _WelcomeHabitSelectionSlideState
+    extends State<_WelcomeHabitSelectionSlide> {
+  final Set<String> _selectedHabitIds = {};
+  bool _loaded = false;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final repository = widget.habitRepository;
+    if (repository == null) {
+      _selectedHabitIds.add('water');
+    } else if (widget.previewMode) {
+      final preferences = await repository.watchHabitPreferences().first;
+      _selectedHabitIds.addAll(
+        preferences.where((habit) => habit.isActive).map((habit) => habit.id),
+      );
+    }
+    if (!mounted) return;
+    setState(() => _loaded = true);
+  }
+
+  Future<bool> validateAndSave() async {
+    if (!_loaded || _selectedHabitIds.isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(context.tr('Select at least one habit'))),
+        );
+      return false;
+    }
+    await saveDraft();
+    return true;
+  }
+
+  Future<void> saveDraft() async {
+    final repository = widget.habitRepository;
+    if (!_loaded || repository == null || _saving) return;
+    _saving = true;
+    try {
+      await Future.wait([
+        for (final habit in _allStandardHabits)
+          repository.setHabitActive(
+            habit.id,
+            _selectedHabitIds.contains(habit.id),
+          ),
+      ]);
+    } finally {
+      _saving = false;
+    }
+  }
+
+  void _toggleHabit(String habitId) {
+    setState(() {
+      if (!_selectedHabitIds.add(habitId)) {
+        _selectedHabitIds.remove(habitId);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 42, 20, 112),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ShaderMask(
+            blendMode: BlendMode.srcIn,
+            shaderCallback: (bounds) => const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF36C5B5), Color(0xFF5776E8), Color(0xFFE45B8D)],
+            ).createShader(bounds),
+            child: Text(
+              context.tr('What are your habits?'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.displaySmall?.copyWith(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            context.tr(
+              'Choose the habits you want to track now. You can add the others later with the pen button.',
+            ),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (!_loaded)
+            const Center(child: CircularProgressIndicator())
+          else ...[
+            _WelcomeHabitGroup(
+              title: context.tr('Good habits'),
+              options: _standardGoodHabits,
+              selectedHabitIds: _selectedHabitIds,
+              onToggle: _toggleHabit,
+            ),
+            const SizedBox(height: 18),
+            _WelcomeHabitGroup(
+              title: context.tr('Exercises'),
+              options: _standardExercises,
+              selectedHabitIds: _selectedHabitIds,
+              onToggle: _toggleHabit,
+            ),
+            const SizedBox(height: 18),
+            _WelcomeHabitGroup(
+              title: context.tr('Bad habits'),
+              options: _standardBadHabits,
+              selectedHabitIds: _selectedHabitIds,
+              onToggle: _toggleHabit,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _WelcomeHabitGroup extends StatelessWidget {
+  const _WelcomeHabitGroup({
+    required this.title,
+    required this.options,
+    required this.selectedHabitIds,
+    required this.onToggle,
+  });
+
+  final String title;
+  final List<_HabitOption> options;
+  final Set<String> selectedHabitIds;
+  final ValueChanged<String> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SettingsSectionTitle(title),
+        const SizedBox(height: 8),
+        _SettingsGroupCard(
+          children: [
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(10),
+              crossAxisCount: 2,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 2.55,
+              children: [
+                for (final option in options)
+                  _WelcomeHabitChoice(
+                    option: option,
+                    selected: selectedHabitIds.contains(option.id),
+                    onTap: () => onToggle(option.id),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _WelcomeHabitChoice extends StatelessWidget {
+  const _WelcomeHabitChoice({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _HabitOption option;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: selected
+          ? colors.primaryContainer
+          : colors.surfaceContainerHighest.withValues(alpha: .72),
+      borderRadius: BorderRadius.circular(17),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: ValueKey('welcomeHabit-${option.id}'),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                size: 20,
+                color: selected ? colors.primary : colors.outline,
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  context.tr(option.nameKey),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (_isPremiumHabitId(option.id))
+                Icon(
+                  Icons.workspace_premium_rounded,
+                  size: 17,
+                  color: colors.tertiary,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -2113,6 +2474,7 @@ class ThemeController extends ChangeNotifier {
   Alignment get profileImageAlignment =>
       Alignment(_profileImageAlignmentX, _profileImageAlignmentY);
   bool get termsAccepted => _termsAccepted;
+  HabitRepository? get habitRepository => _repository;
   int? get profileAge {
     final birthDate = _profileBirthDate;
     if (birthDate == null) return null;
@@ -2413,6 +2775,10 @@ class _HomePageState extends State<HomePage> {
                             : Column(
                                 children: [
                                   const SizedBox(height: 14),
+                                  const NativeAdCard(
+                                    key: Key('calendarNativeAd'),
+                                    bottomSpacing: 14,
+                                  ),
                                   RewardFeatureGate(
                                     key: _reductionCalendarKey,
                                     controller: widget.rewardsController,
@@ -2975,6 +3341,7 @@ class _HomeContent extends StatelessWidget {
                     unawaited(_recordBreathingReward(context)),
               ),
               const SizedBox(height: 12),
+              const NativeAdCard(key: Key('breathingNativeAd')),
               Container(
                 key: quickAddKey,
                 width: double.infinity,
@@ -3073,6 +3440,10 @@ class _HomeContent extends StatelessWidget {
                 showSpecialHabitGraphs: false,
               ),
               const SizedBox(height: 14),
+              const NativeAdCard(
+                key: Key('homeInfoNativeAd'),
+                bottomSpacing: 14,
+              ),
               const HabitInfoCards(),
             ],
           ),
@@ -3367,6 +3738,8 @@ class _GenderBodyFrame extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+            if (showSpecialHabitGraphs)
+              const NativeAdCard(key: Key('bodyStatisticsNativeAd')),
             RewardFeatureGate(
               controller: rewardsController,
               feature: GatedFeature.graphs,
@@ -4134,41 +4507,9 @@ class AddHabitPage extends StatefulWidget {
 }
 
 class _AddHabitPageState extends State<AddHabitPage> {
-  static const _goodHabits = [
-    _HabitOption('water', 'Drinking water', Icons.water_drop_rounded),
-    _HabitOption('healthy_eating', 'Eating healthy', Icons.eco_rounded),
-    _HabitOption('studying', 'Studying', Icons.school_rounded),
-  ];
-
-  static const _exercises = [
-    _HabitOption('workout_arms', 'Arm', Icons.fitness_center_rounded),
-    _HabitOption(
-      'workout_shoulders_back',
-      'Shoulder / Back',
-      Icons.accessibility_new_rounded,
-    ),
-    _HabitOption('workout_chest', 'Chest', Icons.monitor_heart_outlined),
-    _HabitOption('workout_abs', 'Abs', Icons.grid_view_rounded),
-    _HabitOption('workout_legs', 'Legs', Icons.directions_run_rounded),
-  ];
-
-  static const _badHabits = [
-    _HabitOption('smoking', 'Smoking', Icons.smoke_free_rounded),
-    _HabitOption('vaping', 'Vaping', Icons.air_rounded),
-    _HabitOption('alcohol', 'Alcohol', Icons.local_bar_rounded),
-    _HabitOption(
-      'unhealthy_eating',
-      'Unhealthy eating',
-      Icons.fastfood_rounded,
-    ),
-    _HabitOption('adult_videos', 'Adult videos', Icons.visibility_off_rounded),
-    _HabitOption(
-      'masturbation',
-      'Masturbation',
-      Icons.self_improvement_rounded,
-    ),
-    _HabitOption('consuming_sugar', 'Consuming sugar', Icons.cake_rounded),
-  ];
+  static const _goodHabits = _standardGoodHabits;
+  static const _exercises = _standardExercises;
+  static const _badHabits = _standardBadHabits;
 
   bool _editing = false;
 
@@ -4281,12 +4622,9 @@ class _AddHabitPageState extends State<AddHabitPage> {
     bool inCard = false,
     bool isUnwanted = false,
   }) {
-    final availableOptions = !widget.rewardsController.isPlus && !_editing
-        ? options.where((option) => !_isPremiumHabit(option.id)).toList()
-        : options;
     final visibleOptions = _editing
-        ? availableOptions
-        : availableOptions
+        ? options
+        : options
               .where((option) => preferences[option.id]?.isActive ?? true)
               .toList();
     if (visibleOptions.isEmpty && !_editing) {
@@ -4314,7 +4652,8 @@ class _AddHabitPageState extends State<AddHabitPage> {
           childAspectRatio: _editing ? 2.55 : (inCard ? 3.5 : 3.2),
           children: [
             for (final option in visibleOptions)
-              if (_isPremiumHabit(option.id) &&
+              if (!_editing &&
+                  _isPremiumHabitId(option.id) &&
                   !widget.rewardsController.isPlus)
                 _PremiumHabitTile(
                   label: context.tr(option.nameKey),
@@ -4559,9 +4898,6 @@ class _AddHabitPageState extends State<AddHabitPage> {
     controller.dispose();
     return result;
   }
-
-  bool _isPremiumHabit(String habitId) =>
-      habitId == 'consuming_sugar' || habitId == 'studying';
 }
 
 class _CustomHabitDraft {

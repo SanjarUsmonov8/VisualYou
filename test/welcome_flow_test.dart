@@ -117,6 +117,14 @@ void main() {
     await tester.tap(find.byKey(const Key('welcomeNextButton')));
     await tester.pumpAndSettle();
 
+    expect(find.text('What are your habits?'), findsOneWidget);
+    expect(find.text('Drinking water'), findsOneWidget);
+    expect(find.text('Studying'), findsOneWidget);
+    expect(find.text('Consuming sugar'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('welcomeNextButton')));
+    await tester.pumpAndSettle();
+
     expect(finished, isFalse);
     expect(find.text('Before you begin'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);

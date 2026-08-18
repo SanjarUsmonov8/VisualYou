@@ -54,6 +54,19 @@ class EmailLoginSerializer(serializers.Serializer):
         return value.strip().lower()
 
 
+class PasswordResetStartSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+
+class PasswordResetCompleteSerializer(serializers.Serializer):
+    challenge_id = serializers.UUIDField()
+    setup_token = serializers.CharField(min_length=32, max_length=200)
+    password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+
 class AIMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = AIMessage

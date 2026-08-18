@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:visualyou/features/rewards/rewarded_ad_service.dart';
 import 'package:visualyou/features/rewards/rewards_controller.dart';
 import 'package:visualyou/features/rewards/rewards_models.dart';
 import 'package:visualyou/l10n/app_strings.dart';
@@ -38,6 +39,8 @@ class TokenChip extends StatelessWidget {
   }
 }
 
+enum _PurchaseChoice { cancel, ad, tokens }
+
 Future<bool> confirmTokenOrAdPurchase(
   BuildContext context, {
   required RewardsController controller,
@@ -46,8 +49,8 @@ Future<bool> confirmTokenOrAdPurchase(
   required String title,
   bool chargePlus = false,
 }) async {
-  final useTokens =
-      await showDialog<bool>(
+  final choice =
+      await showDialog<_PurchaseChoice>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(title),
@@ -56,16 +59,18 @@ Future<bool> confirmTokenOrAdPurchase(
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
+              onPressed: () =>
+                  Navigator.pop(dialogContext, _PurchaseChoice.cancel),
               child: Text(context.tr('Cancel')),
             ),
             OutlinedButton.icon(
-              onPressed: null,
+              onPressed: () => Navigator.pop(dialogContext, _PurchaseChoice.ad),
               icon: const Icon(Icons.play_circle_outline_rounded),
-              label: Text(context.tr('Watch ad · coming soon')),
+              label: Text(context.tr('Watch ad')),
             ),
             FilledButton.icon(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: () =>
+                  Navigator.pop(dialogContext, _PurchaseChoice.tokens),
               icon: Image.asset(
                 'assets/images/badges/token.png',
                 width: 21,
@@ -76,8 +81,24 @@ Future<bool> confirmTokenOrAdPurchase(
           ],
         ),
       ) ??
-      false;
-  if (!useTokens || !context.mounted) return false;
+      _PurchaseChoice.cancel;
+  if (choice == _PurchaseChoice.cancel || !context.mounted) return false;
+  if (choice == _PurchaseChoice.ad) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.tr('Loading rewarded ad...'))),
+    );
+    final result = await RewardedAdService.instance.showRewardedAd();
+    if (!context.mounted) return false;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (result == RewardedAdResult.earned) return true;
+    final message = result == RewardedAdResult.notEarned
+        ? 'Watch the complete ad to receive the reward.'
+        : 'The rewarded ad is not ready. Please try again.';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.tr(message))));
+    return false;
+  }
   final paid = await controller.spend(amount, reason, chargePlus: chargePlus);
   if (paid || !context.mounted) return paid;
   ScaffoldMessenger.of(

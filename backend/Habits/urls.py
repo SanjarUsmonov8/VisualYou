@@ -4,6 +4,9 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AIConversationViewSet,
     EmailLoginView,
+    PasswordResetCompleteView,
+    PasswordResetStartView,
+    PasswordResetVerifyView,
     EmailSignupCompleteView,
     EmailSignupStartView,
     EmailSignupVerifyView,
@@ -22,6 +25,21 @@ urlpatterns = [
     path('auth/email/verify/', EmailSignupVerifyView.as_view(), name='email-signup-verify'),
     path('auth/email/complete/', EmailSignupCompleteView.as_view(), name='email-signup-complete'),
     path('auth/email/login/', EmailLoginView.as_view(), name='email-login'),
+    path(
+        'auth/email/password-reset/start/',
+        PasswordResetStartView.as_view(),
+        name='password-reset-start',
+    ),
+    path(
+        'auth/email/password-reset/verify/',
+        PasswordResetVerifyView.as_view(),
+        name='password-reset-verify',
+    ),
+    path(
+        'auth/email/password-reset/complete/',
+        PasswordResetCompleteView.as_view(),
+        name='password-reset-complete',
+    ),
     path('auth/logout/', LogoutView.as_view(), name='logout'),
     path('me/', MeView.as_view(), name='me'),
     path('sync/', SyncView.as_view(), name='sync'),

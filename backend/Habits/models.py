@@ -14,8 +14,18 @@ class User(AbstractUser):
 class EmailSignupChallenge(models.Model):
     """Short-lived proof that a person controls an email address."""
 
+    class Purpose(models.TextChoices):
+        SIGNUP = 'signup', 'Sign up'
+        PASSWORD_RESET = 'password_reset', 'Password reset'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(db_index=True)
+    purpose = models.CharField(
+        max_length=24,
+        choices=Purpose.choices,
+        default=Purpose.SIGNUP,
+        db_index=True,
+    )
     code_hash = models.CharField(max_length=128)
     setup_token_hash = models.CharField(max_length=128, blank=True)
     expires_at = models.DateTimeField(db_index=True)

@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import SimpleTestCase
 from django.test.utils import override_settings
+from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
 from .ai_provider import generate_reply
@@ -189,3 +190,78 @@ class EmailSignupTests(APITestCase):
         )
         self.assertEqual(login.status_code, 200)
         self.assertIn('token', login.data)
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class PasswordResetTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='reset-user',
+            email='reset@example.com',
+            password='Old-test-password-2048!',
+        )
+        self.old_token = Token.objects.create(user=self.user)
+
+    def test_six_digit_code_changes_password_and_invalidates_old_token(self):
+        start = self.client.post(
+            '/api/v1/auth/email/password-reset/start/',
+            {'email': 'RESET@example.com'},
+            format='json',
+        )
+        self.assertEqual(start.status_code, 202)
+        self.assertEqual(len(mail.outbox), 1)
+        code = re.search(r'\b(\d{6})\b', mail.outbox[0].body).group(1)
+
+        verify = self.client.post(
+            '/api/v1/auth/email/password-reset/verify/',
+            {'challenge_id': start.data['challenge_id'], 'code': code},
+            format='json',
+        )
+        self.assertEqual(verify.status_code, 200)
+
+        complete = self.client.post(
+            '/api/v1/auth/email/password-reset/complete/',
+            {
+                'challenge_id': start.data['challenge_id'],
+                'setup_token': verify.data['setup_token'],
+                'password': 'New-test-password-4096!',
+            },
+            format='json',
+        )
+        self.assertEqual(complete.status_code, 200)
+        self.assertFalse(Token.objects.filter(pk=self.old_token.pk).exists())
+
+        old_login = self.client.post(
+            '/api/v1/auth/email/login/',
+            {'email': self.user.email, 'password': 'Old-test-password-2048!'},
+            format='json',
+        )
+        self.assertEqual(old_login.status_code, 400)
+        new_login = self.client.post(
+            '/api/v1/auth/email/login/',
+            {'email': self.user.email, 'password': 'New-test-password-4096!'},
+            format='json',
+        )
+        self.assertEqual(new_login.status_code, 200)
+
+        reused = self.client.post(
+            '/api/v1/auth/email/password-reset/complete/',
+            {
+                'challenge_id': start.data['challenge_id'],
+                'setup_token': verify.data['setup_token'],
+                'password': 'Another-test-password-8192!',
+            },
+            format='json',
+        )
+        self.assertEqual(reused.status_code, 400)
+
+    def test_unknown_email_has_same_start_response_without_sending_email(self):
+        response = self.client.post(
+            '/api/v1/auth/email/password-reset/start/',
+            {'email': 'missing@example.com'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertIn('challenge_id', response.data)
+        self.assertEqual(len(mail.outbox), 0)

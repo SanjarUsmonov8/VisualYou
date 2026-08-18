@@ -28,6 +28,8 @@ from .serializers import (
     EmailSignupCompleteSerializer,
     EmailSignupStartSerializer,
     EmailSignupVerifySerializer,
+    PasswordResetCompleteSerializer,
+    PasswordResetStartSerializer,
     SyncRequestSerializer,
     UserSerializer,
 )
@@ -61,10 +63,12 @@ class EmailSignupStartView(APIView):
         )
         EmailSignupChallenge.objects.filter(
             email__iexact=email,
+            purpose=EmailSignupChallenge.Purpose.SIGNUP,
             consumed_at__isnull=True,
         ).delete()
         challenge = EmailSignupChallenge.objects.create(
             email=email,
+            purpose=EmailSignupChallenge.Purpose.SIGNUP,
             code_hash=make_password(code),
             expires_at=expires_at,
         )
@@ -108,6 +112,7 @@ class EmailSignupVerifyView(APIView):
         try:
             challenge = EmailSignupChallenge.objects.get(
                 pk=serializer.validated_data['challenge_id'],
+                purpose=EmailSignupChallenge.Purpose.SIGNUP,
                 consumed_at__isnull=True,
             )
         except EmailSignupChallenge.DoesNotExist:
@@ -152,6 +157,7 @@ class EmailSignupCompleteView(APIView):
             try:
                 challenge = EmailSignupChallenge.objects.select_for_update().get(
                     pk=serializer.validated_data['challenge_id'],
+                    purpose=EmailSignupChallenge.Purpose.SIGNUP,
                     consumed_at__isnull=True,
                     verified_at__isnull=False,
                 )
@@ -218,6 +224,163 @@ class EmailLoginView(APIView):
             )
         token, _ = Token.objects.get_or_create(user=user)
         return Response({'token': token.key, 'user': UserSerializer(user).data})
+
+
+class PasswordResetStartView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'password_reset_start'
+
+    def post(self, request):
+        serializer = PasswordResetStartSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        code = f'{secrets.randbelow(1_000_000):06d}'
+        expires_at = timezone.now() + timedelta(
+            minutes=settings.EMAIL_PASSWORD_RESET_CODE_TTL_MINUTES
+        )
+        EmailSignupChallenge.objects.filter(
+            email__iexact=email,
+            purpose=EmailSignupChallenge.Purpose.PASSWORD_RESET,
+            consumed_at__isnull=True,
+        ).delete()
+        challenge = EmailSignupChallenge.objects.create(
+            email=email,
+            purpose=EmailSignupChallenge.Purpose.PASSWORD_RESET,
+            code_hash=make_password(code),
+            expires_at=expires_at,
+        )
+        user_exists = User.objects.filter(
+            email__iexact=email,
+            is_active=True,
+        ).exists()
+        if user_exists:
+            try:
+                send_mail(
+                    'Reset your Visual You password',
+                    (
+                        f'Your Visual You password reset code is {code}.\n\n'
+                        f'It expires in '
+                        f'{settings.EMAIL_PASSWORD_RESET_CODE_TTL_MINUTES} minutes. '
+                        'If you did not request a password reset, you can ignore '
+                        'this email.'
+                    ),
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                    fail_silently=False,
+                )
+            except Exception:
+                logger.exception('Could not send password reset email')
+        # Always return the same response so this endpoint does not disclose
+        # whether an account exists for an email address.
+        return Response(
+            {
+                'challenge_id': str(challenge.id),
+                'expires_in_seconds': (
+                    settings.EMAIL_PASSWORD_RESET_CODE_TTL_MINUTES * 60
+                ),
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+class PasswordResetVerifyView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'password_reset_verify'
+
+    def post(self, request):
+        serializer = EmailSignupVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            challenge = EmailSignupChallenge.objects.get(
+                pk=serializer.validated_data['challenge_id'],
+                purpose=EmailSignupChallenge.Purpose.PASSWORD_RESET,
+                consumed_at__isnull=True,
+            )
+        except EmailSignupChallenge.DoesNotExist:
+            return Response(
+                {'detail': 'This password reset request is no longer valid.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if challenge.is_expired:
+            return Response(
+                {'detail': 'The reset code has expired. Request a new one.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if challenge.failed_attempts >= 5:
+            return Response(
+                {'detail': 'Too many incorrect attempts. Request a new code.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not check_password(serializer.validated_data['code'], challenge.code_hash):
+            challenge.failed_attempts += 1
+            challenge.save(update_fields=('failed_attempts',))
+            return Response(
+                {'detail': 'The reset code is incorrect.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        setup_token = secrets.token_urlsafe(32)
+        challenge.setup_token_hash = make_password(setup_token)
+        challenge.verified_at = timezone.now()
+        challenge.save(update_fields=('setup_token_hash', 'verified_at'))
+        return Response({'setup_token': setup_token})
+
+
+class PasswordResetCompleteView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'password_reset_complete'
+
+    def post(self, request):
+        serializer = PasswordResetCompleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            try:
+                challenge = EmailSignupChallenge.objects.select_for_update().get(
+                    pk=serializer.validated_data['challenge_id'],
+                    purpose=EmailSignupChallenge.Purpose.PASSWORD_RESET,
+                    consumed_at__isnull=True,
+                    verified_at__isnull=False,
+                )
+            except EmailSignupChallenge.DoesNotExist:
+                return Response(
+                    {'detail': 'Password reset verification is required.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if challenge.is_expired or not check_password(
+                serializer.validated_data['setup_token'],
+                challenge.setup_token_hash,
+            ):
+                return Response(
+                    {'detail': 'The password reset session has expired. Start again.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user = User.objects.filter(
+                email__iexact=challenge.email,
+                is_active=True,
+            ).first()
+            if user is None:
+                return Response(
+                    {'detail': 'The password reset request is no longer valid.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                validate_password(serializer.validated_data['password'], user=user)
+            except DjangoValidationError as error:
+                return Response(
+                    {'password': list(error.messages)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.set_password(serializer.validated_data['password'])
+            user.save(update_fields=('password',))
+            Token.objects.filter(user=user).delete()
+            challenge.consumed_at = timezone.now()
+            challenge.save(update_fields=('consumed_at',))
+        return Response({'detail': 'Password changed.'})
 
 
 class LogoutView(APIView):

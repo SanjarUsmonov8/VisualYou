@@ -137,6 +137,9 @@ REST_FRAMEWORK = {
         'email_signup_verify': '20/hour',
         'email_signup_complete': '10/hour',
         'email_login': '20/hour',
+        'password_reset_start': '5/hour',
+        'password_reset_verify': '20/hour',
+        'password_reset_complete': '10/hour',
         'ai_message': '30/hour',
     },
 }
@@ -158,6 +161,9 @@ EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', False)
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Visual You <no-reply@visualyou.app>')
 EMAIL_SIGNUP_CODE_TTL_MINUTES = int(os.getenv('EMAIL_SIGNUP_CODE_TTL_MINUTES', '10'))
+EMAIL_PASSWORD_RESET_CODE_TTL_MINUTES = int(
+    os.getenv('EMAIL_PASSWORD_RESET_CODE_TTL_MINUTES', '10')
+)
 
 # Gemini is called only by the Django backend. Never expose this key to Flutter.
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')

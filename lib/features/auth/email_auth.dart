@@ -85,6 +85,39 @@ class EmailAuthApi {
     await _saveToken(data);
   }
 
+  Future<EmailSignupChallenge> startPasswordReset(String email) async {
+    final data = await _post('/auth/email/password-reset/start/', {
+      'email': email,
+    });
+    return EmailSignupChallenge(
+      id: data['challenge_id'] as String,
+      expiresInSeconds: data['expires_in_seconds'] as int,
+    );
+  }
+
+  Future<String> verifyPasswordResetCode({
+    required String challengeId,
+    required String code,
+  }) async {
+    final data = await _post('/auth/email/password-reset/verify/', {
+      'challenge_id': challengeId,
+      'code': code,
+    });
+    return data['setup_token'] as String;
+  }
+
+  Future<void> completePasswordReset({
+    required String challengeId,
+    required String setupToken,
+    required String password,
+  }) async {
+    await _post('/auth/email/password-reset/complete/', {
+      'challenge_id': challengeId,
+      'setup_token': setupToken,
+      'password': password,
+    });
+  }
+
   Future<bool> logout() async {
     final token = await _secureStorage.read(key: _tokenKey);
     if (token == null || token.isEmpty) return false;
