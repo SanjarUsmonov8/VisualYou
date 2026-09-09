@@ -61,6 +61,39 @@ void main() {
     );
   });
 
+  test('streak aid costs 35 tokens and bridges at most two misses', () async {
+    expect(
+      await rewards.purchaseStreakAid(now: DateTime(2026, 8, 3, 10)),
+      isTrue,
+    );
+    var snapshot = await rewards.loadSnapshot(now: DateTime(2026, 8, 3));
+    expect(snapshot.tokenBalance, 105);
+    expect(snapshot.streakAidBalance, 1);
+
+    await habits.recordHabit(
+      'Drinking water',
+      occurredAt: DateTime(2026, 8, 3, 8),
+    );
+    await rewards.refresh(now: DateTime(2026, 8, 5, 9));
+    snapshot = await rewards.loadSnapshot(now: DateTime(2026, 8, 5));
+    expect(snapshot.streakAidBalance, 0);
+    expect(snapshot.currentStreak, 1);
+    expect(snapshot.protectedStreakDays, contains(DateTime(2026, 8, 4)));
+    expect(snapshot.protectedStreakDays, contains(DateTime(2026, 8, 5)));
+
+    await rewards.refresh(now: DateTime(2026, 8, 6, 9));
+    expect(
+      (await rewards.loadSnapshot(now: DateTime(2026, 8, 6))).currentStreak,
+      1,
+    );
+
+    await rewards.refresh(now: DateTime(2026, 8, 7, 9));
+    expect(
+      (await rewards.loadSnapshot(now: DateTime(2026, 8, 7))).currentStreak,
+      0,
+    );
+  });
+
   test('streak and completed-week rewards cannot be awarded twice', () async {
     for (var offset = 0; offset < 7; offset++) {
       await habits.recordHabit(
@@ -117,4 +150,29 @@ void main() {
       expect(nextMonth.profileProgress, 280);
     },
   );
+
+  test('Pro and Ultra plans persist and inherit paid access', () async {
+    await rewards.setPlan(MembershipPlan.pro, now: DateTime(2026, 8, 20));
+    var snapshot = await rewards.loadSnapshot(now: DateTime(2026, 8, 20));
+    expect(snapshot.plan, MembershipPlan.pro);
+    expect(snapshot.isPaid, isTrue);
+    expect(snapshot.isPlus, isTrue);
+    expect(snapshot.isPro, isTrue);
+    expect(snapshot.planExpiresAt, DateTime(2026, 9, 20));
+    expect(
+      snapshot.isFeatureUnlocked(GatedFeature.body, DateTime(2026, 8, 25)),
+      isTrue,
+    );
+
+    await rewards.setPlan(MembershipPlan.ultra, now: DateTime(2026, 8, 21));
+    snapshot = await rewards.loadSnapshot(now: DateTime(2026, 8, 21));
+    expect(snapshot.plan, MembershipPlan.ultra);
+    expect(snapshot.isUltra, isTrue);
+    expect(snapshot.planExpiresAt, DateTime(2026, 9, 21));
+
+    await rewards.refresh(now: DateTime(2026, 9, 22));
+    snapshot = await rewards.loadSnapshot(now: DateTime(2026, 9, 22));
+    expect(snapshot.plan, MembershipPlan.free);
+    expect(snapshot.planExpiresAt, isNull);
+  });
 }

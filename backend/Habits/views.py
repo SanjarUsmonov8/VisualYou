@@ -1,3 +1,4 @@
+import base64
 import logging
 import secrets
 from datetime import timedelta
@@ -18,8 +19,14 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .models import AIConversation, AIMessage, EmailSignupChallenge
+from .models import (
+    AIConversation,
+    AIMessage,
+    DeviceTransferBackup,
+    EmailSignupChallenge,
+)
 from .ai_provider import AIProviderError, generate_reply
+from .device_transfer import DeviceTransferCipherError, decrypt_snapshot, encrypt_snapshot
 from .serializers import (
     AIConversationSerializer,
     AIMessageSerializer,
@@ -28,6 +35,7 @@ from .serializers import (
     EmailSignupCompleteSerializer,
     EmailSignupStartSerializer,
     EmailSignupVerifySerializer,
+    DeviceTransferBackupUploadSerializer,
     PasswordResetCompleteSerializer,
     PasswordResetStartSerializer,
     SyncRequestSerializer,
@@ -407,6 +415,90 @@ class SyncView(APIView):
         serializer = SyncRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(synchronize(request.user, serializer.validated_data))
+
+
+class DeviceTransferBackupView(APIView):
+    def _active_backup(self, user):
+        backup = DeviceTransferBackup.objects.filter(user=user).first()
+        if backup is not None and backup.expires_at <= timezone.now():
+            backup.delete()
+            return None
+        return backup
+
+    def get(self, request):
+        backup = self._active_backup(request.user)
+        if backup is None:
+            return Response({'available': False})
+        return Response(
+            {
+                'available': True,
+                'created_at': backup.created_at,
+                'updated_at': backup.updated_at,
+                'expires_at': backup.expires_at,
+                'schema_version': backup.schema_version,
+                'source_device': backup.source_device,
+                'payload_size': backup.payload_size,
+            }
+        )
+
+    def put(self, request):
+        serializer = DeviceTransferBackupUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data['payload']
+        now = timezone.now()
+        backup, _ = DeviceTransferBackup.objects.update_or_create(
+            user=request.user,
+            defaults={
+                'encrypted_payload': encrypt_snapshot(payload),
+                'schema_version': serializer.validated_data['schema_version'],
+                'source_device': serializer.validated_data['source_device'],
+                'payload_size': len(payload),
+                'expires_at': now + timedelta(days=settings.DEVICE_TRANSFER_BACKUP_DAYS),
+            },
+        )
+        return Response(
+            {
+                'available': True,
+                'created_at': backup.created_at,
+                'updated_at': backup.updated_at,
+                'expires_at': backup.expires_at,
+                'schema_version': backup.schema_version,
+                'source_device': backup.source_device,
+                'payload_size': backup.payload_size,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request):
+        DeviceTransferBackup.objects.filter(user=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DeviceTransferBackupDownloadView(APIView):
+    def get(self, request):
+        backup = DeviceTransferBackup.objects.filter(user=request.user).first()
+        if backup is None or backup.expires_at <= timezone.now():
+            if backup is not None:
+                backup.delete()
+            return Response(
+                {'detail': 'No active device-transfer backup is available.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            payload = decrypt_snapshot(backup.encrypted_payload)
+        except DeviceTransferCipherError:
+            logger.exception('Could not decrypt device-transfer backup for user %s', request.user.pk)
+            return Response(
+                {'detail': 'The saved backup could not be read.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        return Response(
+            {
+                'payload': base64.b64encode(payload).decode('ascii'),
+                'schema_version': backup.schema_version,
+                'expires_at': backup.expires_at,
+            }
+        )
 
 
 class AIConversationViewSet(viewsets.ModelViewSet):

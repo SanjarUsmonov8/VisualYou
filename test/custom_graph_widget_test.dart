@@ -24,8 +24,8 @@ void main() {
     );
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Custom graph'), findsOneWidget);
-    expect(find.byKey(const Key('editCustomGraphButton')), findsOneWidget);
+    expect(find.text('Main graph'), findsOneWidget);
+    expect(find.byKey(const Key('editCustomGraphButton')), findsNothing);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

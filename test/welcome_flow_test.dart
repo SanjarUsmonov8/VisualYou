@@ -63,8 +63,8 @@ void main() {
     expect(finished, isFalse);
     expect(find.text('Create Account'), findsOneWidget);
     expect(find.text('Sign up with email'), findsOneWidget);
-    expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.text('Continue with Apple'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsNothing);
+    expect(find.text('Continue with Apple'), findsNothing);
     expect(find.text('Log in'), findsOneWidget);
 
     await tester.tap(find.text('Sign up with email'));

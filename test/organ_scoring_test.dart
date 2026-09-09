@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show InsertMode, Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualyou/data/habits/drift_habit_repository.dart';
@@ -69,7 +70,7 @@ void main() {
     },
     'Eating healthy': {
       BodyPartKey.gut: 1.5,
-      BodyPartKey.brain: 1,
+      BodyPartKey.brain: .5,
       BodyPartKey.heart: 1,
       BodyPartKey.liver: 1,
       BodyPartKey.stomach: 1,
@@ -132,7 +133,7 @@ void main() {
     },
     'Eating healthy': {
       BodyPartKey.gut: -1.25,
-      BodyPartKey.brain: -.75,
+      BodyPartKey.brain: -.25,
       BodyPartKey.heart: -.75,
       BodyPartKey.liver: -.75,
       BodyPartKey.stomach: -.75,
@@ -263,6 +264,137 @@ void main() {
     expect(state.parts[BodyPartKey.brain]?.score, 3.5);
     expect(state.parts[BodyPartKey.lungs]?.score, 3.25);
   });
+
+  test(
+    'an active related organ habit loses one point after two idle days',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final repository = DriftHabitRepository(database);
+      await repository.initialize();
+      await database.customStatement(
+        'UPDATE habit_definitions SET is_active = 0',
+      );
+      await repository.setHabitActive('healthy_eating', true);
+
+      final start = DateTime(2026, 9, 1);
+      final target = start.add(const Duration(days: 2));
+      await database.batch((batch) {
+        batch.insert(
+          database.appSettings,
+          AppSettingsCompanion.insert(
+            key: 'last_organ_recovery_day',
+            value: _dayKey(target),
+            updatedAt: target,
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+        batch.insert(
+          database.appSettings,
+          AppSettingsCompanion.insert(
+            key: 'inactivity_decay_anchor:${BodyPartKey.gut}',
+            value: _dayKey(start),
+            updatedAt: start,
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+      });
+
+      final state = await repository.applyDailyRecovery(now: target);
+      expect(state.parts[BodyPartKey.gut]?.score, 2);
+    },
+  );
+
+  test('an organ with no active related habit does not decay', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = DriftHabitRepository(database);
+    await repository.initialize();
+    await database.customStatement(
+      'UPDATE habit_definitions SET is_active = 0',
+    );
+    await repository.setHabitActive('adult_videos', true);
+
+    final start = DateTime(2026, 9, 1);
+    final target = start.add(const Duration(days: 8));
+    await database.batch((batch) {
+      batch.insert(
+        database.appSettings,
+        AppSettingsCompanion.insert(
+          key: 'last_organ_recovery_day',
+          value: _dayKey(target),
+          updatedAt: target,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+      batch.insert(
+        database.appSettings,
+        AppSettingsCompanion.insert(
+          key: 'inactivity_decay_anchor:${BodyPartKey.lungs}',
+          value: _dayKey(start),
+          updatedAt: start,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+
+    final state = await repository.applyDailyRecovery(now: target);
+    expect(state.parts[BodyPartKey.lungs]?.score, 3);
+  });
+
+  test('muscles lose one level after four days without that workout', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = DriftHabitRepository(database);
+    await repository.initialize();
+    await database.customStatement(
+      'UPDATE habit_definitions SET is_active = 0',
+    );
+
+    final start = DateTime(2026, 9, 1);
+    final target = start.add(const Duration(days: 4));
+    await database.batch((batch) {
+      batch.insert(
+        database.bodyPartStates,
+        BodyPartStatesCompanion.insert(
+          partKey: BodyPartKey.arms,
+          level: const Value(3),
+          score: const Value(3.0),
+          colorValue: const Value(0xFFFFCA28),
+          updatedAt: start,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+      batch.insert(
+        database.appSettings,
+        AppSettingsCompanion.insert(
+          key: 'last_organ_recovery_day',
+          value: _dayKey(target),
+          updatedAt: target,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+      batch.insert(
+        database.appSettings,
+        AppSettingsCompanion.insert(
+          key: 'inactivity_decay_anchor:${BodyPartKey.arms}',
+          value: _dayKey(start),
+          updatedAt: start,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+
+    final state = await repository.applyDailyRecovery(now: target);
+    expect(state.parts[BodyPartKey.arms]?.level, 2);
+    expect(state.parts[BodyPartKey.arms]?.colorValue, 0xFFFB8C00);
+  });
+}
+
+String _dayKey(DateTime day) {
+  final month = day.month.toString().padLeft(2, '0');
+  final date = day.day.toString().padLeft(2, '0');
+  return '${day.year}-$month-$date';
 }
 
 int _colorFor(int level) {

@@ -1,13 +1,16 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@drawable/widget_background" android:orientation="vertical">
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Gradual reduction"
+    <TextView android:id="@+id/reduction_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Gradual reduction"
         android:textColor="@color/widget_text" android:textSize="17sp" android:textStyle="bold" />
     <TextView android:id="@+id/reduction_name" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:maxLines="1" android:text="Create a plan in the app" android:textColor="@color/widget_text_muted" android:textSize="12sp" />
-    <TextView android:id="@+id/reduction_grid" android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_weight="1" android:fontFamily="monospace" android:gravity="center" android:includeFontPadding="false"
-        android:lineSpacingExtra="1dp" android:textColor="@color/widget_text_muted" android:textSize="10sp" />
+    <TextView android:id="@+id/reduction_month" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:gravity="center"
+        android:textColor="@color/widget_text" android:textSize="14sp" android:textStyle="bold" />
+    <ImageView android:id="@+id/reduction_grid" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:adjustViewBounds="true" android:contentDescription="@string/reduction_widget_description"
+        android:scaleType="fitCenter" />
     <TextView android:id="@+id/reduction_status" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginBottom="7dp" android:text="Today is not tracked" android:textColor="@color/widget_text_muted" android:textSize="11sp" />
     <LinearLayout android:layout_width="match_parent" android:layout_height="36dp" android:orientation="horizontal">

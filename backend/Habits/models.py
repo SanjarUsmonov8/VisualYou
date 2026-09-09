@@ -305,3 +305,23 @@ class AIMessage(models.Model):
 
     class Meta:
         ordering = ('created_at',)
+
+
+class DeviceTransferBackup(models.Model):
+    """Encrypted, short-lived local-app snapshot for moving to a new device."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='device_transfer_backup',
+    )
+    encrypted_payload = models.BinaryField()
+    schema_version = models.PositiveIntegerField()
+    source_device = models.CharField(max_length=120, blank=True)
+    payload_size = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        ordering = ('-updated_at',)

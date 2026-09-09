@@ -38,10 +38,10 @@ void main() {
     await tester.pump();
     expect(find.widgetWithText(TextField, prompt), findsOneWidget);
 
-    await tester.tap(find.text('New chat'));
+    await tester.tap(find.byKey(const Key('aiNewChatButton')));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextField, prompt), findsNothing);
-    expect(find.text('History'), findsOneWidget);
+    expect(find.byKey(const Key('aiHistoryButton')), findsOneWidget);
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();

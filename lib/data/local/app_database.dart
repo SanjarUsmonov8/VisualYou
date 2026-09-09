@@ -9,6 +9,10 @@ class HabitDefinitions extends Table {
   TextColumn get category => text()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+  BoolColumn get numericalTrackingEnabled =>
+      boolean().withDefault(const Constant(false))();
+  IntColumn get numericalTarget => integer().nullable()();
+  TextColumn get numericalUnit => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
@@ -17,6 +21,32 @@ class HabitDefinitions extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('NumericalHabitEntryRow')
+class NumericalHabitEntries extends Table {
+  TextColumn get id => text()();
+  TextColumn get habitId => text().references(HabitDefinitions, #id)();
+  DateTimeColumn get localDay => dateTime()();
+  IntColumn get value => integer().nullable()();
+  RealColumn get outcomeFactor => real()();
+  BoolColumn get actualDidHabit => boolean()();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get remoteId => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('NumericalBodyContributionRow')
+class NumericalBodyContributions extends Table {
+  TextColumn get entryId => text().references(NumericalHabitEntries, #id)();
+  TextColumn get partKey => text()();
+  RealColumn get points => real()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {entryId, partKey};
 }
 
 class HabitLogEntries extends Table {
@@ -83,12 +113,41 @@ class CustomGraphRules extends Table {
 class SpecialHabitGraphs extends Table {
   IntColumn get slot => integer()();
   TextColumn get habitId => text().references(HabitDefinitions, #id)();
+  IntColumn get completedValue => integer().withDefault(const Constant(1))();
+  IntColumn get missedValue => integer().withDefault(const Constant(-1))();
   DateTimeColumn get updatedAt => dateTime()();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
   TextColumn get remoteId => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {slot};
+}
+
+@DataClassName('NamedCustomGraphRow')
+class NamedCustomGraphs extends Table {
+  IntColumn get slot => integer()();
+  TextColumn get name => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get remoteId => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {slot};
+}
+
+@DataClassName('NamedCustomGraphRuleRow')
+class NamedCustomGraphRules extends Table {
+  IntColumn get graphSlot => integer().references(NamedCustomGraphs, #slot)();
+  IntColumn get ruleSlot => integer()();
+  TextColumn get habitId => text().references(HabitDefinitions, #id)();
+  IntColumn get completedPoints => integer()();
+  IntColumn get missedPoints => integer()();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get remoteId => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {graphSlot, ruleSlot};
 }
 
 @DataClassName('ReductionPlanRow')
@@ -106,6 +165,54 @@ class ReductionPlans extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('GrowthPlanRow')
+class GrowthPlans extends Table {
+  TextColumn get id => text()();
+  TextColumn get habitId => text().references(HabitDefinitions, #id)();
+  TextColumn get mode => text()();
+  DateTimeColumn get startedOn => dateTime()();
+  IntColumn get targetDaysPerWeek => integer()();
+  IntColumn get targetRepetitionsPerDay => integer()();
+  TextColumn get offWeekdays => text().withDefault(const Constant(''))();
+  TextColumn get weekdayRepetitions => text().withDefault(const Constant(''))();
+  TextColumn get measurementUnit =>
+      text().withDefault(const Constant('times'))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get remoteId => text().nullable()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('GrowthPlanEntryRow')
+class GrowthPlanEntries extends Table {
+  TextColumn get planId => text().references(GrowthPlans, #id)();
+  DateTimeColumn get localDay => dateTime()();
+  IntColumn get completedCount => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get remoteId => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {planId, localDay};
+}
+
+@DataClassName('HabitStreakRow')
+class HabitStreaks extends Table {
+  TextColumn get habitId => text().references(HabitDefinitions, #id)();
+  IntColumn get colorValue => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {habitId};
 }
 
 class AppSettings extends Table {
@@ -157,6 +264,34 @@ class FeatureUnlocks extends Table {
   Set<Column<Object>> get primaryKey => {featureKey};
 }
 
+@DataClassName('CustomHabitOrganEffectRow')
+class CustomHabitOrganEffects extends Table {
+  TextColumn get habitId => text().references(HabitDefinitions, #id)();
+  TextColumn get partKey => text()();
+  RealColumn get thumbUpPoints => real().withDefault(const Constant(0))();
+  RealColumn get thumbDownPoints => real().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get remoteId => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {habitId, partKey};
+}
+
+@DataClassName('StandardHabitOrganEffectRow')
+class StandardHabitOrganEffects extends Table {
+  TextColumn get habitId => text().references(HabitDefinitions, #id)();
+  TextColumn get partKey => text()();
+  RealColumn get thumbUpPoints => real().withDefault(const Constant(0))();
+  RealColumn get thumbDownPoints => real().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get remoteId => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {habitId, partKey};
+}
+
 @DriftDatabase(
   tables: [
     HabitDefinitions,
@@ -165,11 +300,20 @@ class FeatureUnlocks extends Table {
     GraphHistoryEntries,
     CustomGraphRules,
     SpecialHabitGraphs,
+    NamedCustomGraphs,
+    NamedCustomGraphRules,
     ReductionPlans,
+    GrowthPlans,
+    GrowthPlanEntries,
+    HabitStreaks,
     AppSettings,
     RewardStates,
     RewardEvents,
     FeatureUnlocks,
+    CustomHabitOrganEffects,
+    StandardHabitOrganEffects,
+    NumericalHabitEntries,
+    NumericalBodyContributions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -187,7 +331,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -228,9 +372,98 @@ class AppDatabase extends _$AppDatabase {
       if (from < 9) {
         await migrator.addColumn(rewardStates, rewardStates.planExpiresAt);
       }
+      if (from < 10) {
+        await migrator.createTable(customHabitOrganEffects);
+      }
+      if (from < 11) {
+        await migrator.createTable(standardHabitOrganEffects);
+      }
+      if (from < 12) {
+        await migrator.addColumn(
+          habitDefinitions,
+          habitDefinitions.numericalTrackingEnabled,
+        );
+        await migrator.addColumn(
+          habitDefinitions,
+          habitDefinitions.numericalTarget,
+        );
+        await migrator.createTable(numericalHabitEntries);
+        await migrator.createTable(numericalBodyContributions);
+      }
+      if (from < 13) {
+        await migrator.createTable(namedCustomGraphs);
+        await migrator.createTable(namedCustomGraphRules);
+      }
+      if (from >= 3 && from < 14) {
+        await migrator.addColumn(
+          specialHabitGraphs,
+          specialHabitGraphs.completedValue,
+        );
+        await migrator.addColumn(
+          specialHabitGraphs,
+          specialHabitGraphs.missedValue,
+        );
+      }
+      if (from < 15) {
+        await migrator.createTable(growthPlans);
+        await migrator.createTable(growthPlanEntries);
+      }
+      if (from >= 15 && from < 16) {
+        await migrator.addColumn(growthPlans, growthPlans.weekdayRepetitions);
+      }
+      if (from < 17) {
+        await migrator.addColumn(
+          habitDefinitions,
+          habitDefinitions.numericalUnit,
+        );
+        await migrator.addColumn(growthPlans, growthPlans.measurementUnit);
+      }
+      if (from < 18) {
+        await migrator.createTable(habitStreaks);
+      }
+      if (from < 19) {
+        await customStatement(_createNumericalHeatmapsSql);
+      }
+      if (from >= 19 && from < 20) {
+        await customStatement(
+          'ALTER TABLE numerical_habit_heatmaps '
+          'ADD COLUMN higher_is_better INTEGER NOT NULL DEFAULT 1',
+        );
+        await customStatement(
+          'ALTER TABLE numerical_habit_heatmaps '
+          'ADD COLUMN orange_threshold INTEGER NOT NULL DEFAULT 1',
+        );
+        await customStatement(
+          'ALTER TABLE numerical_habit_heatmaps '
+          'ADD COLUMN yellow_threshold INTEGER NOT NULL DEFAULT 2',
+        );
+        await customStatement(
+          'ALTER TABLE numerical_habit_heatmaps '
+          'ADD COLUMN green_threshold INTEGER NOT NULL DEFAULT 3',
+        );
+        await customStatement(
+          'ALTER TABLE numerical_habit_heatmaps '
+          'ADD COLUMN blue_threshold INTEGER NOT NULL DEFAULT 4',
+        );
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      await customStatement(_createNumericalHeatmapsSql);
     },
   );
+
+  static const _createNumericalHeatmapsSql = '''
+    CREATE TABLE IF NOT EXISTS numerical_habit_heatmaps (
+      slot INTEGER NOT NULL PRIMARY KEY,
+      habit_id TEXT NOT NULL REFERENCES habit_definitions(id),
+      higher_is_better INTEGER NOT NULL DEFAULT 1,
+      orange_threshold INTEGER NOT NULL DEFAULT 1,
+      yellow_threshold INTEGER NOT NULL DEFAULT 2,
+      green_threshold INTEGER NOT NULL DEFAULT 3,
+      blue_threshold INTEGER NOT NULL DEFAULT 4,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  ''';
 }

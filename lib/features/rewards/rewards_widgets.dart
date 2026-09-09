@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:visualyou/features/rewards/rewarded_ad_service.dart';
 import 'package:visualyou/features/rewards/rewards_controller.dart';
 import 'package:visualyou/features/rewards/rewards_models.dart';
+import 'package:visualyou/features/rewards/premium_page.dart';
 import 'package:visualyou/l10n/app_strings.dart';
 
 class TokenChip extends StatelessWidget {
@@ -113,6 +114,7 @@ class RewardFeatureGate extends StatelessWidget {
     required this.feature,
     required this.title,
     required this.child,
+    this.tokenOutside = false,
     super.key,
   });
 
@@ -120,6 +122,7 @@ class RewardFeatureGate extends StatelessWidget {
   final GatedFeature feature;
   final String title;
   final Widget child;
+  final bool tokenOutside;
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +131,7 @@ class RewardFeatureGate extends StatelessWidget {
       builder: (context, _) {
         final unlocked = controller.isUnlocked(feature);
         if (controller.isPlus) return child;
-        return Stack(
+        final gatedContent = Stack(
           children: [
             AbsorbPointer(
               absorbing: !unlocked,
@@ -177,16 +180,33 @@ class RewardFeatureGate extends StatelessWidget {
                               : () => _unlock(context),
                           child: Text(context.tr('Choose token or ad')),
                         ),
+                        const SizedBox(height: 8),
+                        UpgradePlanButton(
+                          controller: controller,
+                          targetPlan: MembershipPlan.plus,
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
-            const Positioned(
-              top: 10,
-              left: 12,
+            if (!unlocked && !tokenOutside)
+              const Positioned(
+                top: 10,
+                left: 12,
+                child: TokenChip(amount: 70, compact: true),
+              ),
+          ],
+        );
+        if (!tokenOutside || unlocked) return gatedContent;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 2, bottom: 8),
               child: TokenChip(amount: 70, compact: true),
             ),
+            gatedContent,
           ],
         );
       },

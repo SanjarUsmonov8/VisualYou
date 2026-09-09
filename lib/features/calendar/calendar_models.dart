@@ -15,8 +15,9 @@ class CalendarActivity {
 
   bool get isUnwanted => category == 'reduction' || category == 'custom_bad';
 
+  bool get didHabit => count > 0;
+
   int get score {
-    final didHabit = count > 0;
     if (isUnwanted) return didHabit ? -1 : 1;
     return didHabit ? 1 : -1;
   }

@@ -38,6 +38,7 @@ class EmailAuthApi {
   }
 
   static const _tokenKey = 'visualyou_auth_token';
+  static const _emailKey = 'visualyou_auth_email';
 
   final http.Client _client;
   final FlutterSecureStorage _secureStorage;
@@ -82,8 +83,38 @@ class EmailAuthApi {
       'email': email,
       'password': password,
     });
-    await _saveToken(data);
+    await _saveToken(data, fallbackEmail: email);
   }
+
+  Future<String?> currentEmail() async {
+    final cachedEmail = await _secureStorage.read(key: _emailKey);
+    if (cachedEmail != null && cachedEmail.trim().isNotEmpty) {
+      return cachedEmail.trim();
+    }
+    final token = await _secureStorage.read(key: _tokenKey);
+    if (token == null || token.isEmpty) return null;
+
+    try {
+      final response = await _client
+          .get(
+            Uri.parse('$_baseUrl/me/'),
+            headers: {'Authorization': 'Token $token'},
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode < 200 || response.statusCode >= 300) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+      final email = decoded['email'];
+      if (email is! String || email.trim().isEmpty) return null;
+      final normalized = email.trim().toLowerCase();
+      await _secureStorage.write(key: _emailKey, value: normalized);
+      return normalized;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> currentToken() => _secureStorage.read(key: _tokenKey);
 
   Future<EmailSignupChallenge> startPasswordReset(String email) async {
     final data = await _post('/auth/email/password-reset/start/', {
@@ -135,11 +166,15 @@ class EmailAuthApi {
       // Local sign-out must still work while the backend is unavailable.
     } finally {
       await _secureStorage.delete(key: _tokenKey);
+      await _secureStorage.delete(key: _emailKey);
     }
     return true;
   }
 
-  Future<void> _saveToken(Map<String, dynamic> data) async {
+  Future<void> _saveToken(
+    Map<String, dynamic> data, {
+    String? fallbackEmail,
+  }) async {
     final token = data['token'];
     if (token is! String || token.isEmpty) {
       throw const AuthApiException(
@@ -147,6 +182,15 @@ class EmailAuthApi {
       );
     }
     await _secureStorage.write(key: _tokenKey, value: token);
+    final user = data['user'];
+    final responseEmail = user is Map<String, dynamic> ? user['email'] : null;
+    final email = responseEmail is String ? responseEmail : fallbackEmail;
+    if (email != null && email.trim().isNotEmpty) {
+      await _secureStorage.write(
+        key: _emailKey,
+        value: email.trim().toLowerCase(),
+      );
+    }
   }
 
   Future<Map<String, dynamic>> _post(

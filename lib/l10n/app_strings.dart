@@ -19,7 +19,18 @@ class AppStrings {
   }
 
   String text(String key) {
-    return _authTranslations[locale.languageCode]?[key] ??
+    return _deviceTransferTranslations[locale.languageCode]?[key] ??
+        _deviceTransferTranslations['en']?[key] ??
+        _numericalHeatmapTranslations[locale.languageCode]?[key] ??
+        _habitStreakTranslations[locale.languageCode]?[key] ??
+        _measurementTranslations[locale.languageCode]?[key] ??
+        _growthTranslations[locale.languageCode]?[key] ??
+        _bodyMuscleTranslations[locale.languageCode]?[key] ??
+        _organReportTranslations[locale.languageCode]?[key] ??
+        _singleGraphTranslations[locale.languageCode]?[key] ??
+        _namedGraphTranslations[locale.languageCode]?[key] ??
+        _numericalTranslations[locale.languageCode]?[key] ??
+        _authTranslations[locale.languageCode]?[key] ??
         _onboardingTranslations[locale.languageCode]?[key] ??
         _adTranslations[locale.languageCode]?[key] ??
         _newFeatureTranslations[locale.languageCode]?[key] ??
@@ -41,6 +52,1365 @@ class AppStrings {
 
   static const delegate = _AppStringsDelegate();
 }
+
+const Map<String, Map<String, String>> _deviceTransferTranslations = {
+  'en': {
+    'Device transfer': 'Device transfer',
+    'Back up for 10 days for changing device':
+        'Back up for 10 days for changing device',
+    'Your backup is being prepared and uploaded.':
+        'Your backup is being prepared and uploaded.',
+    'Temporarily save your filled habits, plans, calendars, graphs, and settings for your new phone.':
+        'Temporarily save your filled habits, plans, calendars, graphs, and settings for your new phone.',
+    'Create a 10-day backup?': 'Create a 10-day backup?',
+    'Your current temporary backup will be replaced. The new backup automatically expires after 10 days.':
+        'Your current temporary backup will be replaced. The new backup automatically expires after 10 days.',
+    'Back up': 'Back up',
+    'Your 10-day backup is ready.': 'Your 10-day backup is ready.',
+    'The backup could not be completed.': 'The backup could not be completed.',
+    'Preparing your backup': 'Preparing your backup',
+    'Uploading your backup': 'Uploading your backup',
+    'Backup ready for device transfer': 'Backup ready for device transfer',
+    'Get your data on this device': 'Get your data on this device',
+    'Downloading your data': 'Downloading your data',
+    'Restoring your data': 'Restoring your data',
+    'Your data is restored': 'Your data is restored',
+    'Backup needs attention': 'Backup needs attention',
+    'Restore': 'Restore',
+    'Available until': 'Available until',
+    'Try again from Settings.': 'Try again from Settings.',
+    'Restore backup?': 'Restore backup?',
+    'This replaces the habit data currently stored on this phone with your saved backup.':
+        'This replaces the habit data currently stored on this phone with your saved backup.',
+    'Sign in before creating a backup.': 'Sign in before creating a backup.',
+    'Sign in before restoring a backup.': 'Sign in before restoring a backup.',
+    'The device-transfer backup could not be completed.':
+        'The device-transfer backup could not be completed.',
+  },
+  'es': {
+    'Device transfer': 'Transferencia de dispositivo',
+    'Back up for 10 days for changing device':
+        'Copia de seguridad de 10 días para cambiar de dispositivo',
+    'Your backup is being prepared and uploaded.':
+        'Tu copia se está preparando y subiendo.',
+    'Temporarily save your filled habits, plans, calendars, graphs, and settings for your new phone.':
+        'Guarda temporalmente tus hábitos, planes, calendarios, gráficos y ajustes para tu nuevo teléfono.',
+    'Create a 10-day backup?': '¿Crear una copia de 10 días?',
+    'Your current temporary backup will be replaced. The new backup automatically expires after 10 days.':
+        'Tu copia temporal actual será reemplazada. La nueva caduca automáticamente después de 10 días.',
+    'Back up': 'Crear copia',
+    'Your 10-day backup is ready.': 'Tu copia de 10 días está lista.',
+    'The backup could not be completed.': 'No se pudo completar la copia.',
+    'Preparing your backup': 'Preparando tu copia',
+    'Uploading your backup': 'Subiendo tu copia',
+    'Backup ready for device transfer': 'Copia lista para transferir',
+    'Get your data on this device': 'Obtén tus datos en este dispositivo',
+    'Downloading your data': 'Descargando tus datos',
+    'Restoring your data': 'Restaurando tus datos',
+    'Your data is restored': 'Tus datos se restauraron',
+    'Backup needs attention': 'La copia necesita atención',
+    'Restore': 'Restaurar',
+    'Available until': 'Disponible hasta',
+    'Try again from Settings.': 'Inténtalo de nuevo desde Ajustes.',
+    'Restore backup?': '¿Restaurar la copia?',
+    'This replaces the habit data currently stored on this phone with your saved backup.':
+        'Esto reemplaza los datos de hábitos de este teléfono con tu copia guardada.',
+  },
+  'ru': {
+    'Device transfer': 'Перенос на устройство',
+    'Back up for 10 days for changing device':
+        'Резервная копия на 10 дней для смены устройства',
+    'Your backup is being prepared and uploaded.':
+        'Резервная копия подготавливается и загружается.',
+    'Temporarily save your filled habits, plans, calendars, graphs, and settings for your new phone.':
+        'Временно сохраните привычки, планы, календари, графики и настройки для нового телефона.',
+    'Create a 10-day backup?': 'Создать резервную копию на 10 дней?',
+    'Your current temporary backup will be replaced. The new backup automatically expires after 10 days.':
+        'Текущая временная копия будет заменена. Новая автоматически удалится через 10 дней.',
+    'Back up': 'Создать копию',
+    'Your 10-day backup is ready.': 'Резервная копия на 10 дней готова.',
+    'The backup could not be completed.': 'Не удалось создать резервную копию.',
+    'Preparing your backup': 'Подготовка резервной копии',
+    'Uploading your backup': 'Загрузка резервной копии',
+    'Backup ready for device transfer': 'Копия готова для переноса',
+    'Get your data on this device': 'Получить данные на этом устройстве',
+    'Downloading your data': 'Загрузка ваших данных',
+    'Restoring your data': 'Восстановление данных',
+    'Your data is restored': 'Ваши данные восстановлены',
+    'Backup needs attention': 'Требуется проверить копию',
+    'Restore': 'Восстановить',
+    'Available until': 'Доступно до',
+    'Try again from Settings.': 'Повторите попытку в настройках.',
+    'Restore backup?': 'Восстановить резервную копию?',
+    'This replaces the habit data currently stored on this phone with your saved backup.':
+        'Данные привычек на этом телефоне будут заменены сохранённой копией.',
+  },
+  'fr': {
+    'Device transfer': 'Transfert d’appareil',
+    'Back up for 10 days for changing device':
+        'Sauvegarde de 10 jours pour changer d’appareil',
+    'Your backup is being prepared and uploaded.':
+        'Votre sauvegarde est en préparation et en cours d’envoi.',
+    'Temporarily save your filled habits, plans, calendars, graphs, and settings for your new phone.':
+        'Enregistrez temporairement vos habitudes, plans, calendriers, graphiques et réglages pour votre nouveau téléphone.',
+    'Create a 10-day backup?': 'Créer une sauvegarde de 10 jours ?',
+    'Your current temporary backup will be replaced. The new backup automatically expires after 10 days.':
+        'Votre sauvegarde temporaire actuelle sera remplacée. La nouvelle expirera automatiquement après 10 jours.',
+    'Back up': 'Sauvegarder',
+    'Your 10-day backup is ready.': 'Votre sauvegarde de 10 jours est prête.',
+    'The backup could not be completed.': 'La sauvegarde n’a pas pu être terminée.',
+    'Preparing your backup': 'Préparation de votre sauvegarde',
+    'Uploading your backup': 'Envoi de votre sauvegarde',
+    'Backup ready for device transfer': 'Sauvegarde prête pour le transfert',
+    'Get your data on this device': 'Récupérer vos données sur cet appareil',
+    'Downloading your data': 'Téléchargement de vos données',
+    'Restoring your data': 'Restauration de vos données',
+    'Your data is restored': 'Vos données sont restaurées',
+    'Backup needs attention': 'La sauvegarde nécessite votre attention',
+    'Restore': 'Restaurer',
+    'Available until': 'Disponible jusqu’au',
+    'Try again from Settings.': 'Réessayez depuis les réglages.',
+    'Restore backup?': 'Restaurer la sauvegarde ?',
+    'This replaces the habit data currently stored on this phone with your saved backup.':
+        'Cela remplace les données d’habitudes de ce téléphone par votre sauvegarde.',
+  },
+  'uz': {
+    'Device transfer': 'Qurilmani almashtirish',
+    'Back up for 10 days for changing device':
+        'Qurilmani almashtirish uchun 10 kunlik nusxa',
+    'Your backup is being prepared and uploaded.':
+        'Nusxangiz tayyorlanmoqda va yuklanmoqda.',
+    'Temporarily save your filled habits, plans, calendars, graphs, and settings for your new phone.':
+        'Yangi telefon uchun odatlar, rejalar, kalendarlar, grafiklar va sozlamalarni vaqtincha saqlang.',
+    'Create a 10-day backup?': '10 kunlik nusxa yaratilsinmi?',
+    'Your current temporary backup will be replaced. The new backup automatically expires after 10 days.':
+        'Joriy vaqtinchalik nusxa almashtiriladi. Yangi nusxa 10 kundan keyin avtomatik o‘chadi.',
+    'Back up': 'Nusxa yaratish',
+    'Your 10-day backup is ready.': '10 kunlik nusxangiz tayyor.',
+    'The backup could not be completed.': 'Nusxa yaratib bo‘lmadi.',
+    'Preparing your backup': 'Nusxa tayyorlanmoqda',
+    'Uploading your backup': 'Nusxa yuklanmoqda',
+    'Backup ready for device transfer': 'Nusxa ko‘chirishga tayyor',
+    'Get your data on this device': 'Ma’lumotlarni bu qurilmaga olish',
+    'Downloading your data': 'Ma’lumotlar yuklab olinmoqda',
+    'Restoring your data': 'Ma’lumotlar tiklanmoqda',
+    'Your data is restored': 'Ma’lumotlaringiz tiklandi',
+    'Backup needs attention': 'Nusxani tekshirish kerak',
+    'Restore': 'Tiklash',
+    'Available until': 'Mavjud sana',
+    'Try again from Settings.': 'Sozlamalardan qayta urinib ko‘ring.',
+    'Restore backup?': 'Nusxa tiklansinmi?',
+    'This replaces the habit data currently stored on this phone with your saved backup.':
+        'Bu telefondagi odat ma’lumotlari saqlangan nusxa bilan almashtiriladi.',
+  },
+};
+
+const Map<String, Map<String, String>> _numericalHeatmapTranslations = {
+  'en': {
+    'Numerical habit heatmaps': 'Numerical habit heatmaps',
+    'Create numerical heatmap': 'Create numerical heatmap',
+    'No unused numerical habits are available.':
+        'No unused numerical habits are available.',
+    'Unlock two more numerical heatmaps?':
+        'Unlock two more numerical heatmaps?',
+    'Choose numerical habit': 'Choose numerical habit',
+    'Less': 'Less',
+    'More': 'More',
+    'Which direction is better?': 'Which direction is better?',
+    'More is better': 'More is better',
+    'Less is better': 'Less is better',
+    'Choose the value for each color': 'Choose the value for each color',
+    'Color values must increase from orange to blue.':
+        'Color values must increase from orange to blue.',
+    'Color values must decrease from orange to blue.':
+        'Color values must decrease from orange to blue.',
+    'Orange': 'Orange',
+    'Yellow': 'Yellow',
+    'Green': 'Green',
+    'Blue': 'Blue',
+    'Hours': 'Hours',
+    'Minutes': 'Minutes',
+  },
+  'es': {
+    'Which direction is better?': '¿Qué dirección es mejor?',
+    'More is better': 'Más es mejor',
+    'Less is better': 'Menos es mejor',
+    'Choose the value for each color': 'Elige el valor de cada color',
+    'Color values must increase from orange to blue.':
+        'Los valores deben aumentar de naranja a azul.',
+    'Color values must decrease from orange to blue.':
+        'Los valores deben disminuir de naranja a azul.',
+    'Orange': 'Naranja',
+    'Yellow': 'Amarillo',
+    'Green': 'Verde',
+    'Blue': 'Azul',
+    'Hours': 'Horas',
+    'Minutes': 'Minutos',
+    'Numerical habit heatmaps': 'Mapas de hábitos numéricos',
+    'Create numerical heatmap': 'Crear mapa numérico',
+    'No unused numerical habits are available.':
+        'No hay hábitos numéricos sin usar disponibles.',
+    'Unlock two more numerical heatmaps?':
+        '¿Desbloquear dos mapas numéricos más?',
+    'Choose numerical habit': 'Elegir hábito numérico',
+    'Less': 'Menos',
+    'More': 'Más',
+  },
+  'ru': {
+    'Which direction is better?': 'Какое направление лучше?',
+    'More is better': 'Больше — лучше',
+    'Less is better': 'Меньше — лучше',
+    'Choose the value for each color': 'Выберите значение для каждого цвета',
+    'Color values must increase from orange to blue.':
+        'Значения должны увеличиваться от оранжевого к синему.',
+    'Color values must decrease from orange to blue.':
+        'Значения должны уменьшаться от оранжевого к синему.',
+    'Orange': 'Оранжевый',
+    'Yellow': 'Жёлтый',
+    'Green': 'Зелёный',
+    'Blue': 'Синий',
+    'Hours': 'Часы',
+    'Minutes': 'Минуты',
+    'Numerical habit heatmaps': 'Тепловые карты числовых привычек',
+    'Create numerical heatmap': 'Создать тепловую карту',
+    'No unused numerical habits are available.':
+        'Нет доступных неиспользованных числовых привычек.',
+    'Unlock two more numerical heatmaps?':
+        'Разблокировать ещё две тепловые карты?',
+    'Choose numerical habit': 'Выберите числовую привычку',
+    'Less': 'Меньше',
+    'More': 'Больше',
+  },
+  'fr': {
+    'Which direction is better?': 'Quelle direction est préférable ?',
+    'More is better': 'Plus est préférable',
+    'Less is better': 'Moins est préférable',
+    'Choose the value for each color': 'Choisissez la valeur de chaque couleur',
+    'Color values must increase from orange to blue.':
+        'Les valeurs doivent augmenter de l’orange au bleu.',
+    'Color values must decrease from orange to blue.':
+        'Les valeurs doivent diminuer de l’orange au bleu.',
+    'Orange': 'Orange',
+    'Yellow': 'Jaune',
+    'Green': 'Vert',
+    'Blue': 'Bleu',
+    'Hours': 'Heures',
+    'Minutes': 'Minutes',
+    'Numerical habit heatmaps': 'Cartes thermiques des habitudes numériques',
+    'Create numerical heatmap': 'Créer une carte thermique',
+    'No unused numerical habits are available.':
+        'Aucune habitude numérique inutilisée n’est disponible.',
+    'Unlock two more numerical heatmaps?':
+        'Déverrouiller deux cartes thermiques supplémentaires ?',
+    'Choose numerical habit': 'Choisir une habitude numérique',
+    'Less': 'Moins',
+    'More': 'Plus',
+  },
+  'uz': {
+    'Which direction is better?': 'Qaysi yo‘nalish yaxshiroq?',
+    'More is better': 'Ko‘proq — yaxshiroq',
+    'Less is better': 'Kamroq — yaxshiroq',
+    'Choose the value for each color': 'Har bir rang uchun qiymat tanlang',
+    'Color values must increase from orange to blue.':
+        'Qiymatlar to‘q sariqdan ko‘k ranggacha oshishi kerak.',
+    'Color values must decrease from orange to blue.':
+        'Qiymatlar to‘q sariqdan ko‘k ranggacha kamayishi kerak.',
+    'Orange': 'To‘q sariq',
+    'Yellow': 'Sariq',
+    'Green': 'Yashil',
+    'Blue': 'Ko‘k',
+    'Hours': 'Soat',
+    'Minutes': 'Daqiqa',
+    'Numerical habit heatmaps': 'Raqamli odatlar issiqlik xaritasi',
+    'Create numerical heatmap': 'Issiqlik xaritasi yaratish',
+    'No unused numerical habits are available.':
+        'Ishlatilmagan raqamli odatlar mavjud emas.',
+    'Unlock two more numerical heatmaps?':
+        'Yana ikkita issiqlik xaritasi ochilsinmi?',
+    'Choose numerical habit': 'Raqamli odatni tanlang',
+    'Less': 'Kam',
+    'More': 'Ko‘p',
+  },
+};
+
+const Map<String, Map<String, String>> _habitStreakTranslations = {
+  'en': {
+    'Habit streaks': 'Habit streaks',
+    'Add streak': 'Add streak',
+    'Add habit streak': 'Add habit streak',
+    'Each streak grows only when that specific habit succeeds every day.':
+        'Each streak grows only when that specific habit succeeds every day.',
+    'Choose a habit to start its streak.':
+        'Choose a habit to start its streak.',
+    'No other active habits are available.':
+        'No other active habits are available.',
+    'Create this habit streak?': 'Create this habit streak?',
+    'This habit streak requires 35 tokens.':
+        'This habit streak requires 35 tokens.',
+    'You need 35 tokens to create this habit streak.':
+        'You need 35 tokens to create this habit streak.',
+    'Choose streak color': 'Choose streak color',
+    'Remove habit streak': 'Remove habit streak',
+    'Remove habit streak?': 'Remove habit streak?',
+    'Its streak setup will be removed.': 'Its streak setup will be removed.',
+    'Two habit streaks, 35 tokens each': 'Two habit streaks, 35 tokens each',
+    'Five habit streaks; 3 included and 2 cost 35 tokens':
+        'Five habit streaks; 3 included and 2 cost 35 tokens',
+    'Unlimited habit streaks with custom colors':
+        'Unlimited habit streaks with custom colors',
+  },
+  'es': {
+    'Habit streaks': 'Rachas de hábitos',
+    'Add streak': 'Añadir racha',
+    'Add habit streak': 'Añadir racha de hábito',
+    'Each streak grows only when that specific habit succeeds every day.':
+        'Cada racha crece solo cuando cumples ese hábito cada día.',
+    'Choose a habit to start its streak.':
+        'Elige un hábito para comenzar su racha.',
+    'No other active habits are available.':
+        'No hay otros hábitos activos disponibles.',
+    'Create this habit streak?': '¿Crear esta racha de hábito?',
+    'This habit streak requires 35 tokens.': 'Esta racha requiere 35 fichas.',
+    'You need 35 tokens to create this habit streak.':
+        'Necesitas 35 fichas para crear esta racha.',
+    'Choose streak color': 'Elegir color de la racha',
+    'Remove habit streak': 'Eliminar racha',
+    'Remove habit streak?': '¿Eliminar la racha?',
+    'Its streak setup will be removed.': 'Se eliminará su configuración.',
+  },
+  'ru': {
+    'Habit streaks': 'Серии привычек',
+    'Add streak': 'Добавить серию',
+    'Add habit streak': 'Добавить серию привычки',
+    'Each streak grows only when that specific habit succeeds every day.':
+        'Серия растёт, только если эта привычка успешно выполняется каждый день.',
+    'Choose a habit to start its streak.':
+        'Выберите привычку, чтобы начать её серию.',
+    'No other active habits are available.': 'Других активных привычек нет.',
+    'Create this habit streak?': 'Создать эту серию привычки?',
+    'This habit streak requires 35 tokens.':
+        'Для этой серии требуется 35 токенов.',
+    'You need 35 tokens to create this habit streak.':
+        'Для создания этой серии нужно 35 токенов.',
+    'Choose streak color': 'Выбрать цвет серии',
+    'Remove habit streak': 'Удалить серию',
+    'Remove habit streak?': 'Удалить серию привычки?',
+    'Its streak setup will be removed.': 'Настройки серии будут удалены.',
+  },
+  'fr': {
+    'Habit streaks': 'Séries d’habitudes',
+    'Add streak': 'Ajouter une série',
+    'Add habit streak': 'Ajouter une série d’habitude',
+    'Each streak grows only when that specific habit succeeds every day.':
+        'Chaque série progresse uniquement si cette habitude est réussie chaque jour.',
+    'Choose a habit to start its streak.':
+        'Choisissez une habitude pour commencer sa série.',
+    'No other active habits are available.':
+        'Aucune autre habitude active n’est disponible.',
+    'Create this habit streak?': 'Créer cette série d’habitude ?',
+    'This habit streak requires 35 tokens.': 'Cette série nécessite 35 jetons.',
+    'You need 35 tokens to create this habit streak.':
+        'Vous avez besoin de 35 jetons pour créer cette série.',
+    'Choose streak color': 'Choisir la couleur de la série',
+    'Remove habit streak': 'Supprimer la série',
+    'Remove habit streak?': 'Supprimer la série d’habitude ?',
+    'Its streak setup will be removed.': 'Sa configuration sera supprimée.',
+  },
+  'uz': {
+    'Habit streaks': 'Odat seriyalari',
+    'Add streak': 'Seriya qo‘shish',
+    'Add habit streak': 'Odat seriyasini qo‘shish',
+    'Each streak grows only when that specific habit succeeds every day.':
+        'Har bir seriya faqat shu odat har kuni muvaffaqiyatli bajarilganda o‘sadi.',
+    'Choose a habit to start its streak.':
+        'Seriyasini boshlash uchun odat tanlang.',
+    'No other active habits are available.': 'Boshqa faol odatlar mavjud emas.',
+    'Create this habit streak?': 'Bu odat seriyasi yaratilsinmi?',
+    'This habit streak requires 35 tokens.':
+        'Bu odat seriyasi uchun 35 token kerak.',
+    'You need 35 tokens to create this habit streak.':
+        'Bu seriyani yaratish uchun 35 token kerak.',
+    'Choose streak color': 'Seriya rangini tanlash',
+    'Remove habit streak': 'Odat seriyasini olib tashlash',
+    'Remove habit streak?': 'Odat seriyasi olib tashlansinmi?',
+    'Its streak setup will be removed.': 'Uning seriya sozlamasi o‘chiriladi.',
+  },
+};
+
+const Map<String, Map<String, String>> _measurementTranslations = {
+  'en': {
+    'Times': 'Times',
+    'Hours and minutes': 'Hours and minutes',
+    'hours': 'hours',
+    'Target duration per day': 'Target duration per day',
+    'How long did you do this habit?': 'How long did you do this habit?',
+    'Duration on this day': 'Duration on this day',
+    'Choose hours and minutes': 'Choose hours and minutes',
+    'Different targets for certain days': 'Different targets for certain days',
+    'Turn this on to give selected days a different daily target.':
+        'Turn this on to give selected days a different daily target.',
+    'The plan first grows your active days, then builds your daily target.':
+        'The plan first grows your active days, then builds your daily target.',
+  },
+  'es': {
+    'Times': 'Veces',
+    'Hours and minutes': 'Horas y minutos',
+    'hours': 'horas',
+    'Target duration per day': 'Duración objetivo por día',
+    'How long did you do this habit?': '¿Cuánto tiempo hiciste este hábito?',
+    'Duration on this day': 'Duración en este día',
+    'Choose hours and minutes': 'Elige horas y minutos',
+    'Different targets for certain days':
+        'Objetivos diferentes para ciertos días',
+    'Turn this on to give selected days a different daily target.':
+        'Actívalo para dar a ciertos días un objetivo diario diferente.',
+    'The plan first grows your active days, then builds your daily target.':
+        'El plan primero aumenta tus días activos y después desarrolla tu objetivo diario.',
+  },
+  'ru': {
+    'Times': 'Раз',
+    'Hours and minutes': 'Часы и минуты',
+    'hours': 'часов',
+    'Target duration per day': 'Целевая продолжительность в день',
+    'How long did you do this habit?': 'Как долго вы выполняли эту привычку?',
+    'Duration on this day': 'Продолжительность в этот день',
+    'Choose hours and minutes': 'Выберите часы и минуты',
+    'Different targets for certain days': 'Разные цели для отдельных дней',
+    'Turn this on to give selected days a different daily target.':
+        'Включите, чтобы задать выбранным дням другую ежедневную цель.',
+    'The plan first grows your active days, then builds your daily target.':
+        'Сначала план увеличивает число активных дней, затем постепенно повышает ежедневную цель.',
+  },
+  'fr': {
+    'Times': 'Fois',
+    'Hours and minutes': 'Heures et minutes',
+    'hours': 'heures',
+    'Target duration per day': 'Durée visée par jour',
+    'How long did you do this habit?':
+        'Combien de temps avez-vous pratiqué cette habitude ?',
+    'Duration on this day': 'Durée ce jour-là',
+    'Choose hours and minutes': 'Choisissez les heures et les minutes',
+    'Different targets for certain days':
+        'Objectifs différents selon les jours',
+    'Turn this on to give selected days a different daily target.':
+        'Activez cette option pour donner aux jours choisis un objectif quotidien différent.',
+    'The plan first grows your active days, then builds your daily target.':
+        'Le plan augmente d’abord vos jours actifs, puis développe progressivement votre objectif quotidien.',
+  },
+  'uz': {
+    'Times': 'Marta',
+    'Hours and minutes': 'Soat va daqiqa',
+    'hours': 'soat',
+    'Target duration per day': 'Kunlik davomiylik maqsadi',
+    'How long did you do this habit?': 'Bu odatni qancha vaqt bajardingiz?',
+    'Duration on this day': 'Bu kundagi davomiylik',
+    'Choose hours and minutes': 'Soat va daqiqani tanlang',
+    'Different targets for certain days': 'Ayrim kunlar uchun boshqa maqsadlar',
+    'Turn this on to give selected days a different daily target.':
+        'Tanlangan kunlarga boshqa kunlik maqsad berish uchun yoqing.',
+    'The plan first grows your active days, then builds your daily target.':
+        'Reja avval faol kunlarni ko‘paytiradi, keyin kunlik maqsadni bosqichma-bosqich oshiradi.',
+  },
+};
+
+const Map<String, Map<String, String>> _growthTranslations = {
+  'en': {
+    'Gradual growth': 'Gradual growth',
+    'Gradual-growth calendar': 'Gradual-growth calendar',
+    'Fast': 'Fast',
+    'Medium': 'Medium',
+    'Slow': 'Slow',
+    'Create growth plan': 'Create growth plan',
+    'Change growth plan': 'Change growth plan',
+    'Choose good habit': 'Choose good habit',
+    'Target days per week': 'Target days per week',
+    'Target repetitions per day': 'Target repetitions per day',
+    'Target duration per day': 'Target duration per day',
+    'Days off': 'Days off',
+    'How many repetitions did you complete?':
+        'How many repetitions did you complete?',
+    'How long did you do this habit?': 'How long did you do this habit?',
+    'Choose hours and minutes': 'Choose hours and minutes',
+    'The plan first grows your active days, then builds repetitions on those days.':
+        'The plan first grows your active days, then builds repetitions on those days.',
+    'The plan first grows your active days, then builds your daily target.':
+        'The plan first grows your active days, then builds your daily target.',
+    'Build a good habit gently by increasing its weekly days and daily repetitions.':
+        'Build a good habit gently by increasing its weekly days and daily repetitions.',
+    'Unlock and create': 'Unlock and create',
+    'Unlock more growth plans': 'Unlock more growth plans',
+    'Unlock these gradual-growth plans for 7 days?':
+        'Unlock these gradual-growth plans for 7 days?',
+    'Change this growth plan?': 'Change this growth plan?',
+    'Changing it replaces the current growth schedule.':
+        'Changing it replaces the current growth schedule.',
+    'Unlock these reduction plans for 7 days?':
+        'Unlock these reduction plans for 7 days?',
+    'per week': 'per week',
+    'Target': 'Target',
+    'Choose habit days': 'Choose habit days',
+    'Unselected days are your days off.': 'Unselected days are your days off.',
+    'Unlock and create growth plan': 'Unlock and create growth plan',
+    'Create reduction plan': 'Create reduction plan',
+    'Different repetitions for certain days':
+        'Different repetitions for certain days',
+    'Different targets for certain days': 'Different targets for certain days',
+    'Turn on a day to give it a different target from the general repetition target.':
+        'Turn on a day to give it a different target from the general repetition target.',
+    'Repetitions on this day': 'Repetitions on this day',
+    'Duration on this day': 'Duration on this day',
+    'Turn this on to give selected days a different repetition target.':
+        'Turn this on to give selected days a different repetition target.',
+    'Turn this on to give selected days a different daily target.':
+        'Turn this on to give selected days a different daily target.',
+    'Enter value manually': 'Enter value manually',
+    'Enter a valid value': 'Enter a valid value',
+    'Monday': 'Monday',
+    'Tuesday': 'Tuesday',
+    'Wednesday': 'Wednesday',
+    'Thursday': 'Thursday',
+    'Friday': 'Friday',
+    'Saturday': 'Saturday',
+    'Sunday': 'Sunday',
+    'Main gradual-growth plan without weekly locks':
+        'Main gradual-growth plan without weekly locks',
+    'Three gradual-growth plans; the two extra plans share one weekly 70-token unlock':
+        'Three gradual-growth plans; the two extra plans share one weekly 70-token unlock',
+    'The first three gradual-growth plans without token or ad unlocks':
+        'The first three gradual-growth plans without token or ad unlocks',
+    'Six gradual-growth plans; the last 3 share one weekly 70-token unlock':
+        'Six gradual-growth plans; the last 3 share one weekly 70-token unlock',
+    'Four gradual-reduction plans; the last 2 share one weekly 35-token unlock':
+        'Four gradual-reduction plans; the last 2 share one weekly 35-token unlock',
+    'Unlimited gradual-growth and gradual-reduction plans without token unlocks':
+        'Unlimited gradual-growth and gradual-reduction plans without token unlocks',
+  },
+  'es': {
+    'Gradual growth': 'Crecimiento gradual',
+    'Gradual-growth calendar': 'Calendario de crecimiento gradual',
+    'Fast': 'Rápido',
+    'Medium': 'Medio',
+    'Slow': 'Lento',
+    'Create growth plan': 'Crear plan de crecimiento',
+    'Change growth plan': 'Cambiar plan de crecimiento',
+    'Choose good habit': 'Elige un hábito positivo',
+    'Target days per week': 'Días objetivo por semana',
+    'Target repetitions per day': 'Repeticiones objetivo por día',
+    'Days off': 'Días de descanso',
+    'How many repetitions did you complete?':
+        '¿Cuántas repeticiones completaste?',
+    'The plan first grows your active days, then builds repetitions on those days.':
+        'El plan primero aumenta tus días activos y después las repeticiones de esos días.',
+    'Build a good habit gently by increasing its weekly days and daily repetitions.':
+        'Desarrolla un buen hábito aumentando poco a poco los días semanales y las repeticiones diarias.',
+    'Unlock and create': 'Desbloquear y crear',
+    'Unlock more growth plans': 'Desbloquear más planes de crecimiento',
+    'Unlock these gradual-growth plans for 7 days?':
+        '¿Desbloquear estos planes de crecimiento gradual durante 7 días?',
+    'Change this growth plan?': '¿Cambiar este plan de crecimiento?',
+    'Changing it replaces the current growth schedule.':
+        'Al cambiarlo se sustituirá el calendario de crecimiento actual.',
+    'Unlock these reduction plans for 7 days?':
+        '¿Desbloquear estos planes de reducción durante 7 días?',
+    'per week': 'por semana',
+    'Target': 'Objetivo',
+    'Choose habit days': 'Elige los días del hábito',
+    'Unselected days are your days off.':
+        'Los días no seleccionados son tus días de descanso.',
+    'Unlock and create growth plan': 'Desbloquear y crear plan de crecimiento',
+    'Create reduction plan': 'Crear plan de reducción',
+    'Different repetitions for certain days':
+        'Repeticiones diferentes para ciertos días',
+    'Turn on a day to give it a different target from the general repetition target.':
+        'Activa un día para darle un objetivo diferente al objetivo general.',
+    'Repetitions on this day': 'Repeticiones este día',
+    'Turn this on to give selected days a different repetition target.':
+        'Actívalo para dar a ciertos días un objetivo de repeticiones diferente.',
+    'Enter value manually': 'Introducir el valor manualmente',
+    'Enter a valid value': 'Introduce un valor válido',
+    'Monday': 'Lunes',
+    'Tuesday': 'Martes',
+    'Wednesday': 'Miércoles',
+    'Thursday': 'Jueves',
+    'Friday': 'Viernes',
+    'Saturday': 'Sábado',
+    'Sunday': 'Domingo',
+    'Main gradual-growth plan without weekly locks':
+        'Plan principal de crecimiento sin bloqueos semanales',
+    'Three gradual-growth plans; the two extra plans share one weekly 70-token unlock':
+        'Tres planes de crecimiento; los dos extra comparten un desbloqueo semanal de 70 fichas',
+    'The first three gradual-growth plans without token or ad unlocks':
+        'Los tres primeros planes de crecimiento sin fichas ni anuncios',
+    'Six gradual-growth plans; the last 3 share one weekly 70-token unlock':
+        'Seis planes de crecimiento; los últimos 3 comparten un desbloqueo semanal de 70 fichas',
+    'Four gradual-reduction plans; the last 2 share one weekly 35-token unlock':
+        'Cuatro planes de reducción; los últimos 2 comparten un desbloqueo semanal de 35 fichas',
+    'Unlimited gradual-growth and gradual-reduction plans without token unlocks':
+        'Planes ilimitados de crecimiento y reducción sin desbloqueos con fichas',
+  },
+  'ru': {
+    'Gradual growth': 'Постепенное развитие',
+    'Gradual-growth calendar': 'Календарь постепенного развития',
+    'Fast': 'Быстро',
+    'Medium': 'Средне',
+    'Slow': 'Медленно',
+    'Create growth plan': 'Создать план развития',
+    'Change growth plan': 'Изменить план развития',
+    'Choose good habit': 'Выберите полезную привычку',
+    'Target days per week': 'Целевых дней в неделю',
+    'Target repetitions per day': 'Целевых повторений в день',
+    'Days off': 'Дни отдыха',
+    'How many repetitions did you complete?':
+        'Сколько повторений вы выполнили?',
+    'The plan first grows your active days, then builds repetitions on those days.':
+        'Сначала план увеличивает число активных дней, затем — количество повторений в эти дни.',
+    'Build a good habit gently by increasing its weekly days and daily repetitions.':
+        'Развивайте полезную привычку постепенно, увеличивая дни и ежедневные повторения.',
+    'Unlock and create': 'Разблокировать и создать',
+    'Unlock more growth plans': 'Открыть больше планов развития',
+    'Unlock these gradual-growth plans for 7 days?':
+        'Разблокировать эти планы постепенного развития на 7 дней?',
+    'Change this growth plan?': 'Изменить этот план развития?',
+    'Changing it replaces the current growth schedule.':
+        'Изменение заменит текущее расписание развития.',
+    'Unlock these reduction plans for 7 days?':
+        'Разблокировать эти планы сокращения на 7 дней?',
+    'per week': 'в неделю',
+    'Target': 'Цель',
+    'Choose habit days': 'Выберите дни привычки',
+    'Unselected days are your days off.': 'Невыбранные дни будут днями отдыха.',
+    'Unlock and create growth plan': 'Разблокировать и создать план развития',
+    'Create reduction plan': 'Создать план сокращения',
+    'Different repetitions for certain days':
+        'Разное число повторений в отдельные дни',
+    'Turn on a day to give it a different target from the general repetition target.':
+        'Включите день, чтобы задать для него цель, отличную от общей.',
+    'Repetitions on this day': 'Повторений в этот день',
+    'Turn this on to give selected days a different repetition target.':
+        'Включите, чтобы задать выбранным дням другую цель повторений.',
+    'Enter value manually': 'Ввести значение вручную',
+    'Enter a valid value': 'Введите допустимое значение',
+    'Monday': 'Понедельник',
+    'Tuesday': 'Вторник',
+    'Wednesday': 'Среда',
+    'Thursday': 'Четверг',
+    'Friday': 'Пятница',
+    'Saturday': 'Суббота',
+    'Sunday': 'Воскресенье',
+    'Main gradual-growth plan without weekly locks':
+        'Основной план развития без еженедельной блокировки',
+    'Three gradual-growth plans; the two extra plans share one weekly 70-token unlock':
+        'Три плана развития; два дополнительных имеют общую недельную разблокировку за 70 токенов',
+    'The first three gradual-growth plans without token or ad unlocks':
+        'Первые три плана развития без токенов и рекламы',
+    'Six gradual-growth plans; the last 3 share one weekly 70-token unlock':
+        'Шесть планов развития; последние 3 имеют общую недельную разблокировку за 70 токенов',
+    'Four gradual-reduction plans; the last 2 share one weekly 35-token unlock':
+        'Четыре плана сокращения; последние 2 имеют общую недельную разблокировку за 35 токенов',
+    'Unlimited gradual-growth and gradual-reduction plans without token unlocks':
+        'Неограниченные планы развития и сокращения без разблокировки токенами',
+  },
+  'fr': {
+    'Gradual growth': 'Progression graduelle',
+    'Gradual-growth calendar': 'Calendrier de progression graduelle',
+    'Fast': 'Rapide',
+    'Medium': 'Moyen',
+    'Slow': 'Lent',
+    'Create growth plan': 'Créer un plan de progression',
+    'Change growth plan': 'Modifier le plan de progression',
+    'Choose good habit': 'Choisissez une bonne habitude',
+    'Target days per week': 'Jours visés par semaine',
+    'Target repetitions per day': 'Répétitions visées par jour',
+    'Days off': 'Jours de repos',
+    'How many repetitions did you complete?':
+        'Combien de répétitions avez-vous effectuées ?',
+    'The plan first grows your active days, then builds repetitions on those days.':
+        'Le plan augmente d’abord vos jours actifs, puis les répétitions pendant ces jours.',
+    'Build a good habit gently by increasing its weekly days and daily repetitions.':
+        'Développez une bonne habitude progressivement en augmentant les jours et répétitions.',
+    'Unlock and create': 'Débloquer et créer',
+    'Unlock more growth plans': 'Débloquer plus de plans de progression',
+    'Unlock these gradual-growth plans for 7 days?':
+        'Débloquer ces plans de progression pendant 7 jours ?',
+    'Change this growth plan?': 'Modifier ce plan de progression ?',
+    'Changing it replaces the current growth schedule.':
+        'Cette modification remplacera le calendrier de progression actuel.',
+    'Unlock these reduction plans for 7 days?':
+        'Débloquer ces plans de réduction pendant 7 jours ?',
+    'per week': 'par semaine',
+    'Target': 'Objectif',
+    'Choose habit days': 'Choisissez les jours de l’habitude',
+    'Unselected days are your days off.':
+        'Les jours non sélectionnés sont vos jours de repos.',
+    'Unlock and create growth plan':
+        'Débloquer et créer un plan de progression',
+    'Create reduction plan': 'Créer un plan de réduction',
+    'Different repetitions for certain days':
+        'Répétitions différentes certains jours',
+    'Turn on a day to give it a different target from the general repetition target.':
+        'Activez un jour pour lui donner un objectif différent de l’objectif général.',
+    'Repetitions on this day': 'Répétitions ce jour-là',
+    'Turn this on to give selected days a different repetition target.':
+        'Activez cette option pour donner un objectif différent à certains jours.',
+    'Enter value manually': 'Saisir la valeur manuellement',
+    'Enter a valid value': 'Saisissez une valeur valide',
+    'Monday': 'Lundi',
+    'Tuesday': 'Mardi',
+    'Wednesday': 'Mercredi',
+    'Thursday': 'Jeudi',
+    'Friday': 'Vendredi',
+    'Saturday': 'Samedi',
+    'Sunday': 'Dimanche',
+    'Main gradual-growth plan without weekly locks':
+        'Plan principal de progression sans verrouillage hebdomadaire',
+    'Three gradual-growth plans; the two extra plans share one weekly 70-token unlock':
+        'Trois plans de progression ; les deux supplémentaires partagent un déblocage hebdomadaire de 70 jetons',
+    'The first three gradual-growth plans without token or ad unlocks':
+        'Les trois premiers plans de progression sans jetons ni publicité',
+    'Six gradual-growth plans; the last 3 share one weekly 70-token unlock':
+        'Six plans de progression ; les 3 derniers partagent un déblocage hebdomadaire de 70 jetons',
+    'Four gradual-reduction plans; the last 2 share one weekly 35-token unlock':
+        'Quatre plans de réduction ; les 2 derniers partagent un déblocage hebdomadaire de 35 jetons',
+    'Unlimited gradual-growth and gradual-reduction plans without token unlocks':
+        'Plans de progression et de réduction illimités sans déblocage par jetons',
+  },
+  'uz': {
+    'Gradual growth': 'Bosqichma-bosqich rivojlantirish',
+    'Gradual-growth calendar': 'Bosqichma-bosqich rivojlanish taqvimi',
+    'Fast': 'Tez',
+    'Medium': 'O‘rtacha',
+    'Slow': 'Sekin',
+    'Create growth plan': 'Rivojlanish rejasini yaratish',
+    'Change growth plan': 'Rivojlanish rejasini o‘zgartirish',
+    'Choose good habit': 'Yaxshi odatni tanlang',
+    'Target days per week': 'Haftalik maqsad kunlari',
+    'Target repetitions per day': 'Kunlik maqsad takrorlari',
+    'Days off': 'Dam olish kunlari',
+    'How many repetitions did you complete?': 'Nechta takrorni bajardingiz?',
+    'The plan first grows your active days, then builds repetitions on those days.':
+        'Reja avval faol kunlarni, keyin esa shu kunlardagi takrorlarni oshiradi.',
+    'Build a good habit gently by increasing its weekly days and daily repetitions.':
+        'Haftalik kunlar va kunlik takrorlarni asta oshirib, yaxshi odatni rivojlantiring.',
+    'Unlock and create': 'Ochish va yaratish',
+    'Unlock more growth plans': 'Ko‘proq rivojlanish rejalarini ochish',
+    'Unlock these gradual-growth plans for 7 days?':
+        'Bu rivojlanish rejalarini 7 kunga ochasizmi?',
+    'Change this growth plan?': 'Bu rivojlanish rejasini o‘zgartirasizmi?',
+    'Changing it replaces the current growth schedule.':
+        'O‘zgartirish hozirgi rivojlanish jadvalini almashtiradi.',
+    'Unlock these reduction plans for 7 days?':
+        'Bu kamaytirish rejalarini 7 kunga ochasizmi?',
+    'per week': 'haftasiga',
+    'Target': 'Maqsad',
+    'Choose habit days': 'Odat kunlarini tanlang',
+    'Unselected days are your days off.':
+        'Tanlanmagan kunlar dam olish kunlaringiz bo‘ladi.',
+    'Unlock and create growth plan': 'Rivojlanish rejasini ochish va yaratish',
+    'Create reduction plan': 'Kamaytirish rejasini yaratish',
+    'Different repetitions for certain days':
+        'Ayrim kunlar uchun boshqa takrorlar',
+    'Turn on a day to give it a different target from the general repetition target.':
+        'Kunga umumiy takror maqsadidan farqli maqsad berish uchun uni yoqing.',
+    'Repetitions on this day': 'Bu kundagi takrorlar',
+    'Turn this on to give selected days a different repetition target.':
+        'Tanlangan kunlarga boshqa takror maqsadini berish uchun buni yoqing.',
+    'Enter value manually': 'Qiymatni qo‘lda kiriting',
+    'Enter a valid value': 'To‘g‘ri qiymat kiriting',
+    'Monday': 'Dushanba',
+    'Tuesday': 'Seshanba',
+    'Wednesday': 'Chorshanba',
+    'Thursday': 'Payshanba',
+    'Friday': 'Juma',
+    'Saturday': 'Shanba',
+    'Sunday': 'Yakshanba',
+    'Main gradual-growth plan without weekly locks':
+        'Haftalik qulfsiz asosiy rivojlanish rejasi',
+    'Three gradual-growth plans; the two extra plans share one weekly 70-token unlock':
+        'Uchta rivojlanish rejasi; ikkita qo‘shimcha reja bitta haftalik 70 tokenlik ochishni ulashadi',
+    'The first three gradual-growth plans without token or ad unlocks':
+        'Dastlabki uchta rivojlanish rejasi token yoki reklamasiz',
+    'Six gradual-growth plans; the last 3 share one weekly 70-token unlock':
+        'Oltita rivojlanish rejasi; oxirgi 3 tasi bitta haftalik 70 tokenlik ochishni ulashadi',
+    'Four gradual-reduction plans; the last 2 share one weekly 35-token unlock':
+        'To‘rtta kamaytirish rejasi; oxirgi 2 tasi bitta haftalik 35 tokenlik ochishni ulashadi',
+    'Unlimited gradual-growth and gradual-reduction plans without token unlocks':
+        'Tokensiz cheksiz rivojlanish va kamaytirish rejalari',
+  },
+};
+
+const Map<String, Map<String, String>> _bodyMuscleTranslations = {
+  'en': {
+    'Group graphs': 'Group graphs',
+    'Group graph': 'Group graph',
+    'Create a group graph': 'Create a group graph',
+    'Unlock this group graph for 7 days': 'Unlock this group graph for 7 days',
+    'Do you want to unlock this group graph?':
+        'Do you want to unlock this group graph?',
+    'One group graph with a weekly 70-token unlock':
+        'One group graph with a weekly 70-token unlock',
+    'Four group graphs: 2 included and 2 weekly 35-token unlocks':
+        'Four group graphs: 2 included and 2 weekly 35-token unlocks',
+    'Six included group graphs': 'Six included group graphs',
+    'Upgrade to': 'Upgrade to',
+    'Upgrade to Plus': 'Upgrade to Plus',
+    'Upgrade to Plus to unlock': 'Upgrade to Plus to unlock',
+    'Unlock other organs with premium': 'Unlock other organs with premium',
+    'Create another group graph': 'Create another group graph',
+    'Create another individual graph': 'Create another individual graph',
+    'Create a second reduction plan': 'Create a second reduction plan',
+    'Front': 'Front',
+    'Back view': 'Back',
+    'Shoulder workout': 'Shoulder',
+    'Back workout': 'Back',
+  },
+  'es': {
+    'Group graphs': 'Gráficos de grupo',
+    'Group graph': 'Gráfico de grupo',
+    'Create a group graph': 'Crear un gráfico de grupo',
+    'Unlock this group graph for 7 days':
+        'Desbloquea este gráfico de grupo durante 7 días',
+    'Do you want to unlock this group graph?':
+        '¿Quieres desbloquear este gráfico de grupo?',
+    'One group graph with a weekly 70-token unlock':
+        'Un gráfico de grupo desbloqueable por 70 fichas durante una semana',
+    'Four group graphs: 2 included and 2 weekly 35-token unlocks':
+        'Cuatro gráficos de grupo: 2 incluidos y 2 desbloqueables semanalmente por 35 fichas',
+    'Six included group graphs': 'Seis gráficos de grupo incluidos',
+    'Upgrade to': 'Mejorar a',
+    'Upgrade to Plus': 'Mejorar a Plus',
+    'Upgrade to Plus to unlock': 'Mejora a Plus para desbloquear',
+    'Unlock other organs with premium': 'Desbloquea otros órganos con premium',
+    'Create another group graph': 'Crear otro gráfico de grupo',
+    'Create another individual graph': 'Crear otro gráfico individual',
+    'Create a second reduction plan': 'Crear un segundo plan de reducción',
+    'Front': 'Frente',
+    'Back view': 'Espalda',
+    'Shoulder workout': 'Hombros',
+    'Back workout': 'Espalda',
+  },
+  'ru': {
+    'Group graphs': 'Групповые графики',
+    'Group graph': 'Групповой график',
+    'Create a group graph': 'Создать групповой график',
+    'Unlock this group graph for 7 days':
+        'Открыть этот групповой график на 7 дней',
+    'Do you want to unlock this group graph?':
+        'Хотите открыть этот групповой график?',
+    'One group graph with a weekly 70-token unlock':
+        'Один групповой график с недельным открытием за 70 жетонов',
+    'Four group graphs: 2 included and 2 weekly 35-token unlocks':
+        'Четыре групповых графика: 2 включены, 2 открываются на неделю за 35 жетонов',
+    'Six included group graphs': 'Шесть включённых групповых графиков',
+    'Upgrade to': 'Перейти на',
+    'Upgrade to Plus': 'Перейти на Plus',
+    'Upgrade to Plus to unlock': 'Перейдите на Plus, чтобы открыть',
+    'Unlock other organs with premium': 'Откройте другие органы с премиумом',
+    'Create another group graph': 'Создать ещё один групповой график',
+    'Create another individual graph': 'Создать ещё один отдельный график',
+    'Create a second reduction plan': 'Создать второй план сокращения',
+    'Front': 'Спереди',
+    'Back view': 'Сзади',
+    'Shoulder workout': 'Плечи',
+    'Back workout': 'Спина',
+  },
+  'fr': {
+    'Group graphs': 'Graphiques de groupe',
+    'Group graph': 'Graphique de groupe',
+    'Create a group graph': 'Créer un graphique de groupe',
+    'Unlock this group graph for 7 days':
+        'Déverrouiller ce graphique de groupe pendant 7 jours',
+    'Do you want to unlock this group graph?':
+        'Voulez-vous déverrouiller ce graphique de groupe ?',
+    'One group graph with a weekly 70-token unlock':
+        'Un graphique de groupe déverrouillable une semaine pour 70 jetons',
+    'Four group graphs: 2 included and 2 weekly 35-token unlocks':
+        'Quatre graphiques de groupe : 2 inclus et 2 déverrouillables une semaine pour 35 jetons',
+    'Six included group graphs': 'Six graphiques de groupe inclus',
+    'Upgrade to': 'Passer à',
+    'Upgrade to Plus': 'Passer à Plus',
+    'Upgrade to Plus to unlock': 'Passez à Plus pour déverrouiller',
+    'Unlock other organs with premium':
+        'Déverrouillez les autres organes avec premium',
+    'Create another group graph': 'Créer un autre graphique de groupe',
+    'Create another individual graph': 'Créer un autre graphique individuel',
+    'Create a second reduction plan': 'Créer un deuxième plan de réduction',
+    'Front': 'Avant',
+    'Back view': 'Dos',
+    'Shoulder workout': 'Épaules',
+    'Back workout': 'Dos',
+  },
+  'uz': {
+    'Group graphs': 'Guruh grafiklari',
+    'Group graph': 'Guruh grafigi',
+    'Create a group graph': 'Guruh grafigini yaratish',
+    'Unlock this group graph for 7 days': 'Bu guruh grafigini 7 kunga ochish',
+    'Do you want to unlock this group graph?':
+        'Bu guruh grafigini ochmoqchimisiz?',
+    'One group graph with a weekly 70-token unlock':
+        'Bir haftaga 70 token bilan ochiladigan bitta guruh grafigi',
+    'Four group graphs: 2 included and 2 weekly 35-token unlocks':
+        'To‘rtta guruh grafigi: 2 tasi kiritilgan, 2 tasi haftasiga 35 token',
+    'Six included group graphs': 'Oltita kiritilgan guruh grafigi',
+    'Upgrade to': 'Quyidagiga o‘tish',
+    'Upgrade to Plus': 'Plus tarifiga o‘tish',
+    'Upgrade to Plus to unlock': 'Ochish uchun Plus tarifiga o‘ting',
+    'Unlock other organs with premium':
+        'Boshqa organlarni premium bilan oching',
+    'Create another group graph': 'Yana bir guruh grafigini yaratish',
+    'Create another individual graph': 'Yana bir alohida grafik yaratish',
+    'Create a second reduction plan': 'Ikkinchi kamaytirish rejasini yaratish',
+    'Front': 'Oldi',
+    'Back view': 'Orqasi',
+    'Shoulder workout': 'Yelka',
+    'Back workout': 'Orqa',
+  },
+};
+
+const Map<String, Map<String, String>> _organReportTranslations = {
+  'en': {
+    'Organ reports': 'Organ reports',
+    'Symbolic habit progress, not medical status.':
+        'Symbolic habit progress, not medical status.',
+    'Condition': 'Condition',
+    'Needs attention': 'Needs attention',
+    'Building stability': 'Building stability',
+    'Steady progress': 'Steady progress',
+    'Doing well': 'Doing well',
+    'Excellent progress': 'Excellent progress',
+    'Progress needs a reset': 'Progress needs a reset',
+    'Small steps matter now': 'Small steps matter now',
+    'More consistency will help': 'More consistency will help',
+    'A better rhythm can start today': 'A better rhythm can start today',
+    'Holding a balanced course': 'Holding a balanced course',
+    'Keep the momentum moving': 'Keep the momentum moving',
+    'Positive habits are showing': 'Positive habits are showing',
+    'Strong and steady progress': 'Strong and steady progress',
+    'Consistency is paying off': 'Consistency is paying off',
+    'Keep up the great rhythm': 'Keep up the great rhythm',
+  },
+  'es': {
+    'Organ reports': 'Informes de órganos',
+    'Symbolic habit progress, not medical status.':
+        'Progreso simbólico de hábitos, no es un estado médico.',
+    'Condition': 'Condición',
+    'Needs attention': 'Necesita atención',
+    'Building stability': 'Desarrollando estabilidad',
+    'Steady progress': 'Progreso estable',
+    'Doing well': 'Va bien',
+    'Excellent progress': 'Progreso excelente',
+    'Progress needs a reset': 'El progreso necesita un nuevo comienzo',
+    'Small steps matter now': 'Los pequeños pasos importan ahora',
+    'More consistency will help': 'Más constancia ayudará',
+    'A better rhythm can start today': 'Un mejor ritmo puede empezar hoy',
+    'Holding a balanced course': 'Manteniendo un rumbo equilibrado',
+    'Keep the momentum moving': 'Mantén el impulso',
+    'Positive habits are showing': 'Los hábitos positivos se están notando',
+    'Strong and steady progress': 'Progreso firme y constante',
+    'Consistency is paying off': 'La constancia está dando resultados',
+    'Keep up the great rhythm': 'Mantén este gran ritmo',
+  },
+  'ru': {
+    'Organ reports': 'Отчёты об органах',
+    'Symbolic habit progress, not medical status.':
+        'Символический прогресс привычек, а не медицинская оценка.',
+    'Condition': 'Состояние',
+    'Needs attention': 'Требует внимания',
+    'Building stability': 'Стабильность улучшается',
+    'Steady progress': 'Стабильный прогресс',
+    'Doing well': 'Хороший прогресс',
+    'Excellent progress': 'Отличный прогресс',
+    'Progress needs a reset': 'Прогрессу нужен новый старт',
+    'Small steps matter now': 'Сейчас важны маленькие шаги',
+    'More consistency will help': 'Больше постоянства поможет',
+    'A better rhythm can start today': 'Лучший ритм можно начать сегодня',
+    'Holding a balanced course': 'Сохраняется равномерный курс',
+    'Keep the momentum moving': 'Продолжайте сохранять темп',
+    'Positive habits are showing': 'Положительные привычки дают результат',
+    'Strong and steady progress': 'Уверенный и стабильный прогресс',
+    'Consistency is paying off': 'Постоянство приносит результат',
+    'Keep up the great rhythm': 'Сохраняйте отличный ритм',
+  },
+  'fr': {
+    'Organ reports': 'Rapports des organes',
+    'Symbolic habit progress, not medical status.':
+        'Progression symbolique des habitudes, pas un état médical.',
+    'Condition': 'État',
+    'Needs attention': 'Nécessite de l’attention',
+    'Building stability': 'Stabilité en progression',
+    'Steady progress': 'Progression stable',
+    'Doing well': 'Bonne progression',
+    'Excellent progress': 'Excellente progression',
+    'Progress needs a reset': 'La progression a besoin d’un nouveau départ',
+    'Small steps matter now': 'Les petits pas comptent maintenant',
+    'More consistency will help': 'Plus de régularité aidera',
+    'A better rhythm can start today':
+        'Un meilleur rythme peut commencer aujourd’hui',
+    'Holding a balanced course': 'Un rythme équilibré se maintient',
+    'Keep the momentum moving': 'Gardez cet élan',
+    'Positive habits are showing':
+        'Les habitudes positives portent leurs fruits',
+    'Strong and steady progress': 'Progression forte et régulière',
+    'Consistency is paying off': 'La régularité porte ses fruits',
+    'Keep up the great rhythm': 'Continuez sur cet excellent rythme',
+  },
+  'uz': {
+    'Organ reports': 'Organ hisobotlari',
+    'Symbolic habit progress, not medical status.':
+        'Odatlarning ramziy rivoji, tibbiy holat emas.',
+    'Condition': 'Holat',
+    'Needs attention': 'E’tibor kerak',
+    'Building stability': 'Barqarorlik shakllanmoqda',
+    'Steady progress': 'Barqaror rivoj',
+    'Doing well': 'Yaxshi ketmoqda',
+    'Excellent progress': 'A’lo rivoj',
+    'Progress needs a reset': 'Rivojga yangi boshlanish kerak',
+    'Small steps matter now': 'Hozir kichik qadamlar muhim',
+    'More consistency will help': 'Ko‘proq izchillik yordam beradi',
+    'A better rhythm can start today': 'Yaxshiroq ritmni bugun boshlash mumkin',
+    'Holding a balanced course': 'Muvozanatli yo‘nalish saqlanmoqda',
+    'Keep the momentum moving': 'Shu sur’atni davom ettiring',
+    'Positive habits are showing': 'Ijobiy odatlar natija bermoqda',
+    'Strong and steady progress': 'Kuchli va barqaror rivoj',
+    'Consistency is paying off': 'Izchillik o‘z samarasini bermoqda',
+    'Keep up the great rhythm': 'Ajoyib ritmni saqlang',
+  },
+};
+
+const Map<String, Map<String, String>> _singleGraphTranslations = {
+  'en': {
+    'Create an individual graph': 'Create an individual graph',
+    'Do you want to unlock these individual graphs?':
+        'Do you want to unlock these individual graphs?',
+    'Daily': 'Daily',
+    'Weekly': 'Weekly',
+    'Monthly': 'Monthly',
+    'Yearly': 'Yearly',
+    'Numerical entries use their recorded value. Thumbs use these fallback values.':
+        'Numerical entries use their recorded value. Thumbs use these fallback values.',
+  },
+  'es': {
+    'Create an individual graph': 'Crear un gráfico individual',
+    'Do you want to unlock these individual graphs?':
+        '¿Quieres desbloquear estos gráficos individuales?',
+    'Daily': 'Diario',
+    'Weekly': 'Semanal',
+    'Monthly': 'Mensual',
+    'Yearly': 'Anual',
+    'Numerical entries use their recorded value. Thumbs use these fallback values.':
+        'Las entradas numéricas usan su valor registrado. Los pulgares usan estos valores alternativos.',
+  },
+  'ru': {
+    'Create an individual graph': 'Создать отдельный график',
+    'Do you want to unlock these individual graphs?':
+        'Хотите разблокировать эти отдельные графики?',
+    'Daily': 'Ежедневно',
+    'Weekly': 'Еженедельно',
+    'Monthly': 'Ежемесячно',
+    'Yearly': 'Ежегодно',
+    'Numerical entries use their recorded value. Thumbs use these fallback values.':
+        'Числовые записи используют сохранённое значение. Для кнопок используются эти запасные значения.',
+  },
+  'fr': {
+    'Create an individual graph': 'Créer un graphique individuel',
+    'Do you want to unlock these individual graphs?':
+        'Voulez-vous déverrouiller ces graphiques individuels ?',
+    'Daily': 'Quotidien',
+    'Weekly': 'Hebdomadaire',
+    'Monthly': 'Mensuel',
+    'Yearly': 'Annuel',
+    'Numerical entries use their recorded value. Thumbs use these fallback values.':
+        'Les saisies numériques utilisent leur valeur enregistrée. Les pouces utilisent ces valeurs de remplacement.',
+  },
+  'uz': {
+    'Create an individual graph': 'Alohida grafik yaratish',
+    'Do you want to unlock these individual graphs?':
+        'Ushbu alohida grafiklarni ochmoqchimisiz?',
+    'Daily': 'Kunlik',
+    'Weekly': 'Haftalik',
+    'Monthly': 'Oylik',
+    'Yearly': 'Yillik',
+    'Numerical entries use their recorded value. Thumbs use these fallback values.':
+        'Raqamli yozuvlar saqlangan qiymatdan foydalanadi. Barmoq tugmalari ushbu zaxira qiymatlardan foydalanadi.',
+  },
+};
+
+const Map<String, Map<String, String>> _namedGraphTranslations = {
+  'en': {
+    'Named custom graphs': 'Group graphs',
+    'Named custom graph': 'Group graph',
+    'Create a habit group': 'Create a group graph',
+    'Unlock this named graph for 7 days': 'Unlock this group graph for 7 days',
+    'Tap to choose tokens or an ad': 'Tap to choose tokens or an ad',
+    'Do you want to unlock this named graph?':
+        'Do you want to unlock this group graph?',
+    'Graph name': 'Graph name',
+    'Add habit slot': 'Add habit slot',
+    'Enter a graph name.': 'Enter a graph name.',
+    'Choose at least one habit.': 'Choose at least one habit.',
+    'Main custom graph with 6 habit slots':
+        'Main custom graph with 6 habit slots',
+    'One named graph with a weekly 70-token unlock':
+        'One group graph with a weekly 70-token unlock',
+    'Main custom graph with 10 slots; the last 4 cost 35 tokens to change':
+        'Main custom graph with 10 slots; the last 4 cost 35 tokens to change',
+    'Four named graphs: 2 included and 2 weekly 35-token unlocks':
+        'Four group graphs: 2 included and 2 weekly 35-token unlocks',
+    'Unlimited main custom-graph habit slots':
+        'Unlimited main custom-graph habit slots',
+    'Six included named custom graphs': 'Six included group graphs',
+  },
+  'es': {
+    'Named custom graphs': 'Gráficos personalizados con nombre',
+    'Named custom graph': 'Gráfico personalizado con nombre',
+    'Create a habit group': 'Crear un grupo de hábitos',
+    'Unlock this named graph for 7 days':
+        'Desbloquea este gráfico durante 7 días',
+    'Tap to choose tokens or an ad': 'Toca para elegir fichas o un anuncio',
+    'Do you want to unlock this named graph?':
+        '¿Quieres desbloquear este gráfico?',
+    'Graph name': 'Nombre del gráfico',
+    'Add habit slot': 'Añadir espacio de hábito',
+    'Enter a graph name.': 'Introduce un nombre para el gráfico.',
+    'Choose at least one habit.': 'Elige al menos un hábito.',
+    'Main custom graph with 6 habit slots':
+        'Gráfico principal con 6 espacios de hábitos',
+    'One named graph with a weekly 70-token unlock':
+        'Un gráfico con nombre, desbloqueable por 70 fichas durante una semana',
+    'Main custom graph with 10 slots; the last 4 cost 35 tokens to change':
+        'Gráfico principal con 10 espacios; cambiar los últimos 4 cuesta 35 fichas',
+    'Four named graphs: 2 included and 2 weekly 35-token unlocks':
+        'Cuatro gráficos con nombre: 2 incluidos y 2 desbloqueables semanalmente por 35 fichas',
+    'Unlimited main custom-graph habit slots':
+        'Espacios ilimitados en el gráfico principal',
+    'Six included named custom graphs':
+        'Seis gráficos personalizados con nombre incluidos',
+  },
+  'ru': {
+    'Named custom graphs': 'Именованные пользовательские графики',
+    'Named custom graph': 'Именованный пользовательский график',
+    'Create a habit group': 'Создать группу привычек',
+    'Unlock this named graph for 7 days': 'Открыть этот график на 7 дней',
+    'Tap to choose tokens or an ad':
+        'Нажмите, чтобы выбрать жетоны или рекламу',
+    'Do you want to unlock this named graph?':
+        'Хотите открыть этот именованный график?',
+    'Graph name': 'Название графика',
+    'Add habit slot': 'Добавить место для привычки',
+    'Enter a graph name.': 'Введите название графика.',
+    'Choose at least one habit.': 'Выберите хотя бы одну привычку.',
+    'Main custom graph with 6 habit slots':
+        'Основной график с 6 местами для привычек',
+    'One named graph with a weekly 70-token unlock':
+        'Один именованный график с недельным открытием за 70 жетонов',
+    'Main custom graph with 10 slots; the last 4 cost 35 tokens to change':
+        'Основной график на 10 привычек; изменение последних 4 стоит 35 жетонов',
+    'Four named graphs: 2 included and 2 weekly 35-token unlocks':
+        'Четыре именованных графика: 2 включены, 2 открываются на неделю за 35 жетонов',
+    'Unlimited main custom-graph habit slots':
+        'Неограниченные места в основном графике',
+    'Six included named custom graphs': 'Шесть включённых именованных графиков',
+  },
+  'fr': {
+    'Named custom graphs': 'Graphiques personnalisés nommés',
+    'Named custom graph': 'Graphique personnalisé nommé',
+    'Create a habit group': 'Créer un groupe d’habitudes',
+    'Unlock this named graph for 7 days':
+        'Déverrouiller ce graphique pendant 7 jours',
+    'Tap to choose tokens or an ad':
+        'Touchez pour choisir des jetons ou une publicité',
+    'Do you want to unlock this named graph?':
+        'Voulez-vous déverrouiller ce graphique nommé ?',
+    'Graph name': 'Nom du graphique',
+    'Add habit slot': 'Ajouter un emplacement d’habitude',
+    'Enter a graph name.': 'Saisissez un nom de graphique.',
+    'Choose at least one habit.': 'Choisissez au moins une habitude.',
+    'Main custom graph with 6 habit slots':
+        'Graphique principal avec 6 emplacements d’habitudes',
+    'One named graph with a weekly 70-token unlock':
+        'Un graphique nommé déverrouillable une semaine pour 70 jetons',
+    'Main custom graph with 10 slots; the last 4 cost 35 tokens to change':
+        'Graphique principal à 10 emplacements ; modifier les 4 derniers coûte 35 jetons',
+    'Four named graphs: 2 included and 2 weekly 35-token unlocks':
+        'Quatre graphiques nommés : 2 inclus et 2 déverrouillables une semaine pour 35 jetons',
+    'Unlimited main custom-graph habit slots':
+        'Emplacements illimités dans le graphique principal',
+    'Six included named custom graphs':
+        'Six graphiques personnalisés nommés inclus',
+  },
+  'uz': {
+    'Named custom graphs': 'Nomlangan maxsus grafiklar',
+    'Named custom graph': 'Nomlangan maxsus grafik',
+    'Create a habit group': 'Odatlar guruhini yaratish',
+    'Unlock this named graph for 7 days': 'Bu grafikni 7 kunga ochish',
+    'Tap to choose tokens or an ad':
+        'Token yoki reklamani tanlash uchun bosing',
+    'Do you want to unlock this named graph?':
+        'Bu nomlangan grafikni ochmoqchimisiz?',
+    'Graph name': 'Grafik nomi',
+    'Add habit slot': 'Odat joyini qo‘shish',
+    'Enter a graph name.': 'Grafik nomini kiriting.',
+    'Choose at least one habit.': 'Kamida bitta odatni tanlang.',
+    'Main custom graph with 6 habit slots':
+        '6 ta odat joyiga ega asosiy maxsus grafik',
+    'One named graph with a weekly 70-token unlock':
+        'Bir haftaga 70 token bilan ochiladigan bitta nomlangan grafik',
+    'Main custom graph with 10 slots; the last 4 cost 35 tokens to change':
+        '10 joyli asosiy grafik; oxirgi 4 tasini o‘zgartirish 35 token',
+    'Four named graphs: 2 included and 2 weekly 35-token unlocks':
+        'To‘rtta nomlangan grafik: 2 tasi kiritilgan, 2 tasi haftasiga 35 token',
+    'Unlimited main custom-graph habit slots':
+        'Asosiy grafikda cheklanmagan odat joylari',
+    'Six included named custom graphs':
+        'Oltita kiritilgan nomlangan maxsus grafik',
+  },
+};
+
+const Map<String, Map<String, String>> _numericalTranslations = {
+  'en': {
+    'Two ways to track': 'Two ways to track',
+    'Thumb tracking description':
+        'Thumbs save a simple daily result: did or missed for good habits, and did or avoided for unwanted habits.',
+    'Numerical tracking description':
+        'Numbers save today’s amount or duration and scale symbolic progress around your target. Thumbs remain available as a quick alternative.',
+    'Numerical tracking': 'Numerical tracking',
+    'Numerical tracking requires Plus or higher.':
+        'Numerical tracking requires Plus or higher.',
+    'Numerical habits': 'Numerical habits',
+    'Unlimited numerical habits': 'Unlimited numerical habits',
+    'Numerical tracking for up to 4 habits':
+        'Numerical tracking for up to 4 habits',
+    'Unlimited numerical habit tracking': 'Unlimited numerical habit tracking',
+    'Use numerical tracking': 'Use numerical tracking',
+    'Daily target': 'Daily target',
+    'Target': 'Target',
+    'On': 'On',
+    'Off': 'Off',
+    'glasses': 'glasses',
+    'minutes': 'minutes',
+    'min': 'min',
+    'times': 'times',
+    'Times': 'Times',
+    'Hours and minutes': 'Hours and minutes',
+    'hours': 'hours',
+    'drinks': 'drinks',
+  },
+  'es': {
+    'Two ways to track': 'Dos formas de registrar',
+    'Thumb tracking description':
+        'Los pulgares guardan un resultado diario sencillo: realizado u omitido para hábitos buenos, y realizado o evitado para hábitos no deseados.',
+    'Numerical tracking description':
+        'Los números guardan la cantidad o duración de hoy y ajustan el progreso simbólico según tu objetivo. Los pulgares siguen disponibles como alternativa rápida.',
+    'Numerical tracking': 'Registro numérico',
+    'Numerical tracking requires Plus or higher.':
+        'El seguimiento numérico requiere Plus o un plan superior.',
+    'Numerical habits': 'Hábitos numéricos',
+    'Unlimited numerical habits': 'Hábitos numéricos ilimitados',
+    'Numerical tracking for up to 4 habits':
+        'Seguimiento numérico para hasta 4 hábitos',
+    'Unlimited numerical habit tracking':
+        'Seguimiento numérico ilimitado de hábitos',
+    'Use numerical tracking': 'Usar registro numérico',
+    'Daily target': 'Objetivo diario',
+    'Target': 'Objetivo',
+    'On': 'Activado',
+    'Off': 'Desactivado',
+    'glasses': 'vasos',
+    'minutes': 'minutos',
+    'min': 'min',
+    'times': 'veces',
+    'Times': 'Veces',
+    'Hours and minutes': 'Horas y minutos',
+    'hours': 'horas',
+    'drinks': 'bebidas',
+  },
+  'ru': {
+    'Two ways to track': 'Два способа отслеживания',
+    'Thumb tracking description':
+        'Кнопки с пальцами сохраняют простой итог дня: выполнено или пропущено для полезных привычек, сделано или предотвращено для нежелательных.',
+    'Numerical tracking description':
+        'Числа сохраняют сегодняшнее количество или длительность и меняют символический прогресс относительно цели. Кнопки с пальцами остаются быстрой альтернативой.',
+    'Numerical tracking': 'Числовое отслеживание',
+    'Numerical tracking requires Plus or higher.':
+        'Числовое отслеживание доступно с планом Plus или выше.',
+    'Numerical habits': 'Числовые привычки',
+    'Unlimited numerical habits': 'Неограниченные числовые привычки',
+    'Numerical tracking for up to 4 habits':
+        'Числовое отслеживание до 4 привычек',
+    'Unlimited numerical habit tracking':
+        'Неограниченное числовое отслеживание привычек',
+    'Use numerical tracking': 'Использовать числовое отслеживание',
+    'Daily target': 'Дневная цель',
+    'Target': 'Цель',
+    'On': 'Вкл.',
+    'Off': 'Выкл.',
+    'glasses': 'стаканов',
+    'minutes': 'минут',
+    'min': 'мин',
+    'times': 'раз',
+    'Times': 'Раз',
+    'Hours and minutes': 'Часы и минуты',
+    'hours': 'часов',
+    'drinks': 'порций',
+  },
+  'fr': {
+    'Two ways to track': 'Deux modes de suivi',
+    'Thumb tracking description':
+        'Les pouces enregistrent un bilan quotidien simple : fait ou manqué pour les bonnes habitudes, fait ou évité pour les habitudes indésirables.',
+    'Numerical tracking description':
+        'Les nombres enregistrent la quantité ou la durée du jour et adaptent la progression symbolique autour de votre objectif. Les pouces restent disponibles comme option rapide.',
+    'Numerical tracking': 'Suivi numérique',
+    'Numerical tracking requires Plus or higher.':
+        'Le suivi numérique nécessite le forfait Plus ou supérieur.',
+    'Numerical habits': 'Habitudes numériques',
+    'Unlimited numerical habits': 'Habitudes numériques illimitées',
+    'Numerical tracking for up to 4 habits':
+        'Suivi numérique pour 4 habitudes maximum',
+    'Unlimited numerical habit tracking':
+        'Suivi numérique illimité des habitudes',
+    'Use numerical tracking': 'Utiliser le suivi numérique',
+    'Daily target': 'Objectif quotidien',
+    'Target': 'Objectif',
+    'On': 'Activé',
+    'Off': 'Désactivé',
+    'glasses': 'verres',
+    'minutes': 'minutes',
+    'min': 'min',
+    'times': 'fois',
+    'Times': 'Fois',
+    'Hours and minutes': 'Heures et minutes',
+    'hours': 'heures',
+    'drinks': 'verres',
+  },
+  'uz': {
+    'Two ways to track': 'Kuzatishning ikki usuli',
+    'Thumb tracking description':
+        'Bosh barmoq tugmalari oddiy kunlik natijani saqlaydi: yaxshi odatlar uchun bajarildi yoki o‘tkazib yuborildi, nomaqbul odatlar uchun bajarildi yoki tiyilindi.',
+    'Numerical tracking description':
+        'Raqamlar bugungi miqdor yoki davomiylikni saqlaydi va ramziy natijani maqsadingizga qarab o‘zgartiradi. Bosh barmoq tugmalari tezkor usul sifatida qoladi.',
+    'Numerical tracking': 'Raqamli kuzatish',
+    'Numerical tracking requires Plus or higher.':
+        'Raqamli kuzatish uchun Plus yoki undan yuqori reja kerak.',
+    'Numerical habits': 'Raqamli odatlar',
+    'Unlimited numerical habits': 'Cheklanmagan raqamli odatlar',
+    'Numerical tracking for up to 4 habits':
+        '4 tagacha odat uchun raqamli kuzatish',
+    'Unlimited numerical habit tracking':
+        'Odatlarni cheklanmagan raqamli kuzatish',
+    'Use numerical tracking': 'Raqamli kuzatishni ishlatish',
+    'Daily target': 'Kunlik maqsad',
+    'Target': 'Maqsad',
+    'On': 'Yoqilgan',
+    'Off': 'O‘chirilgan',
+    'glasses': 'stakan',
+    'minutes': 'daqiqa',
+    'min': 'daq',
+    'times': 'marta',
+    'Times': 'Marta',
+    'Hours and minutes': 'Soat va daqiqa',
+    'hours': 'soat',
+    'drinks': 'porsiya',
+  },
+};
 
 class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {
   const _AppStringsDelegate();
@@ -257,12 +1627,79 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'On-board ads': 'On-board ads',
     'Unlimited core features': 'Unlimited core features',
     'Extended features': 'Extended features',
+    'Unlimited Plus extended features': 'Unlimited Plus extended features',
+    'Even more extended features': 'Even more extended features',
+    'Body progress without weekly locks': 'Body progress without weekly locks',
+    'Core graphs without weekly locks': 'Core graphs without weekly locks',
+    'Main gradual-reduction plan without weekly locks':
+        'Main gradual-reduction plan without weekly locks',
+    'Full calendar history': 'Full calendar history',
+    'More custom-graph slots': 'More custom-graph slots',
+    'Two additional single-habit graphs': 'Two additional single-habit graphs',
+    'A second gradual-reduction plan': 'A second gradual-reduction plan',
+    'More habits and up to two custom habits':
+        'More habits and up to two custom habits',
+    'All Plus custom-graph slots without weekly locks':
+        'All Plus custom-graph slots without weekly locks',
+    'Two additional single-habit graphs without token or ad unlocks':
+        'Two additional single-habit graphs without token or ad unlocks',
+    'A second gradual-reduction plan without token or ad unlocks':
+        'A second gradual-reduction plan without token or ad unlocks',
     'More and your own habits': 'More and your own habits',
     'More tokens': 'More tokens',
     'Extended AI usage': 'Extended AI usage',
+    'Extended better AI usage': 'Extended better AI usage',
+    'Unlimited every feature': 'Unlimited every feature',
+    'Every single feature': 'Every single feature',
+    'Unlimited best AI usage': 'Unlimited best AI usage',
     'Fewer on-board ads': 'Fewer on-board ads',
+    'Almost no on-board ads': 'Almost no on-board ads',
+    'No on-board ads': 'No on-board ads',
+    'Preview Pro': 'Preview Pro',
+    'Preview Ultra': 'Preview Ultra',
     'Studying': 'Studying',
+    'Brushing teeth': 'Brushing teeth',
+    'Skin care': 'Skin care',
+    'Good sleep': 'Good sleep',
+    'Meditation': 'Meditation',
+    'Reading': 'Reading',
+    'Consistent routine': 'Consistent routine',
+    'Practising gratitude': 'Practising gratitude',
+    'Productive work': 'Productive work',
+    'Excessive screen time': 'Excessive screen time',
+    'Excessive caffeine': 'Excessive caffeine',
+    'Social media overuse': 'Social media overuse',
+    'Nail biting': 'Nail biting',
+    'Gaming overuse': 'Gaming overuse',
     'Create your own habit': 'Create your own habit',
+    'Editing': 'Editing',
+    'Custom habit limit reached': 'Custom habit limit reached',
+    'Create up to 5 custom habits': 'Create up to 5 custom habits',
+    'Create up to 10 custom habits': 'Create up to 10 custom habits',
+    'Add organ effects to 3 custom habits':
+        'Add organ effects to 3 custom habits',
+    'Add organ effects to 6 custom habits':
+        'Add organ effects to 6 custom habits',
+    'Organ effects': 'Organ effects',
+    'Edit organ effects': 'Edit organ effects',
+    'Edited existing habits': 'Edited existing habits',
+    'Existing-habit organ-effect limit reached':
+        'Existing-habit organ-effect limit reached',
+    'Customize organ effects for 2 existing habits':
+        'Customize organ effects for 2 existing habits',
+    'Customize organ effects for 4 existing habits':
+        'Customize organ effects for 4 existing habits',
+    'Range': 'Range',
+    'Organ': 'Organ',
+    'Mind': 'Mind',
+    'Heart': 'Heart',
+    'Lungs': 'Lungs',
+    'Liver': 'Liver',
+    'Stomach': 'Stomach',
+    'Kidneys': 'Kidneys',
+    'Gut': 'Gut',
+    'Organ-effect habits': 'Organ-effect habits',
+    'Organ-effect habit limit reached': 'Organ-effect habit limit reached',
     'Two custom habits created': 'Two custom habits created',
     'Your good habits': 'Your good habits',
     'Your unwanted habits': 'Your unwanted habits',
@@ -313,12 +1750,85 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'On-board ads': 'Anuncios en la aplicación',
     'Unlimited core features': 'Funciones básicas ilimitadas',
     'Extended features': 'Funciones ampliadas',
+    'Unlimited Plus extended features':
+        'Funciones ampliadas de Plus sin límites',
+    'Even more extended features': 'Funciones aún más ampliadas',
+    'Body progress without weekly locks':
+        'Progreso corporal sin bloqueos semanales',
+    'Core graphs without weekly locks':
+        'Gráficos principales sin bloqueos semanales',
+    'Main gradual-reduction plan without weekly locks':
+        'Plan principal de reducción gradual sin bloqueos semanales',
+    'Full calendar history': 'Historial completo del calendario',
+    'More custom-graph slots': 'Más espacios para gráficos personalizados',
+    'Two additional single-habit graphs':
+        'Dos gráficos adicionales de hábitos individuales',
+    'A second gradual-reduction plan': 'Un segundo plan de reducción gradual',
+    'More habits and up to two custom habits':
+        'Más hábitos y hasta dos hábitos personalizados',
+    'All Plus custom-graph slots without weekly locks':
+        'Todos los espacios de gráficos personalizados de Plus sin bloqueos semanales',
+    'Two additional single-habit graphs without token or ad unlocks':
+        'Dos gráficos adicionales de hábitos individuales sin desbloqueos por fichas o anuncios',
+    'A second gradual-reduction plan without token or ad unlocks':
+        'Un segundo plan de reducción gradual sin desbloqueos por fichas o anuncios',
     'More and your own habits': 'Más hábitos y hábitos propios',
     'More tokens': 'Más fichas',
     'Extended AI usage': 'Uso ampliado de IA',
+    'Extended better AI usage': 'Uso ampliado de una IA mejor',
+    'Unlimited every feature': 'Todas las funciones sin límites',
+    'Every single feature': 'Todas y cada una de las funciones',
+    'Unlimited best AI usage': 'Uso ilimitado de la mejor IA',
     'Fewer on-board ads': 'Menos anuncios en la aplicación',
+    'Almost no on-board ads': 'Casi sin anuncios en la aplicación',
+    'No on-board ads': 'Sin anuncios dentro de la aplicación',
+    'Preview Pro': 'Probar Pro',
+    'Preview Ultra': 'Probar Ultra',
     'Studying': 'Estudiar',
+    'Brushing teeth': 'Cepillarse los dientes',
+    'Skin care': 'Cuidado de la piel',
+    'Good sleep': 'Buen descanso',
+    'Meditation': 'Meditación',
+    'Reading': 'Lectura',
+    'Consistent routine': 'Rutina constante',
+    'Practising gratitude': 'Practicar la gratitud',
+    'Productive work': 'Trabajo productivo',
+    'Excessive screen time': 'Tiempo de pantalla excesivo',
+    'Excessive caffeine': 'Consumo excesivo de cafeína',
+    'Social media overuse': 'Uso excesivo de redes sociales',
+    'Nail biting': 'Morderse las uñas',
+    'Gaming overuse': 'Uso excesivo de videojuegos',
     'Create your own habit': 'Crea tu propio hábito',
+    'Editing': 'Editando',
+    'Custom habit limit reached':
+        'Se alcanzó el límite de hábitos personalizados',
+    'Create up to 5 custom habits': 'Crea hasta 5 hábitos personalizados',
+    'Create up to 10 custom habits': 'Crea hasta 10 hábitos personalizados',
+    'Add organ effects to 3 custom habits':
+        'Añade efectos en órganos a 3 hábitos personalizados',
+    'Add organ effects to 6 custom habits':
+        'Añade efectos en órganos a 6 hábitos personalizados',
+    'Organ effects': 'Efectos en órganos',
+    'Edit organ effects': 'Editar efectos en órganos',
+    'Edited existing habits': 'Hábitos existentes editados',
+    'Existing-habit organ-effect limit reached':
+        'Se alcanzó el límite de efectos para hábitos existentes',
+    'Customize organ effects for 2 existing habits':
+        'Personaliza los efectos en órganos de 2 hábitos existentes',
+    'Customize organ effects for 4 existing habits':
+        'Personaliza los efectos en órganos de 4 hábitos existentes',
+    'Range': 'Rango',
+    'Organ': 'Órgano',
+    'Mind': 'Mente',
+    'Heart': 'Corazón',
+    'Lungs': 'Pulmones',
+    'Liver': 'Hígado',
+    'Stomach': 'Estómago',
+    'Kidneys': 'Riñones',
+    'Gut': 'Intestino',
+    'Organ-effect habits': 'Hábitos con efectos en órganos',
+    'Organ-effect habit limit reached':
+        'Se alcanzó el límite de hábitos con efectos en órganos',
     'Two custom habits created': 'Dos hábitos personalizados creados',
     'Your good habits': 'Tus buenos hábitos',
     'Your unwanted habits': 'Tus hábitos no deseados',
@@ -370,12 +1880,84 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'On-board ads': 'Реклама в приложении',
     'Unlimited core features': 'Основные функции без ограничений',
     'Extended features': 'Расширенные функции',
+    'Unlimited Plus extended features':
+        'Расширенные функции Plus без ограничений',
+    'Even more extended features': 'Ещё больше расширенных функций',
+    'Body progress without weekly locks':
+        'Прогресс тела без еженедельной блокировки',
+    'Core graphs without weekly locks':
+        'Основные графики без еженедельной блокировки',
+    'Main gradual-reduction plan without weekly locks':
+        'Основной план постепенного отказа без еженедельной блокировки',
+    'Full calendar history': 'Полная история календаря',
+    'More custom-graph slots': 'Больше слотов для пользовательских графиков',
+    'Two additional single-habit graphs':
+        'Два дополнительных графика отдельных привычек',
+    'A second gradual-reduction plan': 'Второй план постепенного отказа',
+    'More habits and up to two custom habits':
+        'Больше привычек и до двух собственных привычек',
+    'All Plus custom-graph slots without weekly locks':
+        'Все слоты пользовательских графиков Plus без еженедельной блокировки',
+    'Two additional single-habit graphs without token or ad unlocks':
+        'Два дополнительных графика отдельных привычек без разблокировки за жетоны или рекламу',
+    'A second gradual-reduction plan without token or ad unlocks':
+        'Второй план постепенного отказа без разблокировки за жетоны или рекламу',
     'More and your own habits': 'Больше привычек и свои привычки',
     'More tokens': 'Больше жетонов',
     'Extended AI usage': 'Расширенное использование ИИ',
+    'Extended better AI usage': 'Расширенное использование улучшенного ИИ',
+    'Unlimited every feature': 'Все функции без ограничений',
+    'Every single feature': 'Все до единой функции',
+    'Unlimited best AI usage': 'Неограниченное использование лучшего ИИ',
     'Fewer on-board ads': 'Меньше рекламы в приложении',
+    'Almost no on-board ads': 'Почти без рекламы в приложении',
+    'No on-board ads': 'Без рекламы в приложении',
+    'Preview Pro': 'Попробовать Pro',
+    'Preview Ultra': 'Попробовать Ultra',
     'Studying': 'Учёба',
+    'Brushing teeth': 'Чистка зубов',
+    'Skin care': 'Уход за кожей',
+    'Good sleep': 'Хороший сон',
+    'Meditation': 'Медитация',
+    'Reading': 'Чтение',
+    'Consistent routine': 'Постоянный распорядок',
+    'Practising gratitude': 'Практика благодарности',
+    'Productive work': 'Продуктивная работа',
+    'Excessive screen time': 'Чрезмерное экранное время',
+    'Excessive caffeine': 'Чрезмерное употребление кофеина',
+    'Social media overuse': 'Чрезмерное использование соцсетей',
+    'Nail biting': 'Обкусывание ногтей',
+    'Gaming overuse': 'Чрезмерное увлечение играми',
     'Create your own habit': 'Создать свою привычку',
+    'Editing': 'Редактирование',
+    'Custom habit limit reached': 'Достигнут лимит собственных привычек',
+    'Create up to 5 custom habits': 'Создавайте до 5 собственных привычек',
+    'Create up to 10 custom habits': 'Создавайте до 10 собственных привычек',
+    'Add organ effects to 3 custom habits':
+        'Добавьте влияние на органы для 3 собственных привычек',
+    'Add organ effects to 6 custom habits':
+        'Добавьте влияние на органы для 6 собственных привычек',
+    'Organ effects': 'Влияние на органы',
+    'Edit organ effects': 'Изменить влияние на органы',
+    'Edited existing habits': 'Изменённые существующие привычки',
+    'Existing-habit organ-effect limit reached':
+        'Достигнут лимит влияния для существующих привычек',
+    'Customize organ effects for 2 existing habits':
+        'Настройте влияние на органы для 2 существующих привычек',
+    'Customize organ effects for 4 existing habits':
+        'Настройте влияние на органы для 4 существующих привычек',
+    'Range': 'Диапазон',
+    'Organ': 'Орган',
+    'Mind': 'Разум',
+    'Heart': 'Сердце',
+    'Lungs': 'Лёгкие',
+    'Liver': 'Печень',
+    'Stomach': 'Желудок',
+    'Kidneys': 'Почки',
+    'Gut': 'Кишечник',
+    'Organ-effect habits': 'Привычки с влиянием на органы',
+    'Organ-effect habit limit reached':
+        'Достигнут лимит привычек с влиянием на органы',
     'Two custom habits created': 'Созданы две свои привычки',
     'Your good habits': 'Ваши полезные привычки',
     'Your unwanted habits': 'Ваши нежелательные привычки',
@@ -426,12 +2008,86 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'On-board ads': 'Publicités dans l’application',
     'Unlimited core features': 'Fonctions essentielles illimitées',
     'Extended features': 'Fonctions étendues',
+    'Unlimited Plus extended features': 'Fonctions étendues de Plus illimitées',
+    'Even more extended features': 'Fonctions encore plus étendues',
+    'Body progress without weekly locks':
+        'Progression du corps sans blocage hebdomadaire',
+    'Core graphs without weekly locks':
+        'Graphiques principaux sans blocage hebdomadaire',
+    'Main gradual-reduction plan without weekly locks':
+        'Plan principal de réduction progressive sans blocage hebdomadaire',
+    'Full calendar history': 'Historique complet du calendrier',
+    'More custom-graph slots':
+        'Plus d’emplacements de graphiques personnalisés',
+    'Two additional single-habit graphs':
+        'Deux graphiques supplémentaires pour une habitude',
+    'A second gradual-reduction plan':
+        'Un second plan de réduction progressive',
+    'More habits and up to two custom habits':
+        'Plus d’habitudes et jusqu’à deux habitudes personnalisées',
+    'All Plus custom-graph slots without weekly locks':
+        'Tous les emplacements de graphiques personnalisés Plus sans blocage hebdomadaire',
+    'Two additional single-habit graphs without token or ad unlocks':
+        'Deux graphiques supplémentaires pour une habitude sans déblocage par jetons ou publicité',
+    'A second gradual-reduction plan without token or ad unlocks':
+        'Un second plan de réduction progressive sans déblocage par jetons ou publicité',
     'More and your own habits': 'Plus d’habitudes et vos propres habitudes',
     'More tokens': 'Plus de jetons',
     'Extended AI usage': 'Utilisation étendue de l’IA',
+    'Extended better AI usage': 'Utilisation étendue d’une meilleure IA',
+    'Unlimited every feature': 'Toutes les fonctionnalités sans limites',
+    'Every single feature': 'Toutes les fonctionnalités sans exception',
+    'Unlimited best AI usage': 'Utilisation illimitée de la meilleure IA',
     'Fewer on-board ads': 'Moins de publicités dans l’application',
+    'Almost no on-board ads': 'Presque aucune publicité dans l’application',
+    'No on-board ads': 'Aucune publicité dans l’application',
+    'Preview Pro': 'Essayer Pro',
+    'Preview Ultra': 'Essayer Ultra',
     'Studying': 'Étudier',
+    'Brushing teeth': 'Brossage des dents',
+    'Skin care': 'Soins de la peau',
+    'Good sleep': 'Bon sommeil',
+    'Meditation': 'Méditation',
+    'Reading': 'Lecture',
+    'Consistent routine': 'Routine régulière',
+    'Practising gratitude': 'Pratiquer la gratitude',
+    'Productive work': 'Travail productif',
+    'Excessive screen time': 'Temps d’écran excessif',
+    'Excessive caffeine': 'Consommation excessive de caféine',
+    'Social media overuse': 'Utilisation excessive des réseaux sociaux',
+    'Nail biting': 'Se ronger les ongles',
+    'Gaming overuse': 'Usage excessif des jeux vidéo',
     'Create your own habit': 'Créer votre propre habitude',
+    'Editing': 'Modification',
+    'Custom habit limit reached': 'Limite d’habitudes personnalisées atteinte',
+    'Create up to 5 custom habits': 'Créez jusqu’à 5 habitudes personnalisées',
+    'Create up to 10 custom habits':
+        'Créez jusqu’à 10 habitudes personnalisées',
+    'Add organ effects to 3 custom habits':
+        'Ajoutez des effets sur les organes à 3 habitudes personnalisées',
+    'Add organ effects to 6 custom habits':
+        'Ajoutez des effets sur les organes à 6 habitudes personnalisées',
+    'Organ effects': 'Effets sur les organes',
+    'Edit organ effects': 'Modifier les effets sur les organes',
+    'Edited existing habits': 'Habitudes existantes modifiées',
+    'Existing-habit organ-effect limit reached':
+        'Limite d’effets pour les habitudes existantes atteinte',
+    'Customize organ effects for 2 existing habits':
+        'Personnalisez les effets de 2 habitudes existantes',
+    'Customize organ effects for 4 existing habits':
+        'Personnalisez les effets de 4 habitudes existantes',
+    'Range': 'Plage',
+    'Organ': 'Organe',
+    'Mind': 'Esprit',
+    'Heart': 'Cœur',
+    'Lungs': 'Poumons',
+    'Liver': 'Foie',
+    'Stomach': 'Estomac',
+    'Kidneys': 'Reins',
+    'Gut': 'Intestin',
+    'Organ-effect habits': 'Habitudes affectant les organes',
+    'Organ-effect habit limit reached':
+        'Limite d’habitudes affectant les organes atteinte',
     'Two custom habits created': 'Deux habitudes personnalisées créées',
     'Your good habits': 'Vos bonnes habitudes',
     'Your unwanted habits': 'Vos habitudes indésirables',
@@ -482,12 +2138,83 @@ const Map<String, Map<String, String>> _newFeatureTranslations = {
     'On-board ads': 'Ilova ichidagi reklamalar',
     'Unlimited core features': 'Cheklanmagan asosiy imkoniyatlar',
     'Extended features': 'Kengaytirilgan imkoniyatlar',
+    'Unlimited Plus extended features':
+        'Plus kengaytirilgan imkoniyatlari cheklanmagan',
+    'Even more extended features': 'Yanada kengaytirilgan imkoniyatlar',
+    'Body progress without weekly locks': 'Tana rivoji haftalik bloklarsiz',
+    'Core graphs without weekly locks': 'Asosiy grafiklar haftalik bloklarsiz',
+    'Main gradual-reduction plan without weekly locks':
+        'Asosiy bosqichma-bosqich kamaytirish rejasi haftalik bloklarsiz',
+    'Full calendar history': 'To‘liq taqvim tarixi',
+    'More custom-graph slots': 'Maxsus grafiklar uchun ko‘proq joy',
+    'Two additional single-habit graphs':
+        'Yakka odat uchun ikkita qo‘shimcha grafik',
+    'A second gradual-reduction plan':
+        'Ikkinchi bosqichma-bosqich kamaytirish rejasi',
+    'More habits and up to two custom habits':
+        'Ko‘proq odatlar va ikkitagacha shaxsiy odat',
+    'All Plus custom-graph slots without weekly locks':
+        'Plus maxsus grafik joylarining barchasi haftalik bloklarsiz',
+    'Two additional single-habit graphs without token or ad unlocks':
+        'Yakka odat uchun ikkita qo‘shimcha grafik token yoki reklama orqali ochishsiz',
+    'A second gradual-reduction plan without token or ad unlocks':
+        'Ikkinchi bosqichma-bosqich kamaytirish rejasi token yoki reklama orqali ochishsiz',
     'More and your own habits': 'Ko‘proq va o‘zingizning odatlaringiz',
     'More tokens': 'Ko‘proq tokenlar',
     'Extended AI usage': 'Kengaytirilgan AI ishlatish',
+    'Extended better AI usage': 'Yaxshiroq AIdan kengaytirilgan foydalanish',
+    'Unlimited every feature': 'Barcha imkoniyatlar cheklanmagan',
+    'Every single feature': 'Har bir imkoniyat',
+    'Unlimited best AI usage': 'Eng yaxshi AIdan cheksiz foydalanish',
     'Fewer on-board ads': 'Kamroq ilova ichidagi reklama',
+    'Almost no on-board ads': 'Ilovada deyarli reklamasiz',
+    'No on-board ads': 'Ilova ichida reklamasiz',
+    'Preview Pro': 'Pro tarifini sinash',
+    'Preview Ultra': 'Ultra tarifini sinash',
     'Studying': 'O‘qish',
+    'Brushing teeth': 'Tishlarni tozalash',
+    'Skin care': 'Teri parvarishi',
+    'Good sleep': 'Yaxshi uyqu',
+    'Meditation': 'Meditatsiya',
+    'Reading': 'Kitob o‘qish',
+    'Consistent routine': 'Izchil tartib',
+    'Practising gratitude': 'Minnatdorlikni mashq qilish',
+    'Productive work': 'Samarali ishlash',
+    'Excessive screen time': 'Haddan tashqari ekran vaqti',
+    'Excessive caffeine': 'Haddan tashqari kofein iste’moli',
+    'Social media overuse': 'Ijtimoiy tarmoqlardan ortiqcha foydalanish',
+    'Nail biting': 'Tirnoq tishlash',
+    'Gaming overuse': 'O‘yinlardan ortiqcha foydalanish',
     'Create your own habit': 'O‘z odatingizni yarating',
+    'Editing': 'Tahrirlash',
+    'Custom habit limit reached': 'Shaxsiy odatlar chegarasiga yetildi',
+    'Create up to 5 custom habits': '5 tagacha shaxsiy odat yarating',
+    'Create up to 10 custom habits': '10 tagacha shaxsiy odat yarating',
+    'Add organ effects to 3 custom habits':
+        '3 ta shaxsiy odatga organ ta’sirlarini qo‘shing',
+    'Add organ effects to 6 custom habits':
+        '6 ta shaxsiy odatga organ ta’sirlarini qo‘shing',
+    'Organ effects': 'Organlarga ta’siri',
+    'Edit organ effects': 'Organ ta’sirlarini tahrirlash',
+    'Edited existing habits': 'Tahrirlangan mavjud odatlar',
+    'Existing-habit organ-effect limit reached':
+        'Mavjud odatlar uchun organ ta’siri chegarasiga yetildi',
+    'Customize organ effects for 2 existing habits':
+        '2 ta mavjud odatning organ ta’sirlarini sozlang',
+    'Customize organ effects for 4 existing habits':
+        '4 ta mavjud odatning organ ta’sirlarini sozlang',
+    'Range': 'Oraliq',
+    'Organ': 'Organ',
+    'Mind': 'Ong',
+    'Heart': 'Yurak',
+    'Lungs': 'O‘pka',
+    'Liver': 'Jigar',
+    'Stomach': 'Oshqozon',
+    'Kidneys': 'Buyraklar',
+    'Gut': 'Ichak',
+    'Organ-effect habits': 'Organlarga ta’sir qiluvchi odatlar',
+    'Organ-effect habit limit reached':
+        'Organlarga ta’sir qiluvchi odatlar chegarasiga yetildi',
     'Two custom habits created': 'Ikkita maxsus odat yaratildi',
     'Your good habits': 'Yaxshi odatlaringiz',
     'Your unwanted habits': 'Keraksiz odatlaringiz',
@@ -557,7 +2284,14 @@ const Map<String, Map<String, String>> _rewardTranslations = {
         'This is a local preview. Store billing will be connected before release.',
     'Streak': 'Streak',
     'Tokens': 'Tokens',
+    'Aid': 'Aid',
     'Badges': 'Badges',
+    'Buy streak aid?': 'Buy streak aid?',
+    'One aid protects an active streak through up to two consecutive missed days.':
+        'One aid protects an active streak through up to two consecutive missed days.',
+    'Streak aid added.': 'Streak aid added.',
+    'You need 35 tokens for a streak aid.':
+        'You need 35 tokens for a streak aid.',
     'Your streak path': 'Your streak path',
     'Bronze badges': 'Bronze badges',
     'Profile': 'Profile',
@@ -761,6 +2495,8 @@ const Map<String, Map<String, String>> _translations = {
     'Excellent': 'Excellent',
     'No habits logged': 'No habits logged',
     'What you did': 'What you did',
+    'Habits I did': 'Habits I did',
+    "What I didn't do": "What I didn't do",
     'Gradual reduction': 'Gradual reduction',
     'Create plan': 'Create plan',
     'Create reduction plan': 'Create reduction plan',
@@ -847,6 +2583,7 @@ const Map<String, Map<String, String>> _translations = {
     'Changing it will replace this habit’s current schedule and start date.':
         'Changing it will replace this habit’s current schedule and start date.',
     'Edit habits': 'Edit habits',
+    'Edit habit': 'Edit habit',
     'Finish editing': 'Finish editing',
     'Use the star for Quick Add. Remove or restore habits with the button beside it.':
         'Use the star for Quick Add. Remove or restore habits with the button beside it.',
@@ -884,7 +2621,7 @@ const Map<String, Map<String, String>> _translations = {
     'Performance': 'Performance',
     'Bad': 'Bad',
     'Good': 'Good',
-    'Custom graph': 'Custom graph',
+    'Custom graph': 'Main graph',
     'Customize graph': 'Customize graph',
     'Could not load custom graph': 'Could not load custom graph',
     'Choose up to 3 habits and set their point values.':
@@ -931,6 +2668,7 @@ const Map<String, Map<String, String>> _translations = {
     'Track your habits visually, build healthier routines, reduce unwanted behaviors with clear plans, and get guidance from AI—all in one place.':
         'Track your habits visually, build healthier routines, reduce unwanted behaviors with clear plans, and get guidance from AI—all in one place.',
     'Next': 'Next',
+    'Set up later': 'Set up later',
     'Previous': 'Previous',
     'Choose language': 'Choose language',
     'App appearance': 'App appearance',
@@ -1025,6 +2763,7 @@ const Map<String, Map<String, String>> _translations = {
     'Vertical position': 'Vertical position',
     'Drag the picture to position it inside the circle':
         'Drag the picture to position it inside the circle',
+    'Pinch with two fingers to zoom': 'Pinch with two fingers to zoom',
     'Before you begin': 'Before you begin',
     'Please read and acknowledge these important notes about using Visual You.':
         'Please read and acknowledge these important notes about using Visual You.',
@@ -1049,6 +2788,8 @@ const Map<String, Map<String, String>> _translations = {
     'Excellent': 'Excelente',
     'No habits logged': 'No hay hábitos registrados',
     'What you did': 'Lo que hiciste',
+    'Habits I did': 'Hábitos que realicé',
+    "What I didn't do": 'Lo que no hice',
     'Gradual reduction': 'Reducción gradual',
     'Create plan': 'Crear plan',
     'Create reduction plan': 'Crear plan de reducción',
@@ -1135,6 +2876,7 @@ const Map<String, Map<String, String>> _translations = {
     'Changing it will replace this habit’s current schedule and start date.':
         'Al cambiarlo se reemplazarán el horario y la fecha de inicio actuales de este hábito.',
     'Edit habits': 'Editar hábitos',
+    'Edit habit': 'Editar hábito',
     'Finish editing': 'Terminar edición',
     'Use the star for Quick Add. Remove or restore habits with the button beside it.':
         'Usa la estrella para Añadir rápido. Elimina o restaura hábitos con el botón de al lado.',
@@ -1172,7 +2914,7 @@ const Map<String, Map<String, String>> _translations = {
     'Performance': 'Rendimiento',
     'Bad': 'Malo',
     'Good': 'Bueno',
-    'Custom graph': 'Gráfico personalizado',
+    'Custom graph': 'Gráfico principal',
     'Customize graph': 'Personalizar gráfico',
     'Could not load custom graph': 'No se pudo cargar el gráfico',
     'Choose up to 3 habits and set their point values.':
@@ -1220,6 +2962,7 @@ const Map<String, Map<String, String>> _translations = {
     'Track your habits visually, build healthier routines, reduce unwanted behaviors with clear plans, and get guidance from AI—all in one place.':
         'Sigue tus hábitos visualmente, crea rutinas más saludables, reduce conductas no deseadas con planes claros y recibe orientación de la IA, todo en un solo lugar.',
     'Next': 'Siguiente',
+    'Set up later': 'Configurar más tarde',
     'Previous': 'Anterior',
     'Choose language': 'Elegir idioma',
     'App appearance': 'Apariencia de la aplicación',
@@ -1314,6 +3057,7 @@ const Map<String, Map<String, String>> _translations = {
     'Vertical position': 'Posición vertical',
     'Drag the picture to position it inside the circle':
         'Arrastra la foto para colocarla dentro del círculo',
+    'Pinch with two fingers to zoom': 'Pellizca con dos dedos para ampliar',
     'Before you begin': 'Antes de comenzar',
     'Please read and acknowledge these important notes about using Visual You.':
         'Lee y reconoce estas notas importantes sobre el uso de Visual You.',
@@ -1338,6 +3082,8 @@ const Map<String, Map<String, String>> _translations = {
     'Excellent': 'Отлично',
     'No habits logged': 'Нет записей о привычках',
     'What you did': 'Что вы сделали',
+    'Habits I did': 'Привычки, которые я выполнил(а)',
+    "What I didn't do": 'Что я не сделал(а)',
     'Gradual reduction': 'Постепенное сокращение',
     'Create plan': 'Создать план',
     'Create reduction plan': 'Создать план сокращения',
@@ -1424,6 +3170,7 @@ const Map<String, Map<String, String>> _translations = {
     'Changing it will replace this habit’s current schedule and start date.':
         'Изменение заменит текущее расписание и дату начала этой привычки.',
     'Edit habits': 'Изменить привычки',
+    'Edit habit': 'Изменить привычку',
     'Finish editing': 'Завершить редактирование',
     'Use the star for Quick Add. Remove or restore habits with the button beside it.':
         'Звезда добавляет привычку в быстрый доступ. Кнопка рядом удаляет или восстанавливает её.',
@@ -1461,7 +3208,7 @@ const Map<String, Map<String, String>> _translations = {
     'Performance': 'Результат',
     'Bad': 'Плохо',
     'Good': 'Хорошо',
-    'Custom graph': 'Свой график',
+    'Custom graph': 'Основной график',
     'Customize graph': 'Настроить график',
     'Could not load custom graph': 'Не удалось загрузить график',
     'Choose up to 3 habits and set their point values.':
@@ -1508,6 +3255,7 @@ const Map<String, Map<String, String>> _translations = {
     'Track your habits visually, build healthier routines, reduce unwanted behaviors with clear plans, and get guidance from AI—all in one place.':
         'Отслеживайте привычки визуально, формируйте полезные привычки, сокращайте нежелательное поведение по понятным планам и получайте помощь ИИ — всё в одном месте.',
     'Next': 'Далее',
+    'Set up later': 'Настроить позже',
     'Previous': 'Назад',
     'Choose language': 'Выбрать язык',
     'App appearance': 'Внешний вид приложения',
@@ -1601,6 +3349,8 @@ const Map<String, Map<String, String>> _translations = {
     'Vertical position': 'По вертикали',
     'Drag the picture to position it inside the circle':
         'Перетащите фото, чтобы расположить его внутри круга',
+    'Pinch with two fingers to zoom':
+        'Сведите или разведите два пальца для масштабирования',
     'Before you begin': 'Перед началом',
     'Please read and acknowledge these important notes about using Visual You.':
         'Прочитайте и подтвердите эти важные примечания об использовании Visual You.',
@@ -1625,6 +3375,8 @@ const Map<String, Map<String, String>> _translations = {
     'Excellent': 'Excellent',
     'No habits logged': 'Aucune habitude enregistrée',
     'What you did': 'Ce que vous avez fait',
+    'Habits I did': "Habitudes que j’ai faites",
+    "What I didn't do": "Ce que je n’ai pas fait",
     'Gradual reduction': 'Réduction progressive',
     'Create plan': 'Créer un plan',
     'Create reduction plan': 'Créer un plan de réduction',
@@ -1711,6 +3463,7 @@ const Map<String, Map<String, String>> _translations = {
     'Changing it will replace this habit’s current schedule and start date.':
         'Cette modification remplacera le programme et la date de début actuels de cette habitude.',
     'Edit habits': 'Modifier les habitudes',
+    'Edit habit': "Modifier l’habitude",
     'Finish editing': 'Terminer la modification',
     'Use the star for Quick Add. Remove or restore habits with the button beside it.':
         'Utilisez l’étoile pour l’ajout rapide. Le bouton voisin supprime ou restaure une habitude.',
@@ -1748,7 +3501,7 @@ const Map<String, Map<String, String>> _translations = {
     'Performance': 'Performance',
     'Bad': 'Mauvais',
     'Good': 'Bon',
-    'Custom graph': 'Graphique personnalisé',
+    'Custom graph': 'Graphique principal',
     'Customize graph': 'Personnaliser le graphique',
     'Could not load custom graph': 'Impossible de charger le graphique',
     'Choose up to 3 habits and set their point values.':
@@ -1797,6 +3550,7 @@ const Map<String, Map<String, String>> _translations = {
     'Track your habits visually, build healthier routines, reduce unwanted behaviors with clear plans, and get guidance from AI—all in one place.':
         'Suivez vos habitudes visuellement, développez des routines plus saines, réduisez les comportements indésirables grâce à des plans clairs et bénéficiez des conseils de l’IA, le tout au même endroit.',
     'Next': 'Suivant',
+    'Set up later': 'Configurer plus tard',
     'Previous': 'Précédent',
     'Choose language': 'Choisir la langue',
     'App appearance': 'Apparence de l’application',
@@ -1893,6 +3647,7 @@ const Map<String, Map<String, String>> _translations = {
     'Vertical position': 'Position verticale',
     'Drag the picture to position it inside the circle':
         'Faites glisser la photo pour la placer dans le cercle',
+    'Pinch with two fingers to zoom': 'Pincez avec deux doigts pour zoomer',
     'Before you begin': 'Avant de commencer',
     'Please read and acknowledge these important notes about using Visual You.':
         'Veuillez lire et reconnaître ces remarques importantes concernant l’utilisation de Visual You.',
@@ -1918,6 +3673,8 @@ const Map<String, Map<String, String>> _translations = {
     'Excellent': 'A’lo',
     'No habits logged': 'Odatlar qayd etilmagan',
     'What you did': 'Nima qildingiz',
+    'Habits I did': 'Men bajargan odatlar',
+    "What I didn't do": 'Men bajarmagan odatlar',
     'Gradual reduction': 'Asta-sekin kamaytirish',
     'Create plan': 'Reja yaratish',
     'Create reduction plan': 'Kamaytirish rejasini yaratish',
@@ -2004,6 +3761,7 @@ const Map<String, Map<String, String>> _translations = {
     'Changing it will replace this habit’s current schedule and start date.':
         'O‘zgartirish bu odatning joriy jadvali va boshlanish sanasini almashtiradi.',
     'Edit habits': 'Odatlarni tahrirlash',
+    'Edit habit': 'Odatni tahrirlash',
     'Finish editing': 'Tahrirlashni tugatish',
     'Use the star for Quick Add. Remove or restore habits with the button beside it.':
         'Tezkor qo‘shish uchun yulduzchadan foydalaning. Yonidagi tugma odatni olib tashlaydi yoki tiklaydi.',
@@ -2041,7 +3799,7 @@ const Map<String, Map<String, String>> _translations = {
     'Performance': 'Natija',
     'Bad': 'Yomon',
     'Good': 'Yaxshi',
-    'Custom graph': 'Maxsus grafik',
+    'Custom graph': 'Asosiy grafik',
     'Customize graph': 'Grafikni sozlash',
     'Could not load custom graph': 'Grafikni yuklab bo‘lmadi',
     'Choose up to 3 habits and set their point values.':
@@ -2088,6 +3846,7 @@ const Map<String, Map<String, String>> _translations = {
     'Track your habits visually, build healthier routines, reduce unwanted behaviors with clear plans, and get guidance from AI—all in one place.':
         'Odatlaringizni vizual kuzating, sog‘lom odatlarni rivojlantiring, keraksiz xatti-harakatlarni aniq rejalar bilan kamaytiring va sun’iy intellekt yordamidan foydalaning — barchasi bir joyda.',
     'Next': 'Keyingi',
+    'Set up later': 'Keyinroq sozlash',
     'Previous': 'Oldingi',
     'Choose language': 'Tilni tanlash',
     'App appearance': 'Ilova ko‘rinishi',
@@ -2182,6 +3941,8 @@ const Map<String, Map<String, String>> _translations = {
     'Vertical position': 'Vertikal joylashuv',
     'Drag the picture to position it inside the circle':
         'Rasmni doira ichida joylashtirish uchun suring',
+    'Pinch with two fingers to zoom':
+        'Kattalashtirish uchun ikki barmoq bilan qisib suring',
     'Before you begin': 'Boshlashdan oldin',
     'Please read and acknowledge these important notes about using Visual You.':
         'Visual You’dan foydalanish haqidagi ushbu muhim eslatmalarni o‘qing va tasdiqlang.',

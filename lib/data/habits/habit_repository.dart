@@ -7,6 +7,9 @@ abstract final class BodyPartKey {
   static const lungs = 'organ.lungs';
   static const kidneys = 'organ.kidneys';
   static const arms = 'muscle.arms';
+  static const shoulders = 'muscle.shoulders';
+  static const back = 'muscle.back';
+  // Kept so progress from versions with one combined workout can be migrated.
   static const shouldersBack = 'muscle.shouldersBack';
   static const chest = 'muscle.chest';
   static const abs = 'muscle.abs';
@@ -52,6 +55,10 @@ class HabitPreference {
     required this.category,
     required this.isActive,
     required this.isFavorite,
+    required this.numericalTrackingEnabled,
+    required this.numericalTarget,
+    required this.updatedAt,
+    this.numericalUnit,
   });
 
   final String id;
@@ -59,6 +66,46 @@ class HabitPreference {
   final String category;
   final bool isActive;
   final bool isFavorite;
+  final bool numericalTrackingEnabled;
+  final int? numericalTarget;
+  final String? numericalUnit;
+  final DateTime updatedAt;
+}
+
+class DailyNumericalHabitValue {
+  const DailyNumericalHabitValue({
+    required this.habitId,
+    required this.value,
+    required this.outcomeFactor,
+  });
+
+  final String habitId;
+  final int? value;
+  final double outcomeFactor;
+}
+
+class CustomHabitOrganEffect {
+  const CustomHabitOrganEffect({
+    required this.partKey,
+    required this.thumbUpPoints,
+    required this.thumbDownPoints,
+  });
+
+  final String partKey;
+  final double thumbUpPoints;
+  final double thumbDownPoints;
+
+  bool get hasEffect => thumbUpPoints != 0 || thumbDownPoints != 0;
+}
+
+class StandardHabitOrganEffectSettings {
+  const StandardHabitOrganEffectSettings({
+    required this.effects,
+    required this.isCustomized,
+  });
+
+  final List<CustomHabitOrganEffect> effects;
+  final bool isCustomized;
 }
 
 class PersistedAppPreferences {
@@ -72,6 +119,7 @@ class PersistedAppPreferences {
     this.profileImageBase64 = '',
     this.profileImageAlignmentX = 0,
     this.profileImageAlignmentY = 0,
+    this.profileImageScale = 1,
     this.termsAccepted = false,
   });
 
@@ -84,6 +132,7 @@ class PersistedAppPreferences {
   final String profileImageBase64;
   final double profileImageAlignmentX;
   final double profileImageAlignmentY;
+  final double profileImageScale;
   final bool termsAccepted;
 }
 
@@ -116,16 +165,52 @@ abstract interface class HabitRepository {
 
   Future<void> setHabitFavorite(String habitId, bool isFavorite);
 
+  Future<void> setHabitNumericalTracking(
+    String habitId, {
+    required bool enabled,
+    required int target,
+    String? unitKey,
+  });
+
+  Stream<List<DailyNumericalHabitValue>> watchNumericalHabitValues(
+    DateTime day,
+  );
+
+  Future<PersistedBodyState> recordNumericalHabit(
+    String habitId,
+    int value, {
+    DateTime? occurredAt,
+  });
+
   Future<String> createCustomHabit({
     required String name,
     required bool isUnwanted,
+    List<CustomHabitOrganEffect> organEffects = const [],
   });
 
   Future<void> updateCustomHabit({
     required String habitId,
     required String name,
     required bool isUnwanted,
+    List<CustomHabitOrganEffect> organEffects = const [],
   });
+
+  Future<List<CustomHabitOrganEffect>> loadCustomHabitOrganEffects(
+    String habitId,
+  );
+
+  Future<int> countCustomHabitsWithOrganEffects();
+
+  Future<StandardHabitOrganEffectSettings> loadStandardHabitOrganEffects(
+    String habitId,
+  );
+
+  Future<void> saveStandardHabitOrganEffects(
+    String habitId,
+    List<CustomHabitOrganEffect> organEffects,
+  );
+
+  Future<int> countStandardHabitsWithOrganEffects();
 
   Future<void> deleteCustomHabit(String habitId);
 

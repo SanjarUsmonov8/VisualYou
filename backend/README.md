@@ -130,3 +130,20 @@ responses must not diagnose medical conditions, and urgent health or safety
 concerns are directed to qualified local help. AI responses are generated
 content and must be presented as educational guidance rather than medical
 advice.
+
+## Ten-day device transfer
+
+Premium users can explicitly create one temporary device-transfer snapshot.
+Creating a new snapshot replaces the previous one, and the server removes an
+expired snapshot when it is next accessed. The snapshot is encrypted before it
+is stored in PostgreSQL and is available only to the authenticated account.
+
+The authenticated endpoints are:
+
+- `GET|PUT|DELETE /api/v1/device-transfer-backup/` to inspect, create, or delete a backup
+- `GET /api/v1/device-transfer-backup/download/` to download an active backup
+
+Set a stable, private `DEVICE_TRANSFER_ENCRYPTION_KEY` in production. If it is
+omitted, Django's `SECRET_KEY` is used as the encryption secret. Do not rotate
+either secret while users have active transfer backups. Deployments must run
+`python manage.py migrate` after pulling this feature.

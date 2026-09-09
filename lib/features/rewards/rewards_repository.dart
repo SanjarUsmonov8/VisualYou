@@ -10,6 +10,9 @@ class RewardsRepository {
   RewardsRepository(this.database);
 
   final AppDatabase database;
+  static const _streakAidBalanceKey = 'streak_aid_balance';
+  static const _streakAidCost = 35;
+  static const _streakAidEventPrefix = 'streak-aid-use:';
 
   Future<void> initialize({DateTime? now}) async {
     final current = now ?? DateTime.now();
@@ -38,7 +41,17 @@ class RewardsRepository {
             mode: InsertMode.insertOrIgnore,
           );
       for (final feature in GatedFeature.values) {
-        if (feature == GatedFeature.extraSingleGraphs) continue;
+        if (feature == GatedFeature.growthCalendar ||
+            feature == GatedFeature.extraPlusGrowthPlans ||
+            feature == GatedFeature.extraProGrowthPlans ||
+            feature == GatedFeature.extraPlusReductionPlans ||
+            feature == GatedFeature.extraProReductionPlans ||
+            feature == GatedFeature.extraSingleGraphs ||
+            feature == GatedFeature.extraProSingleGraphs ||
+            feature == GatedFeature.extraNumericalHeatmaps ||
+            feature == GatedFeature.extraProNumericalHeatmaps) {
+          continue;
+        }
         await database
             .into(database.featureUnlocks)
             .insert(
@@ -59,16 +72,22 @@ class RewardsRepository {
     final state = await _loadState();
     final unlockRows = await database.select(database.featureUnlocks).get();
     final activityDays = await _loadActivityDays();
+    final protectedStreakDays = await _loadProtectedStreakDays();
     return RewardsSnapshot(
-      plan: state.plan == 'plus' ? MembershipPlan.plus : MembershipPlan.free,
+      plan: MembershipPlan.values.firstWhere(
+        (plan) => plan.name == state.plan,
+        orElse: () => MembershipPlan.free,
+      ),
       planExpiresAt: state.planExpiresAt,
       joinedAt: state.createdAt,
       tokenBalance: state.tokenBalance,
+      streakAidBalance: await _loadStreakAidBalance(),
       currentStreak: state.currentStreak,
       profileProgress: state.profileProgress,
       bodyProgress: state.bodyProgress,
       calendarProgress: state.calendarProgress,
       activityDays: activityDays,
+      protectedStreakDays: protectedStreakDays,
       unlocks: {
         for (final row in unlockRows)
           if (GatedFeature.values.any(
@@ -85,7 +104,7 @@ class RewardsRepository {
     final current = now ?? DateTime.now();
     final today = _day(current);
     var membership = await _loadState();
-    if (membership.plan == 'plus' &&
+    if (membership.plan != MembershipPlan.free.name &&
         membership.planExpiresAt?.isBefore(current) == true) {
       await (database.update(
         database.rewardStates,
@@ -98,7 +117,7 @@ class RewardsRepository {
       );
       membership = await _loadState();
     }
-    if (membership.plan == 'plus') {
+    if (membership.plan != MembershipPlan.free.name) {
       await _applyEvent(
         id: 'plus-month:${current.year}-${current.month}',
         amount: 70,
@@ -108,7 +127,9 @@ class RewardsRepository {
       );
     }
     final activityDays = await _loadActivityDays();
-    final streak = _calculateStreak(activityDays, today);
+    await _maybeUseStreakAid(activityDays, today, current);
+    final protectedDays = await _loadProtectedStreakDays();
+    final streak = _calculateStreak(activityDays, protectedDays, today);
     await (database.update(
       database.rewardStates,
     )..where((row) => row.id.equals(1))).write(
@@ -157,12 +178,12 @@ class RewardsRepository {
       RewardStatesCompanion(
         plan: Value(plan.name),
         planExpiresAt: Value(
-          plan == MembershipPlan.plus ? _sameDayNextMonth(current) : null,
+          plan != MembershipPlan.free ? _sameDayNextMonth(current) : null,
         ),
         updatedAt: Value(current),
       ),
     );
-    if (plan == MembershipPlan.plus) {
+    if (plan != MembershipPlan.free) {
       await _applyEvent(
         id: 'plus-month:${current.year}-${current.month}',
         amount: 70,
@@ -204,6 +225,16 @@ class RewardsRepository {
     return _applyEvent(
       id: 'spend:$reason:${current.microsecondsSinceEpoch}',
       amount: -amount,
+      occurredOn: _day(current),
+      now: current,
+    );
+  }
+
+  Future<bool> awardRewardedAdTokens({DateTime? now}) {
+    final current = now ?? DateTime.now();
+    return _applyEvent(
+      id: 'rewarded-ad:${current.microsecondsSinceEpoch}',
+      amount: 35,
       occurredOn: _day(current),
       now: current,
     );
@@ -617,6 +648,99 @@ class RewardsRepository {
     return {for (final row in rows) _day(row.read<DateTime>('local_day'))};
   }
 
+  Future<int> _loadStreakAidBalance() async {
+    final row =
+        await (database.select(database.appSettings)
+              ..where((item) => item.key.equals(_streakAidBalanceKey)))
+            .getSingleOrNull();
+    return int.tryParse(row?.value ?? '') ?? 0;
+  }
+
+  Future<void> _writeStreakAidBalance(int balance, DateTime now) {
+    return database
+        .into(database.appSettings)
+        .insertOnConflictUpdate(
+          AppSettingsCompanion.insert(
+            key: _streakAidBalanceKey,
+            value: balance.toString(),
+            updatedAt: now,
+          ),
+        );
+  }
+
+  Future<bool> purchaseStreakAid({DateTime? now}) async {
+    final current = now ?? DateTime.now();
+    return database.transaction(() async {
+      final state = await _loadState();
+      if (state.tokenBalance < _streakAidCost) return false;
+      final balance = await _loadStreakAidBalance();
+      await database
+          .into(database.rewardEvents)
+          .insert(
+            RewardEventsCompanion.insert(
+              id: 'streak-aid-purchase:${current.microsecondsSinceEpoch}',
+              amount: -_streakAidCost,
+              occurredOn: _day(current),
+              createdAt: current,
+            ),
+          );
+      await (database.update(
+        database.rewardStates,
+      )..where((row) => row.id.equals(1))).write(
+        RewardStatesCompanion(
+          tokenBalance: Value(state.tokenBalance - _streakAidCost),
+          updatedAt: Value(current),
+        ),
+      );
+      await _writeStreakAidBalance(balance + 1, current);
+      return true;
+    });
+  }
+
+  Future<Set<DateTime>> _loadProtectedStreakDays() async {
+    final rows = await (database.select(
+      database.rewardEvents,
+    )..where((row) => row.id.like('$_streakAidEventPrefix%'))).get();
+    return {
+      for (final row in rows) _day(row.occurredOn),
+      for (final row in rows) _day(row.occurredOn.add(const Duration(days: 1))),
+    };
+  }
+
+  Future<void> _maybeUseStreakAid(
+    Set<DateTime> activityDays,
+    DateTime today,
+    DateTime now,
+  ) async {
+    final completedThrough = today.subtract(const Duration(days: 1));
+    final priorActivities = activityDays
+        .where((day) => day.isBefore(today))
+        .toList();
+    if (priorActivities.isEmpty) return;
+    final anchor = priorActivities.reduce((a, b) => a.isAfter(b) ? a : b);
+    final gapLength = completedThrough.difference(anchor).inDays;
+    if (gapLength < 1 || gapLength > 2) return;
+    final gapStart = anchor.add(const Duration(days: 1));
+    final protected = await _loadProtectedStreakDays();
+    if (protected.contains(gapStart)) return;
+    final balance = await _loadStreakAidBalance();
+    if (balance < 1) return;
+    await database.transaction(() async {
+      await database
+          .into(database.rewardEvents)
+          .insert(
+            RewardEventsCompanion.insert(
+              id: '$_streakAidEventPrefix${_key(gapStart)}',
+              amount: 0,
+              occurredOn: gapStart,
+              createdAt: now,
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+      await _writeStreakAidBalance(balance - 1, now);
+    });
+  }
+
   Future<DateTime?> _firstCompletedWeek(DateTime currentWeek) async {
     final days = await _loadActivityDays();
     if (days.isEmpty) return null;
@@ -625,13 +749,17 @@ class RewardsRepository {
     return week.isBefore(currentWeek) ? week : null;
   }
 
-  static _StreakResult _calculateStreak(Set<DateTime> days, DateTime today) {
+  static _StreakResult _calculateStreak(
+    Set<DateTime> days,
+    Set<DateTime> protectedDays,
+    DateTime today,
+  ) {
     var cursor = days.contains(today)
         ? today
         : today.subtract(const Duration(days: 1));
     var length = 0;
-    while (days.contains(cursor)) {
-      length++;
+    while (days.contains(cursor) || protectedDays.contains(cursor)) {
+      if (days.contains(cursor)) length++;
       cursor = cursor.subtract(const Duration(days: 1));
     }
     return _StreakResult(

@@ -10,6 +10,8 @@ from .views import (
     EmailSignupCompleteView,
     EmailSignupStartView,
     EmailSignupVerifyView,
+    DeviceTransferBackupDownloadView,
+    DeviceTransferBackupView,
     HealthView,
     LogoutView,
     MeView,
@@ -43,5 +45,15 @@ urlpatterns = [
     path('auth/logout/', LogoutView.as_view(), name='logout'),
     path('me/', MeView.as_view(), name='me'),
     path('sync/', SyncView.as_view(), name='sync'),
+    path(
+        'device-transfer-backup/',
+        DeviceTransferBackupView.as_view(),
+        name='device-transfer-backup',
+    ),
+    path(
+        'device-transfer-backup/download/',
+        DeviceTransferBackupDownloadView.as_view(),
+        name='device-transfer-backup-download',
+    ),
     path('', include(router.urls)),
 ]

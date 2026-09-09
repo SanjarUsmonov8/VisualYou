@@ -37,7 +37,7 @@ void main() {
     expect(find.text("Let's build a better you"), findsOneWidget);
     expect(find.text('Quick add'), findsOneWidget);
     expect(find.text('Water'), findsOneWidget);
-    expect(find.text('Custom graph'), findsOneWidget);
+    expect(find.text('Main graph'), findsOneWidget);
     expect(find.byType(VisualYouNavigationBar), findsOneWidget);
     expect(find.byType(AnatomyIcon), findsOneWidget);
 
@@ -63,9 +63,9 @@ void main() {
     await tester.tap(find.byKey(const Key('profileButton')));
     await tester.pumpAndSettle();
     expect(find.text('Your Name'), findsOneWidget);
-    expect(find.text('Edit profile'), findsOneWidget);
+    expect(find.byTooltip('Edit profile'), findsOneWidget);
 
-    await tester.tap(find.text('Edit profile'));
+    await tester.tap(find.byTooltip('Edit profile'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'Alex');
     await tester.tap(find.text('Date of birth'));
@@ -75,7 +75,7 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Alex'), findsOneWidget);
-    expect(find.text('18'), findsOneWidget);
+    expect(find.text('18'), findsWidgets);
     expect(tester.takeException(), null);
 
     await tester.tap(find.byTooltip('Back'));

@@ -300,6 +300,13 @@ class _SelectedDayCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final hasActivity = summary?.hasActivity == true;
     final level = summary?.level;
+    final activities = summary?.activities ?? const <CalendarActivity>[];
+    final didActivities = activities
+        .where((activity) => activity.didHabit)
+        .toList(growable: false);
+    final didNotActivities = activities
+        .where((activity) => !activity.didHabit)
+        .toList(growable: false);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -363,48 +370,74 @@ class _SelectedDayCard extends StatelessWidget {
                 ),
             ],
           ),
-          if (hasActivity) ...[
+          if (didActivities.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              context.tr('What you did'),
+              context.tr('Habits I did'),
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 6),
-            for (final activity in summary!.activities)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      activity.isUnwanted
-                          ? Icons.remove_circle_rounded
-                          : Icons.add_circle_rounded,
-                      size: 20,
-                      color: activity.isUnwanted
-                          ? const Color(0xFFE85D5D)
-                          : const Color(0xFF43A047),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        context.tr(activity.habitNameKey),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${activity.isUnwanted ? '−' : '+'}${activity.count}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            for (final activity in didActivities)
+              _CalendarActivityRow(activity: activity),
           ],
+          if (didNotActivities.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              context.tr("What I didn't do"),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (final activity in didNotActivities)
+              _CalendarActivityRow(activity: activity),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CalendarActivityRow extends StatelessWidget {
+  const _CalendarActivityRow({required this.activity});
+
+  final CalendarActivity activity;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isNegative = activity.score < 0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(
+            isNegative
+                ? Icons.remove_circle_rounded
+                : Icons.add_circle_rounded,
+            size: 20,
+            color: isNegative
+                ? const Color(0xFFE85D5D)
+                : const Color(0xFF43A047),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              context.tr(activity.habitNameKey),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            activity.score > 0 ? '+1' : '-1',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ],
       ),
     );

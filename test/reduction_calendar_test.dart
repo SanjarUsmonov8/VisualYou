@@ -34,10 +34,25 @@ void main() {
     expect(mediumAllowedDaysForGap(3), 2);
     expect(mediumAllowedDaysForGap(9), 2);
     expect(mediumAllowedDaysForGap(10), 3);
-    expect(mediumAllowedDaysForGap(20), 4);
-    expect(mediumAllowedDaysForGap(50), 3);
-    expect(mediumAllowedDaysForGap(70), 2);
+    expect(mediumAllowedDaysForGap(20), 3);
+    expect(mediumAllowedDaysForGap(50), 2);
+    expect(mediumAllowedDaysForGap(70), 1);
     expect(mediumAllowedDaysForGap(100), 1);
+  });
+
+  test('long medium phases repeat for the nearest whole quarter', () {
+    expect(mediumRepetitionsForGap(19), 19);
+    expect(mediumRepetitionsForGap(20), 5);
+    expect(mediumRepetitionsForGap(21), 5);
+    expect(mediumRepetitionsForGap(22), 6);
+    expect(mediumRepetitionsForGap(100), 25);
+  });
+
+  test('long easy phases repeat for the nearest whole half', () {
+    expect(easyRepetitionsForGap(19), 19);
+    expect(easyRepetitionsForGap(20), 10);
+    expect(easyRepetitionsForGap(21), 11);
+    expect(easyRepetitionsForGap(100), 50);
   });
 
   test('medium movable allowance can replace an earlier scheduled day', () {
@@ -102,6 +117,10 @@ void main() {
     expect(easyAllowedDaysForGap(6), 3);
     expect(easyAllowedDaysForGap(11), 3);
     expect(easyAllowedDaysForGap(12), mediumAllowedDaysForGap(12));
+    expect(easyAllowedDaysForGap(20), 3);
+    expect(easyAllowedDaysForGap(50), 2);
+    expect(easyAllowedDaysForGap(70), 1);
+    expect(easyAllowedDaysForGap(100), 1);
   });
 
   test(

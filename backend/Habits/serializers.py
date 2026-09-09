@@ -259,3 +259,27 @@ class SyncRequestSerializer(serializers.Serializer):
                 f'A sync request can contain at most {self.MAX_BATCH_ITEMS} records.'
             )
         return attrs
+
+
+class DeviceTransferBackupUploadSerializer(serializers.Serializer):
+    MAX_DECODED_BYTES = 8 * 1024 * 1024
+
+    payload = serializers.CharField(trim_whitespace=False)
+    schema_version = serializers.IntegerField(min_value=1, max_value=100000)
+    source_device = serializers.CharField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+        default='',
+    )
+
+    def validate_payload(self, value):
+        try:
+            decoded = base64.b64decode(value, validate=True)
+        except (ValueError, binascii.Error):
+            raise serializers.ValidationError('The backup payload is not valid base64.')
+        if not decoded:
+            raise serializers.ValidationError('The backup payload is empty.')
+        if len(decoded) > self.MAX_DECODED_BYTES:
+            raise serializers.ValidationError('The backup is larger than 8 MB.')
+        return decoded

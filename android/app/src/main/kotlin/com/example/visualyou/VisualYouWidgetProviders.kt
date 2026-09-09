@@ -4,11 +4,14 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
 import android.net.Uri
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
@@ -45,6 +48,26 @@ private fun actionIntent(
 private fun accentColor(data: SharedPreferences): Int =
     if (data.getString("widget_accent", "blue") == "pink") Color.rgb(220, 76, 139)
     else Color.rgb(82, 109, 255)
+
+private fun isWidgetDark(context: Context, data: SharedPreferences): Boolean =
+    when (data.getString("widget_theme_mode", "system")) {
+        "dark" -> true
+        "light" -> false
+        else -> context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
+    }
+
+private fun widgetBackground(context: Context, data: SharedPreferences): Int =
+    if (isWidgetDark(context, data)) R.drawable.widget_background_dark
+    else R.drawable.widget_background_light
+
+private fun widgetTextColor(context: Context, data: SharedPreferences): Int =
+    if (isWidgetDark(context, data)) Color.rgb(244, 246, 250)
+    else Color.rgb(23, 32, 51)
+
+private fun widgetMutedColor(context: Context, data: SharedPreferences): Int =
+    if (isWidgetDark(context, data)) Color.rgb(185, 192, 206)
+    else Color.rgb(101, 112, 135)
 
 private fun RemoteViews.bindHabit(
     context: Context,
@@ -139,30 +162,37 @@ class ReductionCalendarWidgetProvider : HomeWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: SharedPreferences) {
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.widget_reduction_calendar).apply {
+                setInt(R.id.widget_root, "setBackgroundResource", widgetBackground(context, widgetData))
                 val planId = widgetData.getString("reduction_plan_id", null)
                 val habitName = widgetData.getString("reduction_habit_name", null)
                 val mode = widgetData.getString("reduction_mode", null)
+                setTextColor(R.id.reduction_title, widgetTextColor(context, widgetData))
                 setTextViewText(R.id.reduction_name, if (habitName == null) "Create a plan in the app" else "$habitName • ${mode.orEmpty().replaceFirstChar { it.uppercase() }}")
                 setTextColor(R.id.reduction_name, accentColor(widgetData))
+                setTextColor(R.id.reduction_month, widgetTextColor(context, widgetData))
+                setTextColor(R.id.reduction_status, widgetMutedColor(context, widgetData))
                 setTextViewText(R.id.reduction_status, if (widgetData.getBoolean("reduction_tracked_today", false)) "Today is tracked ✓" else "Today is not tracked")
                 val calendar = Calendar.getInstance()
                 val firstDay = (calendar.clone() as Calendar).apply { set(Calendar.DAY_OF_MONTH, 1) }
                 val levels = widgetData.getString("reduction_levels", "").orEmpty().split(',').mapNotNull { it.toIntOrNull() }
                 setTextViewText(
+                    R.id.reduction_month,
+                    monthName(
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH) + 1,
+                    ),
+                )
+                setImageViewBitmap(
                     R.id.reduction_grid,
-                    buildCalendarGrid(
-                        calendar.getActualMaximum(Calendar.DAY_OF_MONTH),
-                        ((firstDay.get(Calendar.DAY_OF_WEEK) + 5) % 7) + 1,
-                    ) { day ->
-                        when (levels.getOrNull(day - 1)) {
-                            0 -> Color.rgb(150, 170, 210)
-                            1 -> Color.rgb(98, 125, 205)
-                            2 -> Color.rgb(70, 95, 170)
-                            3 -> Color.rgb(230, 72, 72)
-                            4 -> Color.rgb(70, 180, 112)
-                            else -> Color.rgb(145, 151, 164)
-                        }
-                    },
+                    renderCalendar(
+                        context = context,
+                        days = calendar.getActualMaximum(Calendar.DAY_OF_MONTH),
+                        firstWeekday = ((firstDay.get(Calendar.DAY_OF_WEEK) + 5) % 7) + 1,
+                        kind = CalendarKind.REDUCTION,
+                        accent = accentColor(widgetData),
+                        dark = isWidgetDark(context, widgetData),
+                        levelForDay = { day -> levels.getOrNull(day - 1) ?: -1 },
+                    ),
                 )
                 setOnClickPendingIntent(R.id.widget_root, openIntent(context, "reduction"))
                 if (planId != null && widgetData.getBoolean("is_plus", false)) {
@@ -186,21 +216,24 @@ class MainCalendarWidgetProvider : HomeWidgetProvider() {
         val days = widgetData.getInt("calendar_days_in_month", 31)
         val firstWeekday = widgetData.getInt("calendar_first_weekday", 1)
         val levels = widgetData.getString("calendar_levels", "")!!.split(',').mapNotNull { it.toIntOrNull() }
-        val grid = buildCalendarGrid(days, firstWeekday) { day ->
-            when (levels.getOrNull(day - 1)) {
-                0 -> Color.rgb(230, 72, 72)
-                1 -> Color.rgb(244, 139, 44)
-                2 -> Color.rgb(222, 190, 45)
-                3 -> Color.rgb(71, 174, 104)
-                4 -> Color.rgb(66, 133, 235)
-                else -> Color.rgb(145, 151, 164)
-            }
-        }
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.widget_month_calendar).apply {
+                setInt(R.id.widget_root, "setBackgroundResource", widgetBackground(context, widgetData))
                 setTextColor(R.id.calendar_title, accentColor(widgetData))
+                setTextColor(R.id.calendar_month, widgetTextColor(context, widgetData))
                 setTextViewText(R.id.calendar_month, monthName(year, month))
-                setTextViewText(R.id.calendar_grid, grid)
+                setImageViewBitmap(
+                    R.id.calendar_grid,
+                    renderCalendar(
+                        context = context,
+                        days = days,
+                        firstWeekday = firstWeekday,
+                        kind = CalendarKind.PERFORMANCE,
+                        accent = accentColor(widgetData),
+                        dark = isWidgetDark(context, widgetData),
+                        levelForDay = { day -> levels.getOrNull(day - 1) ?: 99 },
+                    ),
+                )
                 setOnClickPendingIntent(R.id.widget_root, openIntent(context, "calendar"))
             }
             appWidgetManager.updateAppWidget(widgetId, views)
@@ -216,23 +249,41 @@ class StreakCalendarWidgetProvider : HomeWidgetProvider() {
         val days = widgetData.getInt("calendar_days_in_month", 31)
         val firstWeekday = widgetData.getInt("calendar_first_weekday", 1)
         val activeDays = widgetData.getString("streak_activity_days", "").orEmpty().split(',').mapNotNull { it.toIntOrNull() }.toSet()
+        val protectedDays = widgetData.getString("streak_protected_days", "").orEmpty().split(',').mapNotNull { it.toIntOrNull() }.toSet()
         val joined = Calendar.getInstance().apply {
             set(widgetData.getInt("streak_joined_year", year), widgetData.getInt("streak_joined_month", month) - 1, widgetData.getInt("streak_joined_day", 1), 0, 0, 0)
             set(Calendar.MILLISECOND, 0)
         }
-        val grid = buildCalendarGrid(days, firstWeekday) { day ->
-            val cell = Calendar.getInstance().apply { set(year, month - 1, day, 0, 0, 0); set(Calendar.MILLISECOND, 0) }
-            when {
-                activeDays.contains(day) -> Color.rgb(255, 138, 36)
-                !cell.after(now) && !cell.before(joined) -> Color.rgb(139, 211, 244)
-                else -> Color.rgb(145, 151, 164)
-            }
-        }
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.widget_streak_calendar).apply {
+                setInt(R.id.widget_root, "setBackgroundResource", widgetBackground(context, widgetData))
+                setTextColor(R.id.streak_title, widgetTextColor(context, widgetData))
                 setTextViewText(R.id.streak_count, "🔥 ${widgetData.getInt("streak_current", 0)}")
                 setTextViewText(R.id.streak_month, monthName(year, month))
-                setTextViewText(R.id.streak_grid, grid)
+                setTextColor(R.id.streak_month, widgetTextColor(context, widgetData))
+                setImageViewBitmap(
+                    R.id.streak_grid,
+                    renderCalendar(
+                        context = context,
+                        days = days,
+                        firstWeekday = firstWeekday,
+                        kind = CalendarKind.STREAK,
+                        accent = accentColor(widgetData),
+                        dark = isWidgetDark(context, widgetData),
+                        levelForDay = { day ->
+                            val cell = Calendar.getInstance().apply {
+                                set(year, month - 1, day, 0, 0, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            when {
+                                activeDays.contains(day) -> 1
+                                protectedDays.contains(day) && cell.before(now) -> 2
+                                !cell.after(now) && !cell.before(joined) -> 0
+                                else -> -1
+                            }
+                        },
+                    ),
+                )
                 setOnClickPendingIntent(R.id.widget_root, openIntent(context, "streak"))
             }
             appWidgetManager.updateAppWidget(widgetId, views)
@@ -245,15 +296,190 @@ private fun monthName(year: Int, month: Int): String {
     return SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(calendar.time)
 }
 
-private fun buildCalendarGrid(days: Int, firstWeekday: Int, colorForDay: (Int) -> Int): CharSequence {
-    val result = SpannableStringBuilder("Mo Tu We Th Fr Sa Su\n")
-    repeat(firstWeekday - 1) { result.append("   ") }
-    for (day in 1..days) {
-        val start = result.length
-        result.append(String.format(Locale.ROOT, "%2d", day))
-        result.setSpan(ForegroundColorSpan(colorForDay(day)), start, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        val column = (firstWeekday - 1 + day - 1) % 7
-        if (column == 6) result.append('\n') else result.append(' ')
+private enum class CalendarKind { PERFORMANCE, REDUCTION, STREAK }
+
+private fun renderCalendar(
+    context: Context,
+    days: Int,
+    firstWeekday: Int,
+    kind: CalendarKind,
+    accent: Int,
+    dark: Boolean,
+    levelForDay: (Int) -> Int,
+): Bitmap {
+    val columns = 7
+    val cellWidth = 70f
+    val headerHeight = 38f
+    val cellHeight = 62f
+    val usedCells = firstWeekday - 1 + days
+    val rows = if (usedCells <= 35) 5 else 6
+    val width = (columns * cellWidth).toInt()
+    val height = (headerHeight + rows * cellHeight).toInt()
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val textColor = if (dark) Color.rgb(244, 246, 250) else Color.rgb(23, 32, 51)
+    val mutedColor = if (dark) Color.rgb(185, 192, 206) else Color.rgb(101, 112, 135)
+    val surfaceColor = if (dark) Color.rgb(36, 39, 46) else Color.rgb(240, 242, 245)
+    val softColor = if (dark) Color.rgb(52, 58, 71) else Color.rgb(225, 229, 234)
+    val mildAccent = blendColors(accent, surfaceColor, .24f)
+    val trackAccent = blendColors(accent, surfaceColor, .38f)
+    val dayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textAlign = Paint.Align.CENTER
+        textSize = 22f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
-    return result
+    val weekdayPaint = Paint(textPaint).apply {
+        color = mutedColor
+        textSize = 18f
+    }
+
+    localizedWeekdays().forEachIndexed { index, label ->
+        drawCenteredText(
+            canvas,
+            label,
+            (index + .5f) * cellWidth,
+            headerHeight / 2f,
+            weekdayPaint,
+        )
+    }
+
+    fun center(day: Int): Pair<Float, Float> {
+        val index = firstWeekday - 1 + day - 1
+        return Pair(
+            (index % columns + .5f) * cellWidth,
+            headerHeight + (index / columns + .5f) * cellHeight,
+        )
+    }
+
+    fun isConnected(day: Int): Boolean {
+        if (day !in 1..days) return false
+        return when (kind) {
+            CalendarKind.REDUCTION ->
+                levelForDay(day) != -1 &&
+                    levelForDay(day) != 3 &&
+                    day <= Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+            CalendarKind.STREAK -> levelForDay(day) == 1 || levelForDay(day) == 2
+            CalendarKind.PERFORMANCE -> false
+        }
+    }
+
+    val diameter = 48f
+    if (kind != CalendarKind.PERFORMANCE) {
+        val connectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = if (kind == CalendarKind.STREAK) {
+                Color.rgb(255, 138, 36)
+            } else {
+                trackAccent
+            }
+            strokeWidth = diameter
+            strokeCap = Paint.Cap.BUTT
+        }
+        for (day in 1..days) {
+            if (!isConnected(day)) continue
+            val index = firstWeekday - 1 + day - 1
+            val column = index % columns
+            val (x, y) = center(day)
+            if (column > 0 && isConnected(day - 1)) {
+                val (previousX, previousY) = center(day - 1)
+                canvas.drawLine(previousX, previousY, x, y, connectionPaint)
+            }
+            if (kind == CalendarKind.REDUCTION && column == 0 && isConnected(day - 1)) {
+                canvas.drawLine(0f, y, x, y, connectionPaint)
+            }
+            if (kind == CalendarKind.REDUCTION && column == 6 && isConnected(day + 1)) {
+                canvas.drawLine(x, y, width.toFloat(), y, connectionPaint)
+            }
+        }
+    }
+
+    for (day in 1..days) {
+        val level = levelForDay(day)
+        val (x, y) = center(day)
+        var foreground = textColor
+        dayPaint.color = when (kind) {
+            CalendarKind.PERFORMANCE -> when (level) {
+                0 -> Color.rgb(230, 72, 72)
+                1 -> Color.rgb(244, 139, 44)
+                2 -> Color.rgb(222, 190, 45)
+                3 -> Color.rgb(71, 174, 104)
+                4 -> Color.rgb(66, 133, 235)
+                else -> softColor
+            }
+            CalendarKind.REDUCTION -> when (level) {
+                1, 2 -> accent
+                3 -> Color.rgb(229, 57, 53)
+                0, 4 -> mildAccent
+                else -> softColor
+            }
+            CalendarKind.STREAK -> when (level) {
+                1 -> Color.rgb(255, 138, 36)
+                0, 2 -> Color.rgb(191, 234, 255)
+                else -> softColor
+            }
+        }
+        if (
+            (kind == CalendarKind.PERFORMANCE && level in 0..4) ||
+                (kind == CalendarKind.REDUCTION && level in 1..3) ||
+                (kind == CalendarKind.STREAK && level == 1)
+        ) {
+            foreground = Color.WHITE
+        } else if (kind == CalendarKind.STREAK && level == 0) {
+            foreground = Color.rgb(36, 90, 115)
+        }
+
+        if (kind == CalendarKind.PERFORMANCE) {
+            canvas.drawRoundRect(
+                RectF(x - 25f, y - 25f, x + 25f, y + 25f),
+                16f,
+                16f,
+                dayPaint,
+            )
+        } else {
+            canvas.drawCircle(x, y, diameter / 2f, dayPaint)
+        }
+
+        if (kind == CalendarKind.REDUCTION && (level == 2 || level == 4)) {
+            drawCheck(canvas, x, y, foreground)
+        } else {
+            textPaint.color = foreground
+            drawCenteredText(canvas, day.toString(), x, y, textPaint)
+        }
+    }
+    return bitmap
+}
+
+private fun localizedWeekdays(): List<String> {
+    val weekdays = java.text.DateFormatSymbols.getInstance().shortWeekdays
+    return listOf(2, 3, 4, 5, 6, 7, 1).map { index ->
+        weekdays[index].take(1).uppercase(Locale.getDefault())
+    }
+}
+
+private fun drawCenteredText(canvas: Canvas, text: String, x: Float, y: Float, paint: Paint) {
+    val metrics = paint.fontMetrics
+    canvas.drawText(text, x, y - (metrics.ascent + metrics.descent) / 2f, paint)
+}
+
+private fun drawCheck(canvas: Canvas, x: Float, y: Float, color: Int) {
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = color
+        style = Paint.Style.STROKE
+        strokeWidth = 5f
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    canvas.drawLine(x - 10f, y, x - 3f, y + 7f, paint)
+    canvas.drawLine(x - 3f, y + 7f, x + 11f, y - 9f, paint)
+}
+
+private fun blendColors(foreground: Int, background: Int, amount: Float): Int {
+    fun channel(start: Int, end: Int): Int =
+        (start * amount + end * (1f - amount)).toInt()
+    return Color.rgb(
+        channel(Color.red(foreground), Color.red(background)),
+        channel(Color.green(foreground), Color.green(background)),
+        channel(Color.blue(foreground), Color.blue(background)),
+    )
 }

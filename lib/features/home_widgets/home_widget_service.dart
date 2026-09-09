@@ -10,6 +10,7 @@ import 'package:visualyou/features/reduction_calendar/reduction_calendar_reposit
 import 'package:visualyou/features/reduction_calendar/reduction_calendar.dart'
     show isReductionAllowedDay, isReductionViolation;
 import 'package:visualyou/features/reduction_calendar/reduction_calendar_models.dart';
+import 'package:visualyou/features/rewards/habit_access.dart';
 import 'package:visualyou/features/rewards/rewards_repository.dart';
 
 const _androidWidgetNames = <String>[
@@ -42,6 +43,7 @@ Future<void> visualYouWidgetBackgroundCallback(Uri? uri) async {
         final habitId = uri.queryParameters['habitId'];
         final didHabit = uri.queryParameters['didHabit'];
         if (habitId == null || didHabit == null) return;
+        if (!planCanUseHabit(rewards.plan, habitId)) return;
         await habitRepository.recordHabit(
           habitId,
           didHabit: didHabit == 'true',
@@ -108,13 +110,7 @@ class HomeWidgetService {
     final plans = await reductionRepository.watchPlansMonth(now).first;
     final favorites = preferences
         .where((habit) => habit.isActive && habit.isFavorite)
-        .where(
-          (habit) =>
-              rewards.isPlus ||
-              (habit.id != 'consuming_sugar' &&
-                  habit.id != 'studying' &&
-                  !habit.id.startsWith('custom_')),
-        )
+        .where((habit) => planCanUseHabit(rewards.plan, habit.id))
         .take(3)
         .toList();
 
@@ -202,6 +198,18 @@ class HomeWidgetService {
       'streak_activity_days',
       rewards.activityDays
           .where((day) => day.year == now.year && day.month == now.month)
+          .map((day) => day.day)
+          .join(','),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'streak_protected_days',
+      rewards.protectedStreakDays
+          .where(
+            (day) =>
+                day.year == now.year &&
+                day.month == now.month &&
+                day.isBefore(DateTime(now.year, now.month, now.day)),
+          )
           .map((day) => day.day)
           .join(','),
     );

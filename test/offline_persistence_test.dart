@@ -49,6 +49,7 @@ void main() {
           profileImageBase64: 'AQID',
           profileImageAlignmentX: .45,
           profileImageAlignmentY: -.3,
+          profileImageScale: 2.25,
           termsAccepted: true,
         ),
       );
@@ -88,7 +89,17 @@ void main() {
           missedPoints: 5,
         ),
       ]);
-      await firstGraphRepository.saveSpecialHabit(slot: 0, habitId: 'water');
+      await firstGraphRepository.saveSpecialHabit(
+        slot: 0,
+        habitId: 'water',
+        completedValue: 4,
+        missedValue: -3,
+      );
+      await firstRepository.setHabitNumericalTracking(
+        'water',
+        enabled: true,
+        target: 8,
+      );
       final firstReductionRepository = DriftReductionCalendarRepository(
         firstDatabase,
       );
@@ -135,6 +146,7 @@ void main() {
       expect(appPreferences.profileImageBase64, 'AQID');
       expect(appPreferences.profileImageAlignmentX, .45);
       expect(appPreferences.profileImageAlignmentY, -.3);
+      expect(appPreferences.profileImageScale, 2.25);
       expect(appPreferences.termsAccepted, isTrue);
       final restoredBody = await reopenedRepository.loadBodyState();
       final restoredPreferences = await reopenedRepository
@@ -204,6 +216,9 @@ void main() {
           .first
           .timeout(const Duration(seconds: 5));
       expect(specialGraphs.single.habitId, 'water');
+      expect(specialGraphs.single.completedValue, 4);
+      expect(specialGraphs.single.missedValue, -3);
+      expect(specialGraphs.single.unitKey, 'glasses');
       expect(specialGraphs.single.days.length, 7);
 
       final calendar = await calendarRepository

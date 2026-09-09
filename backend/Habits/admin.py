@@ -6,6 +6,7 @@ from .models import (
     AIMessage,
     BodyPartState,
     CustomGraphRule,
+    DeviceTransferBackup,
     GraphHistoryEntry,
     HabitDefinition,
     HabitLogEntry,
@@ -27,3 +28,4 @@ admin.site.register(ReductionPlan)
 admin.site.register(SyncDevice)
 admin.site.register(AIConversation)
 admin.site.register(AIMessage)
+admin.site.register(DeviceTransferBackup)

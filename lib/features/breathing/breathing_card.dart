@@ -129,6 +129,15 @@ class _BreathingCardState extends State<BreathingCard>
                         ),
                       ),
                     ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${_totalBreathingSeconds ~/ 60} ${context.tr('min')}',
+                      key: const Key('breathingMinutes'),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colors.primary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ],
                 ),
               ),

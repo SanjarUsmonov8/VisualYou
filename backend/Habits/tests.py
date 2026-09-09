@@ -1,5 +1,7 @@
 import json
+import base64
 import re
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -9,11 +11,12 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import SimpleTestCase
 from django.test.utils import override_settings
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
 from .ai_provider import generate_reply
-from .models import AIMessage
+from .models import AIMessage, DeviceTransferBackup
 from .serializers import AIUserMessageSerializer, SyncRequestSerializer
 
 
@@ -144,6 +147,70 @@ class AIConversationApiTests(APITestCase):
         self.assertEqual(len(message_history), 1)
         self.assertEqual(message_history[0].role, AIMessage.Role.USER)
         self.assertEqual(message_history[0].content, 'How can I start?')
+
+
+@override_settings(
+    DEVICE_TRANSFER_ENCRYPTION_KEY='test-device-transfer-key',
+    DEVICE_TRANSFER_BACKUP_DAYS=10,
+)
+class DeviceTransferBackupApiTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='backup-user',
+            email='backup@example.com',
+            password='A-long-test-password-2048!',
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_backup_is_encrypted_downloadable_and_replaced(self):
+        snapshot = b'{"format":1,"tables":{"app_settings":[]}}'
+        response = self.client.put(
+            '/api/v1/device-transfer-backup/',
+            {
+                'payload': base64.b64encode(snapshot).decode('ascii'),
+                'schema_version': 20,
+                'source_device': 'Test phone',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.data['available'])
+
+        stored = DeviceTransferBackup.objects.get(user=self.user)
+        self.assertNotEqual(bytes(stored.encrypted_payload), snapshot)
+        self.assertGreater(stored.expires_at, timezone.now() + timedelta(days=9))
+
+        download = self.client.get('/api/v1/device-transfer-backup/download/')
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(base64.b64decode(download.data['payload']), snapshot)
+
+        replacement = b'{"format":1,"tables":{"habit_definitions":[]}}'
+        self.client.put(
+            '/api/v1/device-transfer-backup/',
+            {
+                'payload': base64.b64encode(replacement).decode('ascii'),
+                'schema_version': 20,
+            },
+            format='json',
+        )
+        self.assertEqual(DeviceTransferBackup.objects.filter(user=self.user).count(), 1)
+        download = self.client.get('/api/v1/device-transfer-backup/download/')
+        self.assertEqual(base64.b64decode(download.data['payload']), replacement)
+
+    def test_expired_backup_is_not_available(self):
+        DeviceTransferBackup.objects.create(
+            user=self.user,
+            encrypted_payload=b'expired',
+            schema_version=20,
+            payload_size=7,
+            expires_at=timezone.now() - timedelta(seconds=1),
+        )
+
+        response = self.client.get('/api/v1/device-transfer-backup/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data['available'])
+        self.assertFalse(DeviceTransferBackup.objects.filter(user=self.user).exists())
 
 
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')

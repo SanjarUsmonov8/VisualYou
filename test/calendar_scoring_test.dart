@@ -44,5 +44,9 @@ void main() {
     );
     expect(summary([missedGood]).score, -1);
     expect(summary([avoidedUnwanted]).score, 1);
+    expect(good.didHabit, isTrue);
+    expect(unwanted.didHabit, isTrue);
+    expect(missedGood.didHabit, isFalse);
+    expect(avoidedUnwanted.didHabit, isFalse);
   });
 }

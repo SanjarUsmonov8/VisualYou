@@ -1,7 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar_models.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar_repository.dart';
+import 'package:visualyou/features/rewards/habit_access.dart';
+import 'package:visualyou/features/rewards/premium_page.dart';
 import 'package:visualyou/features/rewards/rewards_controller.dart';
+import 'package:visualyou/features/rewards/rewards_models.dart';
 import 'package:visualyou/features/rewards/rewards_widgets.dart';
 import 'package:visualyou/l10n/app_strings.dart';
 
@@ -55,7 +60,33 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
         Widget buildCard(
           ReductionCalendarData? plan, {
           bool premiumExtra = false,
+          int premiumCost = 70,
         }) {
+          if (plan == null) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (premiumExtra) ...[
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TokenChip(amount: premiumCost, compact: true),
+                  ),
+                  const SizedBox(height: 7),
+                ],
+                FilledButton.icon(
+                  onPressed: () => _openEditor(context, activePlans: plans),
+                  icon: const Icon(Icons.add_rounded),
+                  label: Text(context.tr('Create reduction plan')),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
           return Container(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
             decoration: BoxDecoration(
@@ -74,133 +105,136 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (premiumExtra) ...[
-                  const TokenChip(amount: 70, compact: true),
+                  TokenChip(amount: premiumCost, compact: true),
                   const SizedBox(height: 7),
+                  if (nextMembershipPlan(widget.rewardsController.plan)
+                      case final targetPlan?) ...[
+                    UpgradePlanButton(
+                      controller: widget.rewardsController,
+                      targetPlan: targetPlan,
+                    ),
+                    const SizedBox(height: 7),
+                  ],
                 ],
-                if (plan == null)
-                  _EmptyReductionPlan(
-                    onCreate: () => _openEditor(context, activePlans: plans),
-                  )
-                else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          if (!widget.rewardsController.isPlus)
-                            const SizedBox(width: 74),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  context.tr('Gradual reduction'),
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                Text(
-                                  '${context.tr(plan.habitNameKey)} · ${context.tr(_modeLabel(plan.mode))}',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: context.tr('Change plan'),
-                            onPressed: () => _openEditor(
-                              context,
-                              activePlans: plans,
-                              initialPlan: plan,
-                            ),
-                            icon: const Icon(Icons.tune_rounded),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            tooltip: context.tr('Previous month'),
-                            onPressed: () => _changeMonth(-1),
-                            icon: const Icon(Icons.chevron_left_rounded),
-                          ),
-                          Expanded(
-                            child: Text(
-                              MaterialLocalizations.of(
-                                context,
-                              ).formatMonthYear(_visibleMonth),
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: context.tr('Next month'),
-                            onPressed: () => _changeMonth(1),
-                            icon: const Icon(Icons.chevron_right_rounded),
-                          ),
-                        ],
-                      ),
-                      _ReductionWeekdays(),
-                      const SizedBox(height: 5),
-                      _ReductionMonthGrid(
-                        month: _visibleMonth,
-                        plan: plan,
-                        onDayTap: (day) => _askDayStatus(context, plan, day),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 11,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.brightness == Brightness.dark
-                              ? theme.colorScheme.primaryContainer.withValues(
-                                  alpha: .55,
-                                )
-                              : theme.colorScheme.primaryContainer.withValues(
-                                  alpha: .72,
-                                ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          children: [
-                            const _ReductionLegend(),
-                            const SizedBox(height: 8),
-                            Text(
-                              context.tr(
-                                'Scheduled days are planned maximum-use checkpoints. Skipping or changing them is always okay.',
-                              ),
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (plan.habitId == 'alcohol') ...[
-                              const SizedBox(height: 7),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        if (!widget.rewardsController.isPlus)
+                          const SizedBox(width: 74),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                context.tr(
-                                  'If you may be dependent on alcohol, reducing or stopping suddenly can be dangerous. Seek medical support.',
+                                context.tr('Gradual reduction'),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
                                 ),
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.error,
+                              ),
+                              Text(
+                                '${context.tr(plan.habitNameKey)} · ${context.tr(_modeLabel(plan.mode))}',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.primary,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ],
-                          ],
+                          ),
                         ),
+                        IconButton(
+                          tooltip: context.tr('Change plan'),
+                          onPressed: () => _openEditor(
+                            context,
+                            activePlans: plans,
+                            initialPlan: plan,
+                          ),
+                          icon: const Icon(Icons.tune_rounded),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: context.tr('Previous month'),
+                          onPressed: () => _changeMonth(-1),
+                          icon: const Icon(Icons.chevron_left_rounded),
+                        ),
+                        Expanded(
+                          child: Text(
+                            MaterialLocalizations.of(
+                              context,
+                            ).formatMonthYear(_visibleMonth),
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: context.tr('Next month'),
+                          onPressed: () => _changeMonth(1),
+                          icon: const Icon(Icons.chevron_right_rounded),
+                        ),
+                      ],
+                    ),
+                    _ReductionWeekdays(),
+                    const SizedBox(height: 5),
+                    _ReductionMonthGrid(
+                      month: _visibleMonth,
+                      plan: plan,
+                      onDayTap: (day) => _askDayStatus(context, plan, day),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 11,
                       ),
-                    ],
-                  ),
+                      decoration: BoxDecoration(
+                        color: theme.brightness == Brightness.dark
+                            ? theme.colorScheme.primaryContainer.withValues(
+                                alpha: .55,
+                              )
+                            : theme.colorScheme.primaryContainer.withValues(
+                                alpha: .72,
+                              ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          const _ReductionLegend(),
+                          const SizedBox(height: 8),
+                          Text(
+                            context.tr(
+                              'Scheduled days are planned maximum-use checkpoints. Skipping or changing them is always okay.',
+                            ),
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onPrimaryContainer,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (plan.habitId == 'alcohol') ...[
+                            const SizedBox(height: 7),
+                            Text(
+                              context.tr(
+                                'If you may be dependent on alcohol, reducing or stopping suddenly can be dangerous. Seek medical support.',
+                              ),
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.error,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           );
@@ -215,7 +249,8 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
               if (index > 0) const SizedBox(height: 12),
               buildCard(
                 visiblePlans[index],
-                premiumExtra: widget.rewardsController.isPlus && index >= 1,
+                premiumExtra: _slotGate(index) != null,
+                premiumCost: _slotCost(index),
               ),
             ],
             if (visiblePlans.length <
@@ -223,8 +258,22 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
               if (visiblePlans.isNotEmpty) const SizedBox(height: 12),
               buildCard(
                 null,
-                premiumExtra:
-                    widget.rewardsController.isPlus && visiblePlans.isNotEmpty,
+                premiumExtra: _slotGate(visiblePlans.length) != null,
+                premiumCost: _slotCost(visiblePlans.length),
+              ),
+            ],
+            if (!widget.rewardsController.isUltra) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: UpgradePlanButton(
+                  controller: widget.rewardsController,
+                  targetPlan:
+                      nextMembershipPlan(widget.rewardsController.plan) ??
+                      MembershipPlan.ultra,
+                  label: context.tr('Create another reduction plan'),
+                  icon: Icons.lock_outline_rounded,
+                ),
               ),
             ],
           ],
@@ -241,11 +290,40 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
     });
   }
 
+  GatedFeature? _slotGate(int index) => switch (widget.rewardsController.plan) {
+    MembershipPlan.plus when index >= 1 => GatedFeature.extraPlusReductionPlans,
+    MembershipPlan.pro when index >= 2 => GatedFeature.extraProReductionPlans,
+    _ => null,
+  };
+
+  int _slotCost(int index) =>
+      _slotGate(index) == GatedFeature.extraProReductionPlans ? 35 : 70;
+
   Future<void> _openEditor(
     BuildContext context, {
     required List<ReductionCalendarData> activePlans,
     ReductionCalendarData? initialPlan,
-  }) {
+  }) async {
+    final index = initialPlan == null
+        ? activePlans.length
+        : activePlans.indexWhere((plan) => plan.planId == initialPlan.planId);
+    final gate = _slotGate(math.max(0, index));
+    if (gate != null &&
+        !widget.rewardsController.isPaidExtensionUnlocked(gate)) {
+      final cost = _slotCost(math.max(0, index));
+      final paid = await confirmTokenOrAdPurchase(
+        context,
+        controller: widget.rewardsController,
+        amount: cost,
+        reason: 'unlock-${gate.name}',
+        title: context.tr('Unlock these reduction plans for 7 days?'),
+        chargePlus: true,
+      );
+      if (!paid || !mounted || !context.mounted) return;
+      await widget.rewardsController.repository.unlockFeatureAfterPayment(gate);
+      await widget.rewardsController.refresh();
+    }
+    if (!mounted || !context.mounted) return;
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -253,15 +331,8 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
       builder: (context) => _ReductionPlanEditor(
         repository: widget.repository,
         rewardsController: widget.rewardsController,
-        requiresPayment:
-            !widget.rewardsController.isPlus ||
-            (initialPlan == null
-                ? activePlans.isNotEmpty
-                : activePlans.indexWhere(
-                        (plan) => plan.planId == initialPlan.planId,
-                      ) >=
-                      1),
-        chargePlus: widget.rewardsController.isPlus,
+        requiresPayment: false,
+        chargePlus: widget.rewardsController.isPlan(MembershipPlan.plus),
         initialPlan: initialPlan,
         unavailableHabitIds: {
           for (final plan in activePlans)
@@ -305,48 +376,6 @@ class _ReductionCalendarState extends State<ReductionCalendar> {
       planId: plan.planId,
       day: day,
       didHabit: didHabit,
-    );
-  }
-}
-
-class _EmptyReductionPlan extends StatelessWidget {
-  const _EmptyReductionPlan({required this.onCreate});
-
-  final VoidCallback onCreate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Column(
-        children: [
-          Icon(
-            Icons.route_rounded,
-            size: 46,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr('Gradual reduction'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            context.tr(
-              'Create a custom calendar that spaces an unwanted habit farther apart over time.',
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: onCreate,
-            icon: const Icon(Icons.add_rounded),
-            label: Text(context.tr('Create plan')),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -507,7 +536,21 @@ class _ReductionDayCircle extends StatelessWidget {
             ],
           ),
           alignment: Alignment.center,
-          child: completedAllowedUse || completedAvoidance
+          child: completedAvoidance
+              ? Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Text(
+                      '${day.day}',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: textColor.withValues(alpha: .16),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Icon(Icons.check_rounded, color: textColor, size: 21),
+                  ],
+                )
+              : completedAllowedUse
               ? Icon(Icons.check_rounded, color: textColor, size: 21)
               : Text(
                   '${day.day}',
@@ -736,7 +779,12 @@ class _ReductionPlanEditorState extends State<_ReductionPlanEditor> {
                 }
                 final availableHabits = habits
                     .where(
-                      (habit) => !widget.unavailableHabitIds.contains(habit.id),
+                      (habit) =>
+                          !widget.unavailableHabitIds.contains(habit.id) &&
+                          planCanUseHabit(
+                            widget.rewardsController.plan,
+                            habit.id,
+                          ),
                     )
                     .toList();
                 if (availableHabits.isEmpty) {
@@ -1050,7 +1098,8 @@ MediumReductionCycle? mediumReductionCycleForDay(
   var gapDays = 2;
   while (true) {
     final allowedDays = mediumAllowedDaysForGap(gapDays);
-    for (var repetition = 0; repetition < gapDays; repetition++) {
+    final repetitions = mediumRepetitionsForGap(gapDays);
+    for (var repetition = 0; repetition < repetitions; repetition++) {
       final cycleStart = lastAllowedOffset + 1;
       final windowStart = lastAllowedOffset + gapDays;
       final windowEnd = windowStart + allowedDays - 1;
@@ -1073,11 +1122,16 @@ int mediumAllowedDaysForGap(int gapDays) {
     <= 2 => 1,
     <= 9 => 2,
     <= 19 => 3,
-    <= 49 => 4,
-    <= 69 => 3,
-    <= 99 => 2,
+    <= 49 => 3,
+    <= 69 => 2,
+    <= 99 => 1,
     _ => 1,
   };
+}
+
+int mediumRepetitionsForGap(int gapDays) {
+  if (gapDays < 20) return gapDays;
+  return math.max(1, (gapDays / 4).round());
 }
 
 bool isEasyAllowedDay(DateTime startedOn, DateTime day) {
@@ -1106,7 +1160,8 @@ MediumReductionCycle? easyReductionCycleForDay(
   var gapDays = 2;
   while (true) {
     final allowedDays = easyAllowedDaysForGap(gapDays);
-    for (var repetition = 0; repetition < gapDays; repetition++) {
+    final repetitions = easyRepetitionsForGap(gapDays);
+    for (var repetition = 0; repetition < repetitions; repetition++) {
       final cycleStart = lastAllowedOffset + 1;
       final windowStart = lastAllowedOffset + gapDays;
       final windowEnd = windowStart + allowedDays - 1;
@@ -1130,6 +1185,11 @@ int easyAllowedDaysForGap(int gapDays) {
     <= 11 => 3,
     _ => mediumAllowedDaysForGap(gapDays),
   };
+}
+
+int easyRepetitionsForGap(int gapDays) {
+  if (gapDays < 20) return gapDays;
+  return math.max(1, (gapDays / 2).round());
 }
 
 bool isReductionAllowedDay(ReductionCalendarData plan, DateTime day) {

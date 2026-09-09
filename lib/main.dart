@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:visualyou/data/habits/drift_habit_repository.dart';
@@ -18,11 +18,21 @@ import 'package:visualyou/features/calendar/calendar_repository.dart';
 import 'package:visualyou/features/calendar/habit_calendar.dart';
 import 'package:visualyou/features/custom_graph/custom_graph.dart';
 import 'package:visualyou/features/custom_graph/custom_graph_repository.dart';
+import 'package:visualyou/features/device_transfer/device_transfer_backup.dart';
+import 'package:visualyou/features/device_transfer/device_transfer_widgets.dart';
 import 'package:visualyou/features/female_body/female_body.dart';
 import 'package:visualyou/features/habit_info/habit_info_cards.dart';
 import 'package:visualyou/features/home_widgets/home_widget_service.dart';
+import 'package:visualyou/features/growth_calendar/growth_calendar.dart';
+import 'package:visualyou/features/growth_calendar/growth_calendar_repository.dart';
+import 'package:visualyou/features/habit_streak/habit_streak_repository.dart';
+import 'package:visualyou/features/habit_streak/habit_streak_section.dart';
+import 'package:visualyou/features/numerical_habits/numerical_habit_config.dart';
+import 'package:visualyou/features/numerical_heatmap/numerical_heatmap_repository.dart';
+import 'package:visualyou/features/numerical_heatmap/numerical_heatmap_section.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar.dart';
 import 'package:visualyou/features/reduction_calendar/reduction_calendar_repository.dart';
+import 'package:visualyou/features/rewards/habit_access.dart';
 import 'package:visualyou/features/rewards/premium_page.dart';
 import 'package:visualyou/features/rewards/native_ad_card.dart';
 import 'package:visualyou/features/rewards/rewarded_ad_service.dart';
@@ -45,6 +55,9 @@ class VisualYouApp extends StatefulWidget {
     this.customGraphRepository,
     this.calendarRepository,
     this.reductionCalendarRepository,
+    this.growthCalendarRepository,
+    this.habitStreakRepository,
+    this.numericalHeatmapRepository,
     this.skipOnboarding = false,
     super.key,
   });
@@ -53,6 +66,9 @@ class VisualYouApp extends StatefulWidget {
   final CustomGraphRepository? customGraphRepository;
   final CalendarRepository? calendarRepository;
   final ReductionCalendarRepository? reductionCalendarRepository;
+  final GrowthCalendarRepository? growthCalendarRepository;
+  final HabitStreakRepository? habitStreakRepository;
+  final NumericalHeatmapRepository? numericalHeatmapRepository;
   final bool skipOnboarding;
 
   @override
@@ -67,12 +83,16 @@ class _VisualYouAppState extends State<VisualYouApp>
   late final CustomGraphRepository _customGraphRepository;
   late final CalendarRepository _calendarRepository;
   late final ReductionCalendarRepository _reductionCalendarRepository;
+  late final GrowthCalendarRepository _growthCalendarRepository;
+  late final HabitStreakRepository _habitStreakRepository;
+  late final NumericalHeatmapRepository _numericalHeatmapRepository;
   late final RewardsController _rewardsController;
+  late final DeviceTransferBackupController _deviceTransferController;
   bool _storageReady = false;
   bool _onboardingComplete = false;
   Object? _storageError;
   bool _refreshingDailyRecovery = false;
-  final GlobalKey<_HomePageState> _homePageKey = GlobalKey<_HomePageState>();
+  GlobalKey<_HomePageState> _homePageKey = GlobalKey<_HomePageState>();
   StreamSubscription<Uri?>? _widgetClickSubscription;
   final List<StreamSubscription<Object?>> _widgetDataSubscriptions = [];
   Uri? _pendingWidgetLaunch;
@@ -98,6 +118,14 @@ class _VisualYouAppState extends State<VisualYouApp>
       _reductionCalendarRepository =
           widget.reductionCalendarRepository ??
           DriftReductionCalendarRepository(database);
+      _growthCalendarRepository =
+          widget.growthCalendarRepository ??
+          DriftGrowthCalendarRepository(database);
+      _habitStreakRepository =
+          widget.habitStreakRepository ?? DriftHabitStreakRepository(database);
+      _numericalHeatmapRepository =
+          widget.numericalHeatmapRepository ??
+          DriftNumericalHeatmapRepository(database);
       _rewardsController = RewardsController(RewardsRepository(database));
     } else {
       final database = AppDatabase.defaults();
@@ -111,8 +139,20 @@ class _VisualYouAppState extends State<VisualYouApp>
       _reductionCalendarRepository =
           widget.reductionCalendarRepository ??
           DriftReductionCalendarRepository(database);
+      _growthCalendarRepository =
+          widget.growthCalendarRepository ??
+          DriftGrowthCalendarRepository(database);
+      _habitStreakRepository =
+          widget.habitStreakRepository ?? DriftHabitStreakRepository(database);
+      _numericalHeatmapRepository =
+          widget.numericalHeatmapRepository ??
+          DriftNumericalHeatmapRepository(database);
       _rewardsController = RewardsController(RewardsRepository(database));
     }
+    _deviceTransferController = DeviceTransferBackupController(
+      database: _database,
+      onRestored: _reloadAfterDeviceTransfer,
+    );
     _widgetClickSubscription = HomeWidgetService.clicked.listen(
       _handleWidgetLaunch,
     );
@@ -137,6 +177,7 @@ class _VisualYouAppState extends State<VisualYouApp>
       });
       _startWidgetDataObservers();
       _scheduleWidgetSync();
+      unawaited(_deviceTransferController.refreshAvailability());
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _deliverPendingWidgetLaunch();
       });
@@ -158,6 +199,7 @@ class _VisualYouAppState extends State<VisualYouApp>
     _themeController.dispose();
     _rewardsController.removeListener(_scheduleWidgetSync);
     _rewardsController.dispose();
+    _deviceTransferController.dispose();
     unawaited(_widgetClickSubscription?.cancel());
     for (final subscription in _widgetDataSubscriptions) {
       unawaited(subscription.cancel());
@@ -262,6 +304,10 @@ class _VisualYouAppState extends State<VisualYouApp>
         themeMode: _themeController.mode,
         theme: _buildTheme(_themeController.seedColor, Brightness.light),
         darkTheme: _buildTheme(_themeController.seedColor, Brightness.dark),
+        builder: (context, child) => DeviceTransferScope(
+          controller: _deviceTransferController,
+          child: child ?? const SizedBox.shrink(),
+        ),
         home: !_storageReady
             ? const _StorageLoadingPage()
             : _storageError != null
@@ -286,6 +332,9 @@ class _VisualYouAppState extends State<VisualYouApp>
                 customGraphRepository: _customGraphRepository,
                 calendarRepository: _calendarRepository,
                 reductionCalendarRepository: _reductionCalendarRepository,
+                growthCalendarRepository: _growthCalendarRepository,
+                habitStreakRepository: _habitStreakRepository,
+                numericalHeatmapRepository: _numericalHeatmapRepository,
                 rewardsController: _rewardsController,
               ),
       ),
@@ -297,6 +346,17 @@ class _VisualYouAppState extends State<VisualYouApp>
     await _habitRepository.completeOnboarding();
     if (!mounted) return;
     setState(() => _onboardingComplete = true);
+    unawaited(_deviceTransferController.refreshAvailability());
+  }
+
+  Future<void> _reloadAfterDeviceTransfer() async {
+    await _habitRepository.initialize();
+    await _rewardsController.refresh();
+    await _themeController.restoreFrom(_habitRepository);
+    BodyVisualState.restore(await _habitRepository.loadBodyState());
+    _scheduleWidgetSync();
+    if (!mounted) return;
+    setState(() => _homePageKey = GlobalKey<_HomePageState>());
   }
 
   ThemeData _buildTheme(Color seed, Brightness brightness) {
@@ -327,15 +387,36 @@ const _standardGoodHabits = [
   _HabitOption('water', 'Drinking water', Icons.water_drop_rounded),
   _HabitOption('healthy_eating', 'Eating healthy', Icons.eco_rounded),
   _HabitOption('studying', 'Studying', Icons.school_rounded),
+  _HabitOption(
+    'brushing_teeth',
+    'Brushing teeth',
+    Icons.cleaning_services_rounded,
+  ),
+  _HabitOption('skin_care', 'Skin care', Icons.face_retouching_natural_rounded),
+  _HabitOption('good_sleep', 'Good sleep', Icons.bedtime_rounded),
+  _HabitOption('meditation', 'Meditation', Icons.self_improvement_rounded),
+  _HabitOption('reading', 'Reading', Icons.menu_book_rounded),
+  _HabitOption(
+    'consistent_routine',
+    'Consistent routine',
+    Icons.event_repeat_rounded,
+  ),
+  _HabitOption(
+    'practising_gratitude',
+    'Practising gratitude',
+    Icons.favorite_rounded,
+  ),
+  _HabitOption('productive_work', 'Productive work', Icons.work_rounded),
 ];
 
 const _standardExercises = [
   _HabitOption('workout_arms', 'Arm', Icons.fitness_center_rounded),
   _HabitOption(
-    'workout_shoulders_back',
-    'Shoulder / Back',
+    'workout_shoulders',
+    'Shoulder workout',
     Icons.accessibility_new_rounded,
   ),
+  _HabitOption('workout_back', 'Back workout', Icons.airline_seat_flat_rounded),
   _HabitOption('workout_chest', 'Chest', Icons.monitor_heart_outlined),
   _HabitOption('workout_abs', 'Abs', Icons.grid_view_rounded),
   _HabitOption('workout_legs', 'Legs', Icons.directions_run_rounded),
@@ -349,6 +430,27 @@ const _standardBadHabits = [
   _HabitOption('adult_videos', 'Adult videos', Icons.visibility_off_rounded),
   _HabitOption('masturbation', 'Masturbation', Icons.self_improvement_rounded),
   _HabitOption('consuming_sugar', 'Consuming sugar', Icons.cake_rounded),
+  _HabitOption(
+    'excessive_screen_time',
+    'Excessive screen time',
+    Icons.phone_android_rounded,
+  ),
+  _HabitOption(
+    'excessive_caffeine',
+    'Excessive caffeine',
+    Icons.coffee_rounded,
+  ),
+  _HabitOption(
+    'social_media_overuse',
+    'Social media overuse',
+    Icons.groups_rounded,
+  ),
+  _HabitOption('nail_biting', 'Nail biting', Icons.back_hand_rounded),
+  _HabitOption(
+    'gaming_overuse',
+    'Gaming overuse',
+    Icons.sports_esports_rounded,
+  ),
 ];
 
 const _allStandardHabits = [
@@ -356,9 +458,6 @@ const _allStandardHabits = [
   ..._standardExercises,
   ..._standardBadHabits,
 ];
-
-bool _isPremiumHabitId(String habitId) =>
-    habitId == 'consuming_sugar' || habitId == 'studying';
 
 class WelcomeFlow extends StatefulWidget {
   const WelcomeFlow({
@@ -531,30 +630,45 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
                 child: Row(
                   children: [
                     if (_currentPage > 0)
-                      TextButton.icon(
-                        onPressed: _previous,
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        label: Text(context.tr('Previous')),
+                      Flexible(
+                        child: TextButton.icon(
+                          onPressed: _previous,
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          label: Text(
+                            context.tr('Previous'),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      key: const Key('welcomeNextButton'),
-                      onPressed: _finishing ? null : _next,
-                      iconAlignment: IconAlignment.end,
-                      icon: _finishing
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              _currentPage == _pages.length - 1
-                                  ? Icons.check_rounded
-                                  : Icons.arrow_forward_rounded,
-                            ),
-                      label: Text(
-                        _currentPage == _pages.length - 1
-                            ? context.tr('Done')
-                            : context.tr('Next'),
+                    if (_currentPage > 0)
+                      const SizedBox(width: 8)
+                    else
+                      const Spacer(),
+                    Flexible(
+                      child: FilledButton.icon(
+                        key: const Key('welcomeNextButton'),
+                        onPressed: _finishing ? null : _next,
+                        iconAlignment: IconAlignment.end,
+                        icon: _finishing
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                _currentPage == _pages.length - 1
+                                    ? Icons.check_rounded
+                                    : Icons.arrow_forward_rounded,
+                              ),
+                        label: Text(
+                          _currentPage == _pages.length - 1
+                              ? context.tr('Done')
+                              : _currentPage == 5
+                              ? context.tr('Set up later')
+                              : context.tr('Next'),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                   ],
@@ -1087,6 +1201,10 @@ class _WelcomeMoreFeaturesSlide extends StatelessWidget {
 class _WelcomeAccountSlide extends StatelessWidget {
   const _WelcomeAccountSlide();
 
+  // Keep the social sign-in UI ready for a later release without presenting
+  // inactive options to users in the current welcome flow.
+  static const _showSocialSignInOptions = false;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1152,21 +1270,23 @@ class _WelcomeAccountSlide extends StatelessWidget {
                       label: context.tr('Sign up with email'),
                       onPressed: () => showEmailSignupSheet(context),
                     ),
-                    const SizedBox(height: 12),
-                    _AccountOptionButton(
-                      icon: Image.asset(
-                        'assets/images/welcomepage/googlelogo.png',
-                        width: 22,
-                        height: 22,
-                        fit: BoxFit.contain,
+                    if (_showSocialSignInOptions) ...[
+                      const SizedBox(height: 12),
+                      _AccountOptionButton(
+                        icon: Image.asset(
+                          'assets/images/welcomepage/googlelogo.png',
+                          width: 22,
+                          height: 22,
+                          fit: BoxFit.contain,
+                        ),
+                        label: context.tr('Continue with Google'),
                       ),
-                      label: context.tr('Continue with Google'),
-                    ),
-                    const SizedBox(height: 12),
-                    _AccountOptionButton(
-                      icon: const Icon(Icons.apple_rounded, size: 24),
-                      label: context.tr('Continue with Apple'),
-                    ),
+                      const SizedBox(height: 12),
+                      _AccountOptionButton(
+                        icon: const Icon(Icons.apple_rounded, size: 24),
+                        label: context.tr('Continue with Apple'),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Wrap(
                       alignment: WrapAlignment.center,
@@ -1831,7 +1951,7 @@ class _WelcomeHabitChoice extends StatelessWidget {
                   ),
                 ),
               ),
-              if (_isPremiumHabitId(option.id))
+              if (isPremiumHabitId(option.id))
                 Icon(
                   Icons.workspace_premium_rounded,
                   size: 17,
@@ -2133,12 +2253,12 @@ class _EditableProfilePhoto extends StatelessWidget {
                                   size: radius,
                                   color: colors.primary,
                                 )
-                              : Image.memory(
-                                  imageBytes,
-                                  fit: BoxFit.cover,
+                              : _ZoomedProfileImage(
+                                  imageBytes: imageBytes,
+                                  viewportSize: radius * 2 - 8,
                                   alignment:
                                       themeController.profileImageAlignment,
-                                  gaplessPlayback: true,
+                                  scale: themeController.profileImageScale,
                                 ),
                         ),
                       ),
@@ -2184,6 +2304,37 @@ class _EditableProfilePhoto extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _ZoomedProfileImage extends StatelessWidget {
+  const _ZoomedProfileImage({
+    required this.imageBytes,
+    required this.viewportSize,
+    required this.alignment,
+    required this.scale,
+  });
+
+  final Uint8List imageBytes;
+  final double viewportSize;
+  final Alignment alignment;
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) {
+    final zoomTravel = viewportSize * .5 * (scale - 1);
+    return Transform.translate(
+      offset: Offset(-alignment.x * zoomTravel, -alignment.y * zoomTravel),
+      child: Transform.scale(
+        scale: scale,
+        child: Image.memory(
+          imageBytes,
+          fit: BoxFit.cover,
+          alignment: alignment,
+          gaplessPlayback: true,
+        ),
+      ),
     );
   }
 }
@@ -2279,91 +2430,126 @@ Future<void> _adjustProfilePicturePosition(
   final imageBytes = themeController.profileImageBytes;
   if (imageBytes == null) return;
   var draftAlignment = themeController.profileImageAlignment;
-  final selectedAlignment = await showDialog<Alignment>(
-    context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (context, setDialogState) => AlertDialog(
-        title: Text(context.tr('Picture position')),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                context.tr('Drag the picture to position it inside the circle'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
-              GestureDetector(
-                key: const Key('profilePictureCropArea'),
-                behavior: HitTestBehavior.opaque,
-                onPanUpdate: (details) {
-                  setDialogState(() {
-                    final nextX = (draftAlignment.x - details.delta.dx / 90)
-                        .clamp(-1.0, 1.0)
-                        .toDouble();
-                    final nextY = (draftAlignment.y - details.delta.dy / 90)
-                        .clamp(-1.0, 1.0)
-                        .toDouble();
-                    draftAlignment = Alignment(nextX, nextY);
-                  });
-                },
-                child: SizedBox.square(
-                  dimension: 250,
-                  child: ClipRect(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.memory(
-                          imageBytes,
-                          fit: BoxFit.cover,
-                          alignment: draftAlignment,
-                          gaplessPlayback: true,
-                        ),
-                        IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                width: 2,
+  var draftScale = themeController.profileImageScale;
+  var gestureStartScale = draftScale;
+  final selectedTransform =
+      await showDialog<({Alignment alignment, double scale})>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(context.tr('Picture position')),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    context.tr(
+                      'Drag the picture to position it inside the circle',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    context.tr('Pinch with two fingers to zoom'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    key: const Key('profilePictureCropArea'),
+                    behavior: HitTestBehavior.opaque,
+                    onScaleStart: (_) => gestureStartScale = draftScale,
+                    onScaleUpdate: (details) {
+                      setDialogState(() {
+                        draftScale = (gestureStartScale * details.scale)
+                            .clamp(1.0, 4.0)
+                            .toDouble();
+                        final nextX =
+                            (draftAlignment.x -
+                                    details.focalPointDelta.dx /
+                                        (90 * draftScale))
+                                .clamp(-1.0, 1.0)
+                                .toDouble();
+                        final nextY =
+                            (draftAlignment.y -
+                                    details.focalPointDelta.dy /
+                                        (90 * draftScale))
+                                .clamp(-1.0, 1.0)
+                                .toDouble();
+                        draftAlignment = Alignment(nextX, nextY);
+                      });
+                    },
+                    child: SizedBox.square(
+                      dimension: 250,
+                      child: ClipRect(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _ZoomedProfileImage(
+                              imageBytes: imageBytes,
+                              viewportSize: 250,
+                              alignment: draftAlignment,
+                              scale: draftScale,
+                            ),
+                            IgnorePointer(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                    width: 2,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                        IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: const [
-                                BoxShadow(color: Colors.black54, blurRadius: 2),
-                              ],
+                            IgnorePointer(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 3,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black54,
+                                      blurRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(context.tr('Cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, (
+                  alignment: draftAlignment,
+                  scale: draftScale,
+                )),
+                child: Text(context.tr('Save')),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(context.tr('Cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, draftAlignment),
-            child: Text(context.tr('Save')),
-          ),
-        ],
-      ),
-    ),
-  );
-  if (selectedAlignment != null) {
-    themeController.setProfileImageAlignment(selectedAlignment);
+      );
+  if (selectedTransform != null) {
+    themeController.setProfileImageTransform(
+      alignment: selectedTransform.alignment,
+      scale: selectedTransform.scale,
+    );
   }
 }
 
@@ -2460,6 +2646,7 @@ class ThemeController extends ChangeNotifier {
   Uint8List? _profileImageBytes;
   double _profileImageAlignmentX = 0;
   double _profileImageAlignmentY = 0;
+  double _profileImageScale = 1;
   bool _termsAccepted = false;
   HabitRepository? _repository;
   Future<void> _pendingSave = Future<void>.value();
@@ -2473,6 +2660,7 @@ class ThemeController extends ChangeNotifier {
   Uint8List? get profileImageBytes => _profileImageBytes;
   Alignment get profileImageAlignment =>
       Alignment(_profileImageAlignmentX, _profileImageAlignmentY);
+  double get profileImageScale => _profileImageScale;
   bool get termsAccepted => _termsAccepted;
   HabitRepository? get habitRepository => _repository;
   int? get profileAge {
@@ -2542,17 +2730,24 @@ class ThemeController extends ChangeNotifier {
 
   void setProfileImage(Uint8List? bytes) {
     _profileImageBytes = bytes;
-    if (bytes == null) {
-      _profileImageAlignmentX = 0;
-      _profileImageAlignmentY = 0;
-    }
+    _profileImageAlignmentX = 0;
+    _profileImageAlignmentY = 0;
+    _profileImageScale = 1;
     notifyListeners();
     _persist();
   }
 
   void setProfileImageAlignment(Alignment alignment) {
+    setProfileImageTransform(alignment: alignment, scale: _profileImageScale);
+  }
+
+  void setProfileImageTransform({
+    required Alignment alignment,
+    required double scale,
+  }) {
     _profileImageAlignmentX = alignment.x.clamp(-1.0, 1.0).toDouble();
     _profileImageAlignmentY = alignment.y.clamp(-1.0, 1.0).toDouble();
+    _profileImageScale = scale.clamp(1.0, 4.0).toDouble();
     notifyListeners();
     _persist();
   }
@@ -2595,6 +2790,9 @@ class ThemeController extends ChangeNotifier {
     _profileImageAlignmentY = preferences.profileImageAlignmentY
         .clamp(-1.0, 1.0)
         .toDouble();
+    _profileImageScale = preferences.profileImageScale
+        .clamp(1.0, 4.0)
+        .toDouble();
     _termsAccepted = preferences.termsAccepted;
     notifyListeners();
   }
@@ -2616,6 +2814,7 @@ class ThemeController extends ChangeNotifier {
           : base64Encode(_profileImageBytes!),
       profileImageAlignmentX: _profileImageAlignmentX,
       profileImageAlignmentY: _profileImageAlignmentY,
+      profileImageScale: _profileImageScale,
       termsAccepted: _termsAccepted,
     );
     _pendingSave = repository
@@ -2631,6 +2830,9 @@ class HomePage extends StatefulWidget {
     required this.customGraphRepository,
     required this.calendarRepository,
     required this.reductionCalendarRepository,
+    required this.growthCalendarRepository,
+    required this.habitStreakRepository,
+    required this.numericalHeatmapRepository,
     required this.rewardsController,
     super.key,
   });
@@ -2640,6 +2842,9 @@ class HomePage extends StatefulWidget {
   final CustomGraphRepository customGraphRepository;
   final CalendarRepository calendarRepository;
   final ReductionCalendarRepository reductionCalendarRepository;
+  final GrowthCalendarRepository growthCalendarRepository;
+  final HabitStreakRepository habitStreakRepository;
+  final NumericalHeatmapRepository numericalHeatmapRepository;
   final RewardsController rewardsController;
 
   @override
@@ -2648,6 +2853,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  int _pageBeforeAi = 0;
   final GlobalKey _addButtonKey = GlobalKey();
   final GlobalKey _quickAddKey = GlobalKey();
   final GlobalKey _reductionCalendarKey = GlobalKey();
@@ -2661,6 +2867,16 @@ class _HomePageState extends State<HomePage> {
   String? _aiImageMimeType;
   bool _aiRequestCancelled = false;
   bool _aiWorking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(DeviceTransferScope.of(context).refreshAvailability());
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -2724,139 +2940,180 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _selectNavigationPage(int index) {
+    if (index == 3 && _selectedIndex != 3) {
+      _pageBeforeAi = _selectedIndex;
+    }
+    setState(() => _selectedIndex = index);
+  }
+
+  void _leaveAiPage() {
+    _aiFocusNode.unfocus();
+    setState(() => _selectedIndex = _pageBeforeAi);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: [
-                _HomeContent(
-                  quickAddKey: _quickAddKey,
-                  themeController: widget.themeController,
-                  habitRepository: widget.habitRepository,
-                  customGraphRepository: widget.customGraphRepository,
-                  rewardsController: widget.rewardsController,
-                ),
-                _NavigationPage(
-                  title: context.tr('Body statistics'),
-                  icon: const AnatomyIcon(size: 72),
-                  themeController: widget.themeController,
-                  rewardsController: widget.rewardsController,
-                  content: _GenderBodyFrame(
+    return PopScope(
+      canPop: _selectedIndex != 3,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _selectedIndex == 3) _leaveAiPage();
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  _HomeContent(
+                    quickAddKey: _quickAddKey,
                     themeController: widget.themeController,
+                    habitRepository: widget.habitRepository,
                     customGraphRepository: widget.customGraphRepository,
                     rewardsController: widget.rewardsController,
-                    showSpecialHabitGraphs: true,
                   ),
-                  showIcon: false,
-                  topAligned: true,
-                  gradientTitle: true,
-                ),
-                _NavigationPage(
-                  title: context.tr('Calendar'),
-                  icon: const Icon(Icons.calendar_month_rounded, size: 68),
-                  themeController: widget.themeController,
-                  rewardsController: widget.rewardsController,
-                  content: Column(
-                    children: [
-                      HabitCalendar(
-                        repository: widget.calendarRepository,
-                        rewardsController: widget.rewardsController,
-                      ),
-                      AnimatedBuilder(
-                        animation: widget.themeController,
-                        builder: (context, _) =>
-                            widget.themeController.isUnder18
-                            ? const SizedBox.shrink()
-                            : Column(
-                                children: [
-                                  const SizedBox(height: 14),
-                                  const NativeAdCard(
-                                    key: Key('calendarNativeAd'),
-                                    bottomSpacing: 14,
-                                  ),
-                                  RewardFeatureGate(
-                                    key: _reductionCalendarKey,
-                                    controller: widget.rewardsController,
-                                    feature: GatedFeature.reductionCalendar,
-                                    title: context.tr(
-                                      'Gradual-reduction calendar',
-                                    ),
-                                    child: ReductionCalendar(
-                                      repository:
-                                          widget.reductionCalendarRepository,
-                                      rewardsController:
-                                          widget.rewardsController,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ],
-                  ),
-                  showIcon: false,
-                  topAligned: true,
-                  gradientTitle: true,
-                ),
-                _AiCoachPage(
-                  themeController: widget.themeController,
-                  rewardsController: widget.rewardsController,
-                  messages: _aiMessages,
-                  working: _aiWorking,
-                  onBack: () {
-                    _aiFocusNode.unfocus();
-                    setState(() => _selectedIndex = 0);
-                  },
-                  onNewChat: _startNewAiChat,
-                  onHistory: _showAiHistory,
-                  onPromptSelected: _selectAiPrompt,
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 360),
-              reverseDuration: const Duration(milliseconds: 280),
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: .92, end: 1).animate(animation),
-                  alignment: Alignment.bottomCenter,
-                  child: child,
-                ),
-              ),
-              child: _selectedIndex == 3
-                  ? _AiComposer(
-                      key: const ValueKey('aiComposer'),
-                      controller: _aiTextController,
-                      focusNode: _aiFocusNode,
-                      working: _aiWorking,
-                      hasImage: _aiImageBytes != null,
-                      onImagePressed: _pickAiImage,
-                      onSendPressed: _aiWorking ? _stopAiReply : _sendAiMessage,
-                    )
-                  : VisualYouNavigationBar(
-                      key: const ValueKey('mainNavigation'),
-                      addButtonKey: _addButtonKey,
-                      selectedIndex: _selectedIndex,
-                      onDestinationSelected: (index) {
-                        setState(() => _selectedIndex = index);
-                      },
-                      onAddPressed: () => _showAddPage(context),
+                  _NavigationPage(
+                    title: context.tr('Body statistics'),
+                    icon: const AnatomyIcon(size: 72),
+                    themeController: widget.themeController,
+                    rewardsController: widget.rewardsController,
+                    content: _GenderBodyFrame(
+                      themeController: widget.themeController,
+                      customGraphRepository: widget.customGraphRepository,
+                      habitRepository: widget.habitRepository,
+                      habitStreakRepository: widget.habitStreakRepository,
+                      numericalHeatmapRepository:
+                          widget.numericalHeatmapRepository,
+                      rewardsController: widget.rewardsController,
+                      showSpecialHabitGraphs: true,
                     ),
+                    showIcon: false,
+                    topAligned: true,
+                    gradientTitle: true,
+                  ),
+                  _NavigationPage(
+                    title: context.tr('Calendar'),
+                    icon: const Icon(Icons.calendar_month_rounded, size: 68),
+                    themeController: widget.themeController,
+                    rewardsController: widget.rewardsController,
+                    content: Column(
+                      children: [
+                        HabitCalendar(
+                          repository: widget.calendarRepository,
+                          rewardsController: widget.rewardsController,
+                        ),
+                        HabitStreakSection(
+                          repository: widget.habitStreakRepository,
+                          habitRepository: widget.habitRepository,
+                          rewardsController: widget.rewardsController,
+                        ),
+                        NumericalHeatmapSection(
+                          repository: widget.numericalHeatmapRepository,
+                          rewardsController: widget.rewardsController,
+                        ),
+                        const SizedBox(height: 14),
+                        RewardFeatureGate(
+                          controller: widget.rewardsController,
+                          feature: GatedFeature.growthCalendar,
+                          title: context.tr('Gradual-growth calendar'),
+                          tokenOutside: true,
+                          child: GrowthCalendar(
+                            repository: widget.growthCalendarRepository,
+                            rewardsController: widget.rewardsController,
+                          ),
+                        ),
+                        AnimatedBuilder(
+                          animation: widget.themeController,
+                          builder: (context, _) =>
+                              widget.themeController.isUnder18
+                              ? const SizedBox.shrink()
+                              : Column(
+                                  children: [
+                                    const SizedBox(height: 14),
+                                    _PlanAwareNativeAdCard(
+                                      key: const Key('calendarNativeAd'),
+                                      controller: widget.rewardsController,
+                                      audience: _NativeAdAudience.freeAndPlus,
+                                      bottomSpacing: 14,
+                                    ),
+                                    RewardFeatureGate(
+                                      key: _reductionCalendarKey,
+                                      controller: widget.rewardsController,
+                                      feature: GatedFeature.reductionCalendar,
+                                      title: context.tr(
+                                        'Gradual-reduction calendar',
+                                      ),
+                                      child: ReductionCalendar(
+                                        repository:
+                                            widget.reductionCalendarRepository,
+                                        rewardsController:
+                                            widget.rewardsController,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    ),
+                    showIcon: false,
+                    topAligned: true,
+                    gradientTitle: true,
+                  ),
+                  _AiCoachPage(
+                    themeController: widget.themeController,
+                    rewardsController: widget.rewardsController,
+                    messages: _aiMessages,
+                    working: _aiWorking,
+                    onBack: _leaveAiPage,
+                    onNewChat: _startNewAiChat,
+                    onHistory: _showAiHistory,
+                    onPromptSelected: _selectAiPrompt,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 360),
+                reverseDuration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutBack,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: .92, end: 1).animate(animation),
+                    alignment: Alignment.bottomCenter,
+                    child: child,
+                  ),
+                ),
+                child: _selectedIndex == 3
+                    ? _AiComposer(
+                        key: const ValueKey('aiComposer'),
+                        controller: _aiTextController,
+                        focusNode: _aiFocusNode,
+                        working: _aiWorking,
+                        hasImage: _aiImageBytes != null,
+                        onImagePressed: _pickAiImage,
+                        onSendPressed: _aiWorking
+                            ? _stopAiReply
+                            : _sendAiMessage,
+                      )
+                    : VisualYouNavigationBar(
+                        key: const ValueKey('mainNavigation'),
+                        addButtonKey: _addButtonKey,
+                        selectedIndex: _selectedIndex,
+                        onDestinationSelected: _selectNavigationPage,
+                        onAddPressed: () => _showAddPage(context),
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3178,8 +3435,10 @@ class _TopHeader extends StatelessWidget {
                 icon: const Icon(Icons.settings_rounded),
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) =>
-                        SettingsPage(themeController: themeController),
+                    builder: (_) => SettingsPage(
+                      themeController: themeController,
+                      rewardsController: rewardsController,
+                    ),
                   ),
                 ),
               ),
@@ -3221,11 +3480,11 @@ class _HeaderAvatar extends StatelessWidget {
                   size: 30,
                 ),
               )
-            : Image.memory(
-                bytes,
-                fit: BoxFit.cover,
+            : _ZoomedProfileImage(
+                imageBytes: bytes,
+                viewportSize: 48,
                 alignment: themeController.profileImageAlignment,
-                gaplessPlayback: true,
+                scale: themeController.profileImageScale,
               ),
       ),
     );
@@ -3336,12 +3595,19 @@ class _HomeContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
+              DeviceTransferHomeBanner(
+                controller: DeviceTransferScope.of(context),
+              ),
               BreathingCard(
                 onThreeMinutesReached: () =>
                     unawaited(_recordBreathingReward(context)),
               ),
               const SizedBox(height: 12),
-              const NativeAdCard(key: Key('breathingNativeAd')),
+              _PlanAwareNativeAdCard(
+                key: const Key('breathingNativeAd'),
+                controller: rewardsController,
+                audience: _NativeAdAudience.freeOnly,
+              ),
               Container(
                 key: quickAddKey,
                 width: double.infinity,
@@ -3379,12 +3645,10 @@ class _HomeContent extends StatelessWidget {
                                     (habit) =>
                                         habit.isActive &&
                                         habit.isFavorite &&
-                                        (rewardsController.isPlus ||
-                                            (habit.id != 'consuming_sugar' &&
-                                                habit.id != 'studying' &&
-                                                !habit.id.startsWith(
-                                                  'custom_',
-                                                ))),
+                                        planCanUseHabit(
+                                          rewardsController.plan,
+                                          habit.id,
+                                        ),
                                   )
                                   .toList();
                           if (favorites.isEmpty) {
@@ -3440,8 +3704,10 @@ class _HomeContent extends StatelessWidget {
                 showSpecialHabitGraphs: false,
               ),
               const SizedBox(height: 14),
-              const NativeAdCard(
-                key: Key('homeInfoNativeAd'),
+              _PlanAwareNativeAdCard(
+                key: const Key('homeInfoNativeAd'),
+                controller: rewardsController,
+                audience: _NativeAdAudience.exceptUltra,
                 bottomSpacing: 14,
               ),
               const HabitInfoCards(),
@@ -3696,21 +3962,44 @@ class _GenderBodyFrame extends StatelessWidget {
     required this.customGraphRepository,
     required this.showSpecialHabitGraphs,
     required this.rewardsController,
+    this.habitRepository,
+    this.habitStreakRepository,
+    this.numericalHeatmapRepository,
   });
 
   final ThemeController themeController;
   final CustomGraphRepository customGraphRepository;
   final bool showSpecialHabitGraphs;
   final RewardsController rewardsController;
+  final HabitRepository? habitRepository;
+  final HabitStreakRepository? habitStreakRepository;
+  final NumericalHeatmapRepository? numericalHeatmapRepository;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: themeController,
+      animation: Listenable.merge([themeController, rewardsController]),
       builder: (context, _) {
+        final bodyFeatureUnlocked = rewardsController.isUnlocked(
+          GatedFeature.body,
+        );
+        final backViewLocked = !rewardsController.isPlus;
+        void openPlus() => openPremiumPlan(
+          context,
+          controller: rewardsController,
+          plan: MembershipPlan.plus,
+        );
         final body = themeController.gender == AppGender.male
-            ? const BodyFrame(key: ValueKey('maleBody'))
-            : const FemaleBodyFrame(key: ValueKey('femaleBody'));
+            ? BodyFrame(
+                key: const ValueKey('maleBody'),
+                backViewLocked: backViewLocked,
+                onUpgradeBack: openPlus,
+              )
+            : FemaleBodyFrame(
+                key: const ValueKey('femaleBody'),
+                backViewLocked: backViewLocked,
+                onUpgradeBack: openPlus,
+              );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -3738,12 +4027,25 @@ class _GenderBodyFrame extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+            if (showSpecialHabitGraphs) ...[
+              OrganReports(
+                showAll: rewardsController.isPlus,
+                reportsLocked: !bodyFeatureUnlocked,
+                onUpgrade: openPlus,
+              ),
+              const SizedBox(height: 12),
+            ],
             if (showSpecialHabitGraphs)
-              const NativeAdCard(key: Key('bodyStatisticsNativeAd')),
+              _PlanAwareNativeAdCard(
+                key: const Key('bodyStatisticsNativeAd'),
+                controller: rewardsController,
+                audience: _NativeAdAudience.freeAndPlus,
+              ),
             RewardFeatureGate(
               controller: rewardsController,
               feature: GatedFeature.graphs,
               title: context.tr('Progress graphs'),
+              tokenOutside: true,
               child: Column(
                 children: [
                   CustomGraphCard(
@@ -3752,8 +4054,18 @@ class _GenderBodyFrame extends StatelessWidget {
                   ),
                   if (showSpecialHabitGraphs) ...[
                     const SizedBox(height: 10),
+                    NamedCustomGraphsSection(
+                      repository: customGraphRepository,
+                      rewardsController: rewardsController,
+                    ),
+                  ],
+                  if (showSpecialHabitGraphs) ...[
+                    const SizedBox(height: 10),
                     SpecialHabitGraphsSection(
                       repository: customGraphRepository,
+                      habitRepository: habitRepository!,
+                      habitStreakRepository: habitStreakRepository!,
+                      numericalHeatmapRepository: numericalHeatmapRepository!,
                       rewardsController: rewardsController,
                     ),
                   ],
@@ -3980,17 +4292,32 @@ class _AiTopHeader extends StatelessWidget {
               icon: const Icon(Icons.arrow_back_rounded),
             ),
             const SizedBox(width: 7),
-            InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => ProfilePage(
-                    themeController: themeController,
-                    rewardsController: rewardsController,
+            Material(
+              color: colors.primaryContainer.withValues(alpha: .72),
+              borderRadius: BorderRadius.circular(28),
+              clipBehavior: Clip.antiAlias,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    key: const Key('aiHistoryButton'),
+                    tooltip: context.tr('History'),
+                    onPressed: onHistory,
+                    icon: const Icon(Icons.history_rounded),
                   ),
-                ),
+                  Container(
+                    width: 1,
+                    height: 25,
+                    color: colors.outlineVariant.withValues(alpha: .7),
+                  ),
+                  IconButton(
+                    key: const Key('aiNewChatButton'),
+                    tooltip: context.tr('New chat'),
+                    onPressed: onNewChat,
+                    icon: const Icon(Icons.add_comment_rounded),
+                  ),
+                ],
               ),
-              child: _HeaderAvatar(themeController: themeController),
             ),
             const Spacer(),
             Material(
@@ -4011,8 +4338,10 @@ class _AiTopHeader extends StatelessWidget {
                     icon: const Icon(Icons.settings_rounded),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) =>
-                            SettingsPage(themeController: themeController),
+                        builder: (_) => SettingsPage(
+                          themeController: themeController,
+                          rewardsController: rewardsController,
+                        ),
                       ),
                     ),
                   ),
@@ -4021,72 +4350,7 @@ class _AiTopHeader extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: 118,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _AiHeaderButton(
-                icon: Icons.add_comment_rounded,
-                label: context.tr('New chat'),
-                onPressed: onNewChat,
-              ),
-              const SizedBox(height: 5),
-              _AiHeaderButton(
-                icon: Icons.history_rounded,
-                label: context.tr('History'),
-                onPressed: onHistory,
-              ),
-            ],
-          ),
-        ),
       ],
-    );
-  }
-}
-
-class _AiHeaderButton extends StatelessWidget {
-  const _AiHeaderButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.primaryContainer.withValues(alpha: .58),
-      borderRadius: BorderRadius.circular(15),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onPressed,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-          child: Row(
-            children: [
-              Icon(icon, size: 17, color: colors.primary),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -4492,6 +4756,39 @@ class _BlurredCapsule extends StatelessWidget {
   }
 }
 
+enum _NativeAdAudience { freeOnly, freeAndPlus, exceptUltra }
+
+class _PlanAwareNativeAdCard extends StatelessWidget {
+  const _PlanAwareNativeAdCard({
+    required this.controller,
+    required this.audience,
+    this.bottomSpacing = 12,
+    super.key,
+  });
+
+  final RewardsController controller;
+  final _NativeAdAudience audience;
+  final double bottomSpacing;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final visible = switch (audience) {
+          _NativeAdAudience.freeOnly => controller.isPlan(MembershipPlan.free),
+          _NativeAdAudience.freeAndPlus =>
+            controller.isPlan(MembershipPlan.free) ||
+                controller.isPlan(MembershipPlan.plus),
+          _NativeAdAudience.exceptUltra => !controller.isUltra,
+        };
+        if (!visible) return const SizedBox.shrink();
+        return NativeAdCard(bottomSpacing: bottomSpacing);
+      },
+    );
+  }
+}
+
 class AddHabitPage extends StatefulWidget {
   const AddHabitPage({
     required this.habitRepository,
@@ -4556,58 +4853,132 @@ class _AddHabitPageState extends State<AddHabitPage> {
               )
               .toList();
           final customCount = customGood.length + customBad.length;
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-            children: [
-              if (_editing) ...[
-                Text(
-                  context.tr(
-                    'Use the star for Quick Add. Remove or restore habits with the button beside it.',
-                  ),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 12),
-                if (widget.rewardsController.isPlus) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.tonalIcon(
-                      onPressed: customCount >= 2
-                          ? null
-                          : () => _createCustomHabit(context),
-                      icon: const Icon(Icons.add_rounded),
-                      label: Text(
-                        customCount >= 2
-                            ? context.tr('Two custom habits created')
-                            : context.tr('Create your own habit'),
+          final customHabitLimit = widget.rewardsController.customHabitLimit;
+          final enabledNumericalPreferences =
+              preferences.values
+                  .where((habit) => habit.numericalTrackingEnabled)
+                  .toList()
+                ..sort(
+                  (left, right) => left.updatedAt.compareTo(right.updatedAt),
+                );
+          final numericalLimit = widget.rewardsController.numericalHabitLimit;
+          final usableNumericalHabitIds = numericalLimit == null
+              ? enabledNumericalPreferences.map((habit) => habit.id).toSet()
+              : enabledNumericalPreferences
+                    .take(numericalLimit)
+                    .map((habit) => habit.id)
+                    .toSet();
+          return StreamBuilder<List<DailyNumericalHabitValue>>(
+            stream: widget.habitRepository.watchNumericalHabitValues(
+              DateTime.now(),
+            ),
+            builder: (context, numericalSnapshot) {
+              final numericalValues = {
+                for (final value
+                    in numericalSnapshot.data ??
+                        const <DailyNumericalHabitValue>[])
+                  value.habitId: value,
+              };
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                children: [
+                  if (_editing) ...[
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.tr('Two ways to track'),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(context.tr('Thumb tracking description')),
+                            const SizedBox(height: 6),
+                            Text(context.tr('Numerical tracking description')),
+                            const SizedBox(height: 6),
+                            Text(
+                              numericalLimit == 0
+                                  ? context.tr(
+                                      'Numerical tracking requires Plus or higher.',
+                                    )
+                                  : numericalLimit == null
+                                  ? context.tr('Unlimited numerical habits')
+                                  : '${context.tr('Numerical habits')}: '
+                                        '${usableNumericalHabitIds.length}/$numericalLimit',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              context.tr(
+                                'Use the star for Quick Add. Remove or restore habits with the button beside it.',
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    if (widget.rewardsController.isPlus) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.tonalIcon(
+                          onPressed: customCount >= customHabitLimit
+                              ? null
+                              : () => _createCustomHabit(context),
+                          icon: const Icon(Icons.add_rounded),
+                          label: Text(
+                            '${context.tr(customCount >= customHabitLimit ? 'Custom habit limit reached' : 'Create your own habit')} · $customCount/$customHabitLimit',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ],
+                  _buildSection(
+                    context,
+                    title: 'Good habits',
+                    options: [..._goodHabits, ...customGood],
+                    preferences: preferences,
+                    numericalValues: numericalValues,
+                    usableNumericalHabitIds: usableNumericalHabitIds,
+                    enabledNumericalCount: enabledNumericalPreferences.length,
                   ),
                   const SizedBox(height: 12),
+                  _buildSection(
+                    context,
+                    title: 'Exercises',
+                    options: _exercises,
+                    preferences: preferences,
+                    numericalValues: numericalValues,
+                    usableNumericalHabitIds: usableNumericalHabitIds,
+                    enabledNumericalCount: enabledNumericalPreferences.length,
+                    inCard: true,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildSection(
+                    context,
+                    title: 'Bad habits',
+                    options: [..._badHabits, ...customBad],
+                    preferences: preferences,
+                    numericalValues: numericalValues,
+                    usableNumericalHabitIds: usableNumericalHabitIds,
+                    enabledNumericalCount: enabledNumericalPreferences.length,
+                    isUnwanted: true,
+                  ),
                 ],
-              ],
-              _buildSection(
-                context,
-                title: 'Good habits',
-                options: [..._goodHabits, ...customGood],
-                preferences: preferences,
-              ),
-              const SizedBox(height: 12),
-              _buildSection(
-                context,
-                title: 'Exercises',
-                options: _exercises,
-                preferences: preferences,
-                inCard: true,
-              ),
-              const SizedBox(height: 14),
-              _buildSection(
-                context,
-                title: 'Bad habits',
-                options: [..._badHabits, ...customBad],
-                preferences: preferences,
-                isUnwanted: true,
-              ),
-            ],
+              );
+            },
           );
         },
       ),
@@ -4619,13 +4990,20 @@ class _AddHabitPageState extends State<AddHabitPage> {
     required String title,
     required List<_HabitOption> options,
     required Map<String, HabitPreference> preferences,
+    required Map<String, DailyNumericalHabitValue> numericalValues,
+    required Set<String> usableNumericalHabitIds,
+    required int enabledNumericalCount,
     bool inCard = false,
     bool isUnwanted = false,
   }) {
     final visibleOptions = _editing
         ? options
         : options
-              .where((option) => preferences[option.id]?.isActive ?? true)
+              .where(
+                (option) =>
+                    (preferences[option.id]?.isActive ?? true) &&
+                    planCanUseHabit(widget.rewardsController.plan, option.id),
+              )
               .toList();
     if (visibleOptions.isEmpty && !_editing) {
       return const SizedBox.shrink();
@@ -4643,76 +5021,227 @@ class _AddHabitPageState extends State<AddHabitPage> {
                   ?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          childAspectRatio: _editing ? 2.55 : (inCard ? 3.5 : 3.2),
-          children: [
-            for (final option in visibleOptions)
-              if (!_editing &&
-                  _isPremiumHabitId(option.id) &&
-                  !widget.rewardsController.isPlus)
-                _PremiumHabitTile(
-                  label: context.tr(option.nameKey),
-                  icon: option.icon,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          PremiumPage(controller: widget.rewardsController),
-                    ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const gap = 8.0;
+            const numericalCardHeight = 138.0;
+            const compactCardHeight = (numericalCardHeight - gap) / 2;
+            final halfWidth = (constraints.maxWidth - gap) / 2;
+            bool usesNumerical(_HabitOption option) =>
+                !_editing && usableNumericalHabitIds.contains(option.id);
+            final numericalOptions = visibleOptions
+                .where(usesNumerical)
+                .toList();
+            final regularOptions = _editing
+                ? visibleOptions
+                : visibleOptions
+                      .where((option) => !usesNumerical(option))
+                      .toList();
+
+            Widget habitCard(_HabitOption option) {
+              final preference = preferences[option.id];
+              final numericalConfig = numericalConfigForHabit(
+                habitId: option.id,
+                category:
+                    preference?.category ?? (isUnwanted ? 'reduction' : 'good'),
+                unitKey: preference?.numericalUnit,
+              );
+              return SizedBox(
+                width: halfWidth,
+                height: _editing
+                    ? 72
+                    : usesNumerical(option)
+                    ? numericalCardHeight
+                    : compactCardHeight,
+                child:
+                    (!_editing &&
+                        isPremiumHabitId(option.id) &&
+                        !planCanUseHabit(
+                          widget.rewardsController.plan,
+                          option.id,
+                        ))
+                    ? _PremiumHabitTile(
+                        label: context.tr(option.nameKey),
+                        icon: option.icon,
+                        onTap: () => openPremiumPlan(
+                          context,
+                          controller: widget.rewardsController,
+                          plan:
+                              minimumPlanForHabit(option.id) ??
+                              MembershipPlan.plus,
+                        ),
+                      )
+                    : _editing
+                    ? _HabitManagementTile(
+                        label: context.tr(option.nameKey),
+                        icon: option.icon,
+                        isActive: preferences[option.id]?.isActive ?? true,
+                        isFavorite: preferences[option.id]?.isFavorite ?? false,
+                        onActiveChanged: (active) =>
+                            unawaited(_setHabitActive(context, option, active)),
+                        onFavoriteChanged: (favorite) => unawaited(
+                          widget.habitRepository.setHabitFavorite(
+                            option.id,
+                            favorite,
+                          ),
+                        ),
+                        numericalTrackingEnabled: usableNumericalHabitIds
+                            .contains(option.id),
+                        onNumericalSettings: () => _showNumericalSettings(
+                          context,
+                          option,
+                          preference,
+                          enabledNumericalCount: enabledNumericalCount,
+                        ),
+                        onEdit: option.id.startsWith('custom_')
+                            ? () => _editCustomHabit(
+                                context,
+                                preferences[option.id]!,
+                              )
+                            : widget.rewardsController.isProOrHigher
+                            ? () => _editStandardHabitEffects(context, option)
+                            : () => openPremiumPlan(
+                                context,
+                                controller: widget.rewardsController,
+                                plan: MembershipPlan.pro,
+                              ),
+                        onDelete: option.id.startsWith('custom_')
+                            ? () => _deleteCustomHabit(
+                                context,
+                                preferences[option.id]!,
+                              )
+                            : null,
+                      )
+                    : usesNumerical(option)
+                    ? _NumericalHabitTile(
+                        key: ValueKey(
+                          'numerical_${option.id}_${numericalConfig.unitKey}_${numericalValues[option.id]?.value ?? 'thumb'}',
+                        ),
+                        habitId: option.id,
+                        label: context.tr(option.nameKey),
+                        icon: option.icon,
+                        config: numericalConfig,
+                        target:
+                            preference?.numericalTarget ??
+                            numericalConfig.defaultTarget,
+                        value: numericalValues[option.id]?.value,
+                        isUnwanted: isUnwanted,
+                        onValueSaved: (value) => unawaited(
+                          _showNumericalValue(
+                            context,
+                            option,
+                            numericalConfig,
+                            value,
+                          ),
+                        ),
+                        onThumbUp: () => unawaited(
+                          _showAdded(
+                            context,
+                            option.nameKey,
+                            didHabit: !isUnwanted,
+                          ),
+                        ),
+                        onThumbDown: () => unawaited(
+                          _showAdded(
+                            context,
+                            option.nameKey,
+                            didHabit: isUnwanted,
+                          ),
+                        ),
+                      )
+                    : inCard
+                    ? _ExerciseRow(
+                        label: context.tr(option.nameKey),
+                        icon: option.icon,
+                        onThumbUp: () => unawaited(
+                          _showAdded(context, option.nameKey, didHabit: true),
+                        ),
+                        onThumbDown: () => unawaited(
+                          _showAdded(context, option.nameKey, didHabit: false),
+                        ),
+                        isUnwanted: isUnwanted,
+                      )
+                    : _HabitTile(
+                        label: context.tr(option.nameKey),
+                        icon: option.icon,
+                        onThumbUp: () => unawaited(
+                          _showAdded(
+                            context,
+                            option.nameKey,
+                            didHabit: !isUnwanted,
+                          ),
+                        ),
+                        onThumbDown: () => unawaited(
+                          _showAdded(
+                            context,
+                            option.nameKey,
+                            didHabit: isUnwanted,
+                          ),
+                        ),
+                        isUnwanted: isUnwanted,
+                      ),
+              );
+            }
+
+            final numericalPairCount = numericalOptions.length ~/ 2;
+            final hasSingleNumerical = numericalOptions.length.isOdd;
+            final sideHabits = hasSingleNumerical
+                ? regularOptions.take(2).toList()
+                : const <_HabitOption>[];
+            final remainingRegular = regularOptions
+                .skip(sideHabits.length)
+                .toList();
+
+            return Column(
+              children: [
+                for (var pair = 0; pair < numericalPairCount; pair++) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      habitCard(numericalOptions[pair * 2]),
+                      const SizedBox(width: gap),
+                      habitCard(numericalOptions[(pair * 2) + 1]),
+                    ],
                   ),
-                )
-              else if (_editing)
-                _HabitManagementTile(
-                  label: context.tr(option.nameKey),
-                  icon: option.icon,
-                  isActive: preferences[option.id]?.isActive ?? true,
-                  isFavorite: preferences[option.id]?.isFavorite ?? false,
-                  onActiveChanged: (active) => unawaited(
-                    widget.habitRepository.setHabitActive(option.id, active),
+                  const SizedBox(height: gap),
+                ],
+                if (hasSingleNumerical) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      habitCard(numericalOptions.last),
+                      const SizedBox(width: gap),
+                      SizedBox(
+                        width: halfWidth,
+                        child: Column(
+                          children: [
+                            for (
+                              var index = 0;
+                              index < sideHabits.length;
+                              index++
+                            ) ...[
+                              habitCard(sideHabits[index]),
+                              if (index != sideHabits.length - 1)
+                                const SizedBox(height: gap),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  onFavoriteChanged: (favorite) => unawaited(
-                    widget.habitRepository.setHabitFavorite(
-                      option.id,
-                      favorite,
-                    ),
+                  if (remainingRegular.isNotEmpty) const SizedBox(height: gap),
+                ],
+                if (remainingRegular.isNotEmpty)
+                  Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      for (final option in remainingRegular) habitCard(option),
+                    ],
                   ),
-                  onEdit: option.id.startsWith('custom_')
-                      ? () => _editCustomHabit(context, preferences[option.id]!)
-                      : null,
-                  onDelete: option.id.startsWith('custom_')
-                      ? () =>
-                            _deleteCustomHabit(context, preferences[option.id]!)
-                      : null,
-                )
-              else if (inCard)
-                _ExerciseRow(
-                  label: context.tr(option.nameKey),
-                  icon: option.icon,
-                  onThumbUp: () => unawaited(
-                    _showAdded(context, option.nameKey, didHabit: true),
-                  ),
-                  onThumbDown: () => unawaited(
-                    _showAdded(context, option.nameKey, didHabit: false),
-                  ),
-                  isUnwanted: isUnwanted,
-                )
-              else
-                _HabitTile(
-                  label: context.tr(option.nameKey),
-                  icon: option.icon,
-                  onThumbUp: () => unawaited(
-                    _showAdded(context, option.nameKey, didHabit: !isUnwanted),
-                  ),
-                  onThumbDown: () => unawaited(
-                    _showAdded(context, option.nameKey, didHabit: isUnwanted),
-                  ),
-                  isUnwanted: isUnwanted,
-                ),
-          ],
+              ],
+            );
+          },
         ),
       ],
     );
@@ -4753,17 +5282,122 @@ class _AddHabitPageState extends State<AddHabitPage> {
     );
   }
 
+  Future<void> _showNumericalValue(
+    BuildContext context,
+    _HabitOption habit,
+    NumericalHabitConfig config,
+    int value,
+  ) async {
+    try {
+      final bodyState = await widget.habitRepository.recordNumericalHabit(
+        habit.id,
+        value,
+      );
+      BodyVisualState.restore(bodyState);
+      await widget.rewardsController.refresh();
+    } catch (_) {
+      if (context.mounted) _showStorageFailure(context);
+      return;
+    }
+    if (!context.mounted) return;
+    _showHabitToast(
+      context,
+      '${context.tr(habit.nameKey)}: $value ${context.tr(config.unitKey)}',
+    );
+  }
+
+  Future<void> _showNumericalSettings(
+    BuildContext context,
+    _HabitOption habit,
+    HabitPreference? preference, {
+    required int enabledNumericalCount,
+  }) async {
+    final limit = widget.rewardsController.numericalHabitLimit;
+    final alreadyEnabled = preference?.numericalTrackingEnabled ?? false;
+    if (!planCanUseHabit(widget.rewardsController.plan, habit.id) ||
+        limit == 0 ||
+        (!alreadyEnabled && limit != null && enabledNumericalCount >= limit)) {
+      final targetPlan =
+          minimumPlanForHabit(habit.id) ??
+          (widget.rewardsController.isPlan(MembershipPlan.plus)
+              ? MembershipPlan.pro
+              : MembershipPlan.plus);
+      await openPremiumPlan(
+        context,
+        controller: widget.rewardsController,
+        plan: targetPlan,
+      );
+      return;
+    }
+    final savedUnit = preference?.numericalUnit;
+    final initialUnit = NumericalHabitUnit.values.contains(savedUnit)
+        ? savedUnit!
+        : selectableNumericalUnitForHabit(habit.id);
+    final config = numericalConfigForHabit(
+      habitId: habit.id,
+      category: preference?.category ?? 'good',
+      unitKey: initialUnit,
+    );
+    final result = await showDialog<_NumericalSettingsDraft>(
+      context: context,
+      builder: (context) => _NumericalSettingsDialog(
+        habitName: context.tr(habit.nameKey),
+        habitId: habit.id,
+        category: preference?.category ?? 'good',
+        initialUnit: initialUnit,
+        initialEnabled: preference?.numericalTrackingEnabled ?? false,
+        initialTarget: preference?.numericalTarget ?? config.defaultTarget,
+      ),
+    );
+    if (result == null) return;
+    try {
+      await widget.habitRepository.setHabitNumericalTracking(
+        habit.id,
+        enabled: result.enabled,
+        target: result.target,
+        unitKey: result.unitKey,
+      );
+    } catch (_) {
+      if (context.mounted) _showStorageFailure(context);
+    }
+  }
+
+  Future<void> _setHabitActive(
+    BuildContext context,
+    _HabitOption habit,
+    bool active,
+  ) async {
+    if (active && !planCanUseHabit(widget.rewardsController.plan, habit.id)) {
+      final targetPlan = minimumPlanForHabit(habit.id);
+      if (targetPlan != null) {
+        await openPremiumPlan(
+          context,
+          controller: widget.rewardsController,
+          plan: targetPlan,
+        );
+      }
+      return;
+    }
+    await widget.habitRepository.setHabitActive(habit.id, active);
+  }
+
   Future<void> _createCustomHabit(BuildContext context) async {
+    final organEffectCount = await widget.habitRepository
+        .countCustomHabitsWithOrganEffects();
+    if (!context.mounted) return;
     final draft = await _showCustomHabitDialog(
       context,
       title: context.tr('Create your own habit'),
       action: context.tr('Create'),
+      organEffectCount: organEffectCount,
+      organEffectLimit: widget.rewardsController.customHabitOrganEffectLimit,
     );
     if (draft == null) return;
     try {
       await widget.habitRepository.createCustomHabit(
         name: draft.name,
         isUnwanted: draft.isUnwanted,
+        organEffects: draft.organEffects,
       );
     } catch (_) {
       if (!context.mounted) return;
@@ -4773,16 +5407,61 @@ class _AddHabitPageState extends State<AddHabitPage> {
     }
   }
 
+  Future<void> _editStandardHabitEffects(
+    BuildContext context,
+    _HabitOption habit,
+  ) async {
+    final results = await Future.wait([
+      widget.habitRepository.loadStandardHabitOrganEffects(habit.id),
+      widget.habitRepository.countStandardHabitsWithOrganEffects(),
+    ]);
+    if (!context.mounted) return;
+    final settings = results[0] as StandardHabitOrganEffectSettings;
+    final effects = await showDialog<List<CustomHabitOrganEffect>>(
+      context: context,
+      barrierColor: Theme.of(context).colorScheme.scrim.withValues(alpha: .28),
+      builder: (_) => BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: _StandardHabitEffectsDialog(
+          habitName: context.tr(habit.nameKey),
+          initialEffects: settings.effects,
+          isCustomized: settings.isCustomized,
+          effectCount: results[1] as int,
+          effectLimit: widget.rewardsController.standardHabitOrganEffectLimit,
+        ),
+      ),
+    );
+    if (effects == null) return;
+    try {
+      await widget.habitRepository.saveStandardHabitOrganEffects(
+        habit.id,
+        effects,
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      _showStorageFailure(context);
+    }
+  }
+
   Future<void> _editCustomHabit(
     BuildContext context,
     HabitPreference habit,
   ) async {
+    final results = await Future.wait([
+      widget.habitRepository.loadCustomHabitOrganEffects(habit.id),
+      widget.habitRepository.countCustomHabitsWithOrganEffects(),
+    ]);
+    if (!context.mounted) return;
+    final initialEffects = results[0] as List<CustomHabitOrganEffect>;
     final draft = await _showCustomHabitDialog(
       context,
-      title: context.tr('Edit habits'),
+      title: context.tr('Editing'),
       action: context.tr('Save'),
       initialName: habit.nameKey,
       initialUnwanted: habit.category == 'custom_bad',
+      initialEffects: initialEffects,
+      organEffectCount: results[1] as int,
+      organEffectLimit: widget.rewardsController.customHabitOrganEffectLimit,
     );
     if (draft == null) return;
     try {
@@ -4790,6 +5469,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
         habitId: habit.id,
         name: draft.name,
         isUnwanted: draft.isUnwanted,
+        organEffects: draft.organEffects,
       );
     } catch (_) {
       if (!context.mounted) return;
@@ -4835,76 +5515,594 @@ class _AddHabitPageState extends State<AddHabitPage> {
     required String action,
     String initialName = '',
     bool initialUnwanted = false,
-  }) async {
-    final controller = TextEditingController(text: initialName);
-    var unwanted = initialUnwanted;
-    final result = await showDialog<_CustomHabitDraft>(
+    List<CustomHabitOrganEffect> initialEffects = const [],
+    int organEffectCount = 0,
+    int organEffectLimit = 0,
+  }) {
+    return showDialog<_CustomHabitDraft>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(title),
-          content: Column(
+      barrierColor: Theme.of(context).colorScheme.scrim.withValues(alpha: .28),
+      builder: (_) => BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: _CustomHabitDialog(
+          title: title,
+          action: action,
+          initialName: initialName,
+          initialUnwanted: initialUnwanted,
+          initialEffects: initialEffects,
+          organEffectCount: organEffectCount,
+          organEffectLimit: organEffectLimit,
+        ),
+      ),
+    );
+  }
+}
+
+class _CustomHabitDialog extends StatefulWidget {
+  const _CustomHabitDialog({
+    required this.title,
+    required this.action,
+    required this.initialName,
+    required this.initialUnwanted,
+    required this.initialEffects,
+    required this.organEffectCount,
+    required this.organEffectLimit,
+  });
+
+  final String title;
+  final String action;
+  final String initialName;
+  final bool initialUnwanted;
+  final List<CustomHabitOrganEffect> initialEffects;
+  final int organEffectCount;
+  final int organEffectLimit;
+
+  @override
+  State<_CustomHabitDialog> createState() => _CustomHabitDialogState();
+}
+
+class _CustomHabitDialogState extends State<_CustomHabitDialog> {
+  static const _effectValues = [-1.5, -1.0, -.5, 0.0, .5, 1.0, 1.5];
+  static const _organs = <String, String>{
+    BodyPartKey.brain: 'Mind',
+    BodyPartKey.heart: 'Heart',
+    BodyPartKey.lungs: 'Lungs',
+    BodyPartKey.liver: 'Liver',
+    BodyPartKey.stomach: 'Stomach',
+    BodyPartKey.kidneys: 'Kidneys',
+    BodyPartKey.gut: 'Gut',
+  };
+
+  late final TextEditingController _controller;
+  late bool _unwanted;
+  late final Map<String, double> _thumbUpEffects;
+  late final Map<String, double> _thumbDownEffects;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+    _unwanted = widget.initialUnwanted;
+    _thumbUpEffects = {for (final partKey in _organs.keys) partKey: 0};
+    _thumbDownEffects = {for (final partKey in _organs.keys) partKey: 0};
+    for (final effect in widget.initialEffects) {
+      if (!_organs.containsKey(effect.partKey)) continue;
+      _thumbUpEffects[effect.partKey] = effect.thumbUpPoints;
+      _thumbDownEffects[effect.partKey] = effect.thumbDownPoints;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final alreadyAffectsOrgans = widget.initialEffects.any(
+      (effect) => effect.hasEffect,
+    );
+    final canEditOrganEffects =
+        widget.organEffectLimit > 0 &&
+        (alreadyAffectsOrgans ||
+            widget.organEffectCount < widget.organEffectLimit);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 560,
+          maxHeight: MediaQuery.sizeOf(context).height * .94,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: controller,
-                autofocus: true,
-                maxLength: 40,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  labelText: context.tr('Habit name'),
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+                  child: Column(
+                    children: [
+                      Text(
+                        widget.title,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: _controller,
+                        maxLength: 40,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          labelText: context.tr('Habit name'),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SegmentedButton<bool>(
+                        segments: [
+                          ButtonSegment(
+                            value: false,
+                            label: Text(context.tr('Good habit')),
+                            icon: const Text(
+                              '👍',
+                              style: TextStyle(fontSize: 18),
+                            ),
+                          ),
+                          ButtonSegment(
+                            value: true,
+                            label: Text(context.tr('Unwanted habit')),
+                            icon: const Text(
+                              '👎',
+                              style: TextStyle(fontSize: 18),
+                            ),
+                          ),
+                        ],
+                        selected: {_unwanted},
+                        onSelectionChanged: (selection) =>
+                            setState(() => _unwanted = selection.first),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              SegmentedButton<bool>(
-                segments: [
-                  ButtonSegment(
-                    value: false,
-                    label: Text(context.tr('Good habit')),
-                    icon: const Icon(Icons.thumb_up_alt_outlined),
+              if (widget.organEffectLimit > 0) ...[
+                const SizedBox(height: 14),
+                if (canEditOrganEffects)
+                  _buildOrganEffectEditor(context)
+                else
+                  _buildOrganLimitMessage(context),
+              ],
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(context.tr('Cancel')),
+                      ),
+                    ),
                   ),
-                  ButtonSegment(
-                    value: true,
-                    label: Text(context.tr('Unwanted habit')),
-                    icon: const Icon(Icons.thumb_down_alt_outlined),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: FilledButton(
+                        onPressed: _submit,
+                        child: Text(widget.action),
+                      ),
+                    ),
                   ),
                 ],
-                selected: {unwanted},
-                onSelectionChanged: (selection) =>
-                    setDialogState(() => unwanted = selection.first),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(context.tr('Cancel')),
+        ),
+      ),
+    );
+  }
+
+  void _submit() {
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+    Navigator.pop(
+      context,
+      _CustomHabitDraft(
+        name: name,
+        isUnwanted: _unwanted,
+        organEffects: [
+          for (final partKey in _organs.keys)
+            CustomHabitOrganEffect(
+              partKey: partKey,
+              thumbUpPoints: _thumbUpEffects[partKey]!,
+              thumbDownPoints: _thumbDownEffects[partKey]!,
             ),
-            FilledButton(
-              onPressed: () {
-                final name = controller.text.trim();
-                if (name.isEmpty) return;
-                Navigator.pop(
-                  dialogContext,
-                  _CustomHabitDraft(name: name, isUnwanted: unwanted),
-                );
-              },
-              child: Text(action),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrganLimitMessage(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            Text(
+              context.tr('Organ effects'),
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${context.tr('Organ-effect habit limit reached')} · '
+              '${widget.organEffectCount}/${widget.organEffectLimit}',
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
     );
-    controller.dispose();
-    return result;
+  }
+
+  Widget _buildOrganEffectEditor(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              context.tr('Organ effects'),
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(child: Text(context.tr('Organ'))),
+                const SizedBox(
+                  width: 76,
+                  child: Text(
+                    '👎',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 24),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 76,
+                  child: Text(
+                    '👍',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 24),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 16),
+            for (final organ in _organs.entries) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.tr(organ.value),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  _effectPicker(
+                    value: _thumbDownEffects[organ.key]!,
+                    onChanged: (value) =>
+                        setState(() => _thumbDownEffects[organ.key] = value),
+                  ),
+                  const SizedBox(width: 8),
+                  _effectPicker(
+                    value: _thumbUpEffects[organ.key]!,
+                    onChanged: (value) =>
+                        setState(() => _thumbUpEffects[organ.key] = value),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 7),
+            ],
+            Text(
+              '${context.tr('Organ-effect habits')}: '
+              '${widget.organEffectCount}/${widget.organEffectLimit}',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _effectPicker({
+    required double value,
+    required ValueChanged<double> onChanged,
+  }) {
+    return SizedBox(
+      width: 76,
+      child: DropdownButtonFormField<double>(
+        initialValue: value,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+        ),
+        items: [
+          for (final points in _effectValues)
+            DropdownMenuItem(value: points, child: Text(_effectLabel(points))),
+        ],
+        onChanged: (next) {
+          if (next != null) onChanged(next);
+        },
+      ),
+    );
+  }
+
+  String _effectLabel(double value) {
+    if (value == 0) return '0';
+    final number = value.toStringAsFixed(1);
+    return value > 0 ? '+$number' : number;
   }
 }
 
 class _CustomHabitDraft {
-  const _CustomHabitDraft({required this.name, required this.isUnwanted});
+  const _CustomHabitDraft({
+    required this.name,
+    required this.isUnwanted,
+    required this.organEffects,
+  });
 
   final String name;
   final bool isUnwanted;
+  final List<CustomHabitOrganEffect> organEffects;
+}
+
+class _StandardHabitEffectsDialog extends StatefulWidget {
+  const _StandardHabitEffectsDialog({
+    required this.habitName,
+    required this.initialEffects,
+    required this.isCustomized,
+    required this.effectCount,
+    required this.effectLimit,
+  });
+
+  final String habitName;
+  final List<CustomHabitOrganEffect> initialEffects;
+  final bool isCustomized;
+  final int effectCount;
+  final int effectLimit;
+
+  @override
+  State<_StandardHabitEffectsDialog> createState() =>
+      _StandardHabitEffectsDialogState();
+}
+
+class _StandardHabitEffectsDialogState
+    extends State<_StandardHabitEffectsDialog> {
+  static const _values = [-1.5, -1.0, -.5, 0.0, .5, 1.0, 1.5];
+  static const _organs = <String, String>{
+    BodyPartKey.brain: 'Mind',
+    BodyPartKey.heart: 'Heart',
+    BodyPartKey.lungs: 'Lungs',
+    BodyPartKey.liver: 'Liver',
+    BodyPartKey.stomach: 'Stomach',
+    BodyPartKey.kidneys: 'Kidneys',
+    BodyPartKey.gut: 'Gut',
+  };
+
+  late final Map<String, double> _up;
+  late final Map<String, double> _down;
+
+  @override
+  void initState() {
+    super.initState();
+    _up = {for (final key in _organs.keys) key: 0};
+    _down = {for (final key in _organs.keys) key: 0};
+    for (final effect in widget.initialEffects) {
+      if (!_organs.containsKey(effect.partKey)) continue;
+      _up[effect.partKey] = effect.thumbUpPoints;
+      _down[effect.partKey] = effect.thumbDownPoints;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canEdit =
+        widget.isCustomized || widget.effectCount < widget.effectLimit;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.all(10),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 560,
+          maxHeight: MediaQuery.sizeOf(context).height * .94,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        context.tr('Edit organ effects'),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.habitName,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (canEdit) ...[
+                        Row(
+                          children: [
+                            Expanded(child: Text(context.tr('Organ'))),
+                            const SizedBox(
+                              width: 76,
+                              child: Text(
+                                '👎',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 24),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const SizedBox(
+                              width: 76,
+                              child: Text(
+                                '👍',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 24),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 16),
+                        for (final organ in _organs.entries) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  context.tr(organ.value),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              _picker(_down[organ.key]!, (value) {
+                                setState(() => _down[organ.key] = value);
+                              }),
+                              const SizedBox(width: 8),
+                              _picker(_up[organ.key]!, (value) {
+                                setState(() => _up[organ.key] = value);
+                              }),
+                            ],
+                          ),
+                          const SizedBox(height: 7),
+                        ],
+                        Text(
+                          '${context.tr('Edited existing habits')}: '
+                          '${widget.effectCount}/${widget.effectLimit}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ] else
+                        Text(
+                          '${context.tr('Existing-habit organ-effect limit reached')} · '
+                          '${widget.effectCount}/${widget.effectLimit}',
+                          textAlign: TextAlign.center,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(context.tr('Cancel')),
+                      ),
+                    ),
+                  ),
+                  if (canEdit) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 50,
+                        child: FilledButton(
+                          onPressed: _save,
+                          child: Text(context.tr('Save')),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _picker(double value, ValueChanged<double> onChanged) {
+    final choices = _values.contains(value)
+        ? _values
+        : ([..._values, value]..sort());
+    return SizedBox(
+      width: 76,
+      child: DropdownButtonFormField<double>(
+        initialValue: value,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+        ),
+        items: [
+          for (final points in choices)
+            DropdownMenuItem(value: points, child: Text(_label(points))),
+        ],
+        onChanged: (next) {
+          if (next != null) onChanged(next);
+        },
+      ),
+    );
+  }
+
+  String _label(double value) {
+    if (value == 0) return '0';
+    final number = value.toStringAsFixed(1);
+    return value > 0 ? '+$number' : number;
+  }
+
+  void _save() {
+    Navigator.pop(context, [
+      for (final partKey in _organs.keys)
+        CustomHabitOrganEffect(
+          partKey: partKey,
+          thumbUpPoints: _up[partKey]!,
+          thumbDownPoints: _down[partKey]!,
+        ),
+    ]);
+  }
 }
 
 class _PremiumHabitTile extends StatelessWidget {
@@ -4966,6 +6164,8 @@ class _HabitManagementTile extends StatelessWidget {
     required this.isFavorite,
     required this.onActiveChanged,
     required this.onFavoriteChanged,
+    required this.numericalTrackingEnabled,
+    this.onNumericalSettings,
     this.onEdit,
     this.onDelete,
   });
@@ -4976,6 +6176,8 @@ class _HabitManagementTile extends StatelessWidget {
   final bool isFavorite;
   final ValueChanged<bool> onActiveChanged;
   final ValueChanged<bool> onFavoriteChanged;
+  final bool numericalTrackingEnabled;
+  final VoidCallback? onNumericalSettings;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -5002,29 +6204,47 @@ class _HabitManagementTile extends StatelessWidget {
               ),
             ),
           ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-            padding: EdgeInsets.zero,
-            tooltip: context.tr(
-              isFavorite ? 'Remove from Quick Add' : 'Add to Quick Add',
-            ),
-            onPressed: isActive ? () => onFavoriteChanged(!isFavorite) : null,
-            icon: Icon(
-              isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-              size: 20,
-              color: isFavorite ? colors.primary : colors.onSurfaceVariant,
+          SizedBox(
+            width: 30,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _CompactHabitAction(
+                  tooltip: context.tr(
+                    isFavorite ? 'Remove from Quick Add' : 'Add to Quick Add',
+                  ),
+                  onTap: isActive ? () => onFavoriteChanged(!isFavorite) : null,
+                  icon: isFavorite
+                      ? Icons.star_rounded
+                      : Icons.star_border_rounded,
+                  color: isFavorite ? colors.primary : colors.onSurfaceVariant,
+                ),
+                _CompactHabitAction(
+                  tooltip: context.tr(
+                    isActive ? 'Remove habit' : 'Restore habit',
+                  ),
+                  onTap: () => onActiveChanged(!isActive),
+                  icon: isActive
+                      ? Icons.remove_circle_outline
+                      : Icons.add_circle_outline,
+                  color: isActive ? colors.error : colors.primary,
+                ),
+              ],
             ),
           ),
-          if (onEdit != null && onDelete != null)
+          if (onEdit != null)
             PopupMenuButton<_CustomHabitAction>(
-              tooltip: context.tr('Edit habits'),
+              tooltip: context.tr('Edit habit'),
               padding: EdgeInsets.zero,
               icon: const Icon(Icons.more_vert_rounded, size: 20),
               onSelected: (action) {
                 switch (action) {
                   case _CustomHabitAction.edit:
                     onEdit!();
+                    break;
+                  case _CustomHabitAction.numerical:
+                    onNumericalSettings!();
                     break;
                   case _CustomHabitAction.delete:
                     onDelete!();
@@ -5036,42 +6256,600 @@ class _HabitManagementTile extends StatelessWidget {
                   value: _CustomHabitAction.edit,
                   child: ListTile(
                     leading: const Icon(Icons.edit_rounded),
-                    title: Text(context.tr('Edit habits')),
+                    title: Text(context.tr('Edit habit')),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
-                PopupMenuItem(
-                  value: _CustomHabitAction.delete,
-                  child: ListTile(
-                    leading: Icon(Icons.delete_outline, color: colors.error),
-                    title: Text(context.tr('Remove habit')),
-                    contentPadding: EdgeInsets.zero,
+                if (onNumericalSettings != null)
+                  PopupMenuItem(
+                    value: _CustomHabitAction.numerical,
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.pin_rounded,
+                        color: numericalTrackingEnabled
+                            ? colors.primary
+                            : colors.onSurfaceVariant,
+                      ),
+                      title: Text(context.tr('Numerical tracking')),
+                      subtitle: Text(
+                        context.tr(numericalTrackingEnabled ? 'On' : 'Off'),
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                    ),
                   ),
-                ),
+                if (onDelete != null)
+                  PopupMenuItem(
+                    value: _CustomHabitAction.delete,
+                    child: ListTile(
+                      leading: Icon(Icons.delete_outline, color: colors.error),
+                      title: Text(context.tr('Remove habit')),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
               ],
             )
           else
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-              padding: EdgeInsets.zero,
-              tooltip: context.tr(isActive ? 'Remove habit' : 'Restore habit'),
-              onPressed: () => onActiveChanged(!isActive),
-              icon: Icon(
-                isActive
-                    ? Icons.remove_circle_outline
-                    : Icons.add_circle_outline,
-                size: 20,
-                color: isActive ? colors.error : colors.primary,
-              ),
-            ),
+            const SizedBox(width: 8),
         ],
       ),
     );
   }
 }
 
-enum _CustomHabitAction { edit, delete }
+class _CompactHabitAction extends StatelessWidget {
+  const _CompactHabitAction({
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 17,
+        child: SizedBox(
+          width: 30,
+          height: 34,
+          child: Icon(
+            icon,
+            size: 19,
+            color: onTap == null ? color.withValues(alpha: .35) : color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+enum _CustomHabitAction { edit, numerical, delete }
+
+String _formatNumericalTarget(BuildContext context, int value, String unitKey) {
+  if (unitKey == NumericalHabitUnit.minutes) {
+    final hours = value ~/ 60;
+    final minutes = value % 60;
+    if (hours == 0) return '$minutes ${context.tr('minutes')}';
+    if (minutes == 0) return '$hours ${context.tr('hours')}';
+    return '$hours ${context.tr('hours')} $minutes ${context.tr('minutes')}';
+  }
+  return '$value ${context.tr('times')}';
+}
+
+class _NumericalSettingsDraft {
+  const _NumericalSettingsDraft({
+    required this.enabled,
+    required this.target,
+    required this.unitKey,
+  });
+
+  final bool enabled;
+  final int target;
+  final String unitKey;
+}
+
+class _NumericalSettingsDialog extends StatefulWidget {
+  const _NumericalSettingsDialog({
+    required this.habitName,
+    required this.habitId,
+    required this.category,
+    required this.initialUnit,
+    required this.initialEnabled,
+    required this.initialTarget,
+  });
+
+  final String habitName;
+  final String habitId;
+  final String category;
+  final String initialUnit;
+  final bool initialEnabled;
+  final int initialTarget;
+
+  @override
+  State<_NumericalSettingsDialog> createState() =>
+      _NumericalSettingsDialogState();
+}
+
+class _NumericalSettingsDialogState extends State<_NumericalSettingsDialog> {
+  late bool _enabled;
+  late int _target;
+  late String _unitKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _enabled = widget.initialEnabled;
+    _target = widget.initialTarget;
+    _unitKey = widget.initialUnit;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final config = numericalConfigForHabit(
+      habitId: widget.habitId,
+      category: widget.category,
+      unitKey: _unitKey,
+    );
+    final min = config.step;
+    final divisions = (config.maximum - min) ~/ config.step;
+    return AlertDialog(
+      title: Text(context.tr('Numerical tracking')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.habitName,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(context.tr('Numerical tracking description')),
+          const SizedBox(height: 12),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: Text(context.tr('Use numerical tracking')),
+            value: _enabled,
+            onChanged: (value) => setState(() => _enabled = value),
+          ),
+          if (_enabled) ...[
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: [
+                ButtonSegment(
+                  value: NumericalHabitUnit.times,
+                  icon: const Icon(Icons.repeat_rounded),
+                  label: Text(context.tr('Times')),
+                ),
+                ButtonSegment(
+                  value: NumericalHabitUnit.minutes,
+                  icon: const Icon(Icons.schedule_rounded),
+                  label: Text(context.tr('Hours and minutes')),
+                ),
+              ],
+              selected: {_unitKey},
+              onSelectionChanged: (selection) {
+                final unit = selection.first;
+                final nextConfig = numericalConfigForHabit(
+                  habitId: widget.habitId,
+                  category: widget.category,
+                  unitKey: unit,
+                );
+                setState(() {
+                  _unitKey = unit;
+                  _target = nextConfig.defaultTarget;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${context.tr('Daily target')}: ${_formatNumericalTarget(context, _target, config.unitKey)}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            Slider(
+              min: min.toDouble(),
+              max: config.maximum.toDouble(),
+              divisions: divisions,
+              value: _target.clamp(min, config.maximum).toDouble(),
+              label: '$_target',
+              onChanged: (value) => setState(() => _target = value.round()),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.tr('Cancel')),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(
+            context,
+            _NumericalSettingsDraft(
+              enabled: _enabled,
+              target: _target,
+              unitKey: _unitKey,
+            ),
+          ),
+          child: Text(context.tr('Save')),
+        ),
+      ],
+    );
+  }
+}
+
+class _NumericalHabitTile extends StatefulWidget {
+  const _NumericalHabitTile({
+    super.key,
+    required this.habitId,
+    required this.label,
+    required this.icon,
+    required this.config,
+    required this.target,
+    required this.value,
+    required this.isUnwanted,
+    required this.onValueSaved,
+    required this.onThumbUp,
+    required this.onThumbDown,
+  });
+
+  final String habitId;
+  final String label;
+  final IconData icon;
+  final NumericalHabitConfig config;
+  final int target;
+  final int? value;
+  final bool isUnwanted;
+  final ValueChanged<int> onValueSaved;
+  final VoidCallback onThumbUp;
+  final VoidCallback onThumbDown;
+
+  @override
+  State<_NumericalHabitTile> createState() => _NumericalHabitTileState();
+}
+
+class _NumericalHabitTileState extends State<_NumericalHabitTile> {
+  late int _value;
+  late final FixedExtentScrollController _wheelController;
+  Timer? _saveDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = (widget.value ?? 0).clamp(0, widget.config.maximum);
+    _wheelController = FixedExtentScrollController(
+      initialItem: _value ~/ widget.config.step,
+    );
+  }
+
+  @override
+  void dispose() {
+    _saveDebounce?.cancel();
+    _wheelController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final config = widget.config;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          SizedBox(
+            height: 46,
+            child: Row(
+              children: [
+                const SizedBox(width: 10),
+                Icon(widget.icon, color: colors.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                SizedBox(
+                  width: 68,
+                  child: _ThumbActions(
+                    isUnwanted: widget.isUnwanted,
+                    onThumbUp: widget.onThumbUp,
+                    onThumbDown: widget.onThumbDown,
+                    rightRadius: 24,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(
+            height: 1,
+            color: colors.outlineVariant.withValues(alpha: .5),
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 56,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colors.primaryContainer.withValues(alpha: .55),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      ShaderMask(
+                        blendMode: BlendMode.dstIn,
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            Colors.white,
+                            Colors.white,
+                            Colors.transparent,
+                          ],
+                          stops: [0, .24, .76, 1],
+                        ).createShader(bounds),
+                        child: RotatedBox(
+                          quarterTurns: 3,
+                          child: ListWheelScrollView.useDelegate(
+                            controller: _wheelController,
+                            itemExtent: 52,
+                            diameterRatio: 1.35,
+                            perspective: .006,
+                            physics: const FixedExtentScrollPhysics(),
+                            overAndUnderCenterOpacity: .42,
+                            onSelectedItemChanged: _selectIndex,
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: (config.maximum ~/ config.step) + 1,
+                              builder: (context, index) {
+                                final value = index * config.step;
+                                return RotatedBox(
+                                  quarterTurns: 1,
+                                  child: Center(
+                                    child: Text(
+                                      _wheelLabel(value),
+                                      maxLines: 1,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: value == _value ? 16 : 13,
+                                        fontWeight: value == _value
+                                            ? FontWeight.w800
+                                            : FontWeight.w500,
+                                        color: colors.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 0, 6, 5),
+                  child: Semantics(
+                    button: true,
+                    label: context.tr('Enter value manually'),
+                    child: InkWell(
+                      key: ValueKey('numericalSummary_${widget.habitId}'),
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => _enterValueManually(context),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        child: Text(
+                          _summaryLabel(context),
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: colors.primary,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _selectIndex(int index) {
+    final nextValue = index * widget.config.step;
+    if (nextValue == _value) return;
+    setState(() => _value = nextValue);
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => widget.onValueSaved(nextValue),
+    );
+  }
+
+  Future<void> _enterValueManually(BuildContext context) async {
+    final entered = await showDialog<int>(
+      context: context,
+      builder: (_) => _ManualNumericalEntryDialog(
+        initialValue: _value,
+        maximum: widget.config.maximum,
+        unitKey: widget.config.unitKey,
+      ),
+    );
+    if (entered == null || !mounted) return;
+    _saveDebounce?.cancel();
+    final nearestItem = (entered / widget.config.step).round().clamp(
+      0,
+      widget.config.maximum ~/ widget.config.step,
+    );
+    await _wheelController.animateToItem(
+      nearestItem,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+    );
+    if (!mounted) return;
+    _saveDebounce?.cancel();
+    setState(() => _value = entered);
+    widget.onValueSaved(entered);
+  }
+
+  String _wheelLabel(int value) {
+    if (widget.config.unitKey == 'minutes') {
+      if (value > 0 && value % 60 == 0) return '${value ~/ 60} h';
+      return '$value';
+    }
+    return '$value';
+  }
+
+  String _summaryLabel(BuildContext context) {
+    if (widget.config.unitKey == 'minutes') {
+      return '${_value ~/ 60}h ${_value % 60}min';
+    }
+    return '$_value ${context.tr(widget.config.unitKey)}';
+  }
+}
+
+class _ManualNumericalEntryDialog extends StatefulWidget {
+  const _ManualNumericalEntryDialog({
+    required this.initialValue,
+    required this.maximum,
+    required this.unitKey,
+  });
+
+  final int initialValue;
+  final int maximum;
+  final String unitKey;
+
+  @override
+  State<_ManualNumericalEntryDialog> createState() =>
+      _ManualNumericalEntryDialogState();
+}
+
+class _ManualNumericalEntryDialogState
+    extends State<_ManualNumericalEntryDialog> {
+  late final TextEditingController _valueController;
+  late final TextEditingController _hoursController;
+  late final TextEditingController _minutesController;
+  String? _error;
+
+  bool get _isDuration => widget.unitKey == NumericalHabitUnit.minutes;
+
+  @override
+  void initState() {
+    super.initState();
+    _valueController = TextEditingController(text: '${widget.initialValue}');
+    _hoursController = TextEditingController(
+      text: '${widget.initialValue ~/ 60}',
+    );
+    _minutesController = TextEditingController(
+      text: '${widget.initialValue % 60}',
+    );
+  }
+
+  @override
+  void dispose() {
+    _valueController.dispose();
+    _hoursController.dispose();
+    _minutesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.tr('Enter value manually')),
+      content: _isDuration
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _field(
+                    controller: _hoursController,
+                    label: context.tr('Hours'),
+                    autofocus: true,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _field(
+                    controller: _minutesController,
+                    label: context.tr('Minutes'),
+                  ),
+                ),
+              ],
+            )
+          : _field(
+              controller: _valueController,
+              label: context.tr(widget.unitKey),
+              autofocus: true,
+            ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.tr('Cancel')),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: Text(context.tr('Save')),
+        ),
+      ],
+    );
+  }
+
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    bool autofocus = false,
+  }) {
+    return TextField(
+      controller: controller,
+      autofocus: autofocus,
+      keyboardType: TextInputType.number,
+      textInputAction: TextInputAction.done,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        labelText: label,
+        errorText: _error,
+        border: const OutlineInputBorder(),
+      ),
+      onSubmitted: (_) => _save(),
+    );
+  }
+
+  void _save() {
+    final value = _isDuration
+        ? ((int.tryParse(_hoursController.text) ?? 0) * 60) +
+              (int.tryParse(_minutesController.text) ?? 0)
+        : int.tryParse(_valueController.text);
+    final minutes = int.tryParse(_minutesController.text) ?? 0;
+    if (value == null ||
+        value < 0 ||
+        value > widget.maximum ||
+        (_isDuration && minutes > 59)) {
+      setState(() => _error = context.tr('Enter a valid value'));
+      return;
+    }
+    Navigator.pop(context, value);
+  }
+}
 
 class _HabitTile extends StatelessWidget {
   const _HabitTile({
@@ -5547,11 +7325,14 @@ class ProfilePage extends StatelessWidget {
                                       height: 1.1,
                                     ),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: 4),
+                              const _ProfileAccountEmail(),
+                              const SizedBox(height: 12),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
+                                    flex: 2,
                                     child: _ProfileFact(
                                       label: context.tr('Gender'),
                                       value: switch (themeController.gender) {
@@ -5574,13 +7355,14 @@ class ProfilePage extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    flex: 2,
+                                    flex: 3,
                                     child: _ProfileFact(
                                       label: context.tr('Plan'),
                                       value: _profilePlanText(
                                         context,
                                         rewardsController,
                                       ),
+                                      maxLines: 2,
                                     ),
                                   ),
                                 ],
@@ -5710,6 +7492,71 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
+class _ProfileAccountEmail extends StatefulWidget {
+  const _ProfileAccountEmail();
+
+  @override
+  State<_ProfileAccountEmail> createState() => _ProfileAccountEmailState();
+}
+
+class _ProfileAccountEmailState extends State<_ProfileAccountEmail> {
+  final _api = EmailAuthApi();
+  late Future<String?> _email;
+
+  @override
+  void initState() {
+    super.initState();
+    _email = _api.currentEmail();
+  }
+
+  Future<void> _signIn() async {
+    await showEmailLoginSheet(context);
+    if (!mounted) return;
+    setState(() => _email = _api.currentEmail());
+    unawaited(DeviceTransferScope.of(context).refreshAvailability());
+  }
+
+  @override
+  void dispose() {
+    _api.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: _email,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(height: 36);
+        }
+        final email = snapshot.data;
+        if (email == null || email.isEmpty) {
+          return FilledButton.tonalIcon(
+            onPressed: _signIn,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 13),
+              visualDensity: VisualDensity.compact,
+            ),
+            icon: const Icon(Icons.login_rounded, size: 18),
+            label: Text(context.tr('Sign in')),
+          );
+        }
+        return Text(
+          email,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _AutoReveal extends StatefulWidget {
   const _AutoReveal({required this.enabled, required this.child});
   final bool enabled;
@@ -5760,18 +7607,29 @@ String _numericDate(DateTime date) {
 
 String _profilePlanText(BuildContext context, RewardsController controller) {
   final snapshot = controller.snapshot;
-  if (snapshot == null || !snapshot.isPlus) return context.tr('Free');
+  if (snapshot == null || !snapshot.isPaid) return context.tr('Free');
+  final planName = switch (snapshot.plan) {
+    MembershipPlan.free => context.tr('Free'),
+    MembershipPlan.plus => context.tr('Plus'),
+    MembershipPlan.pro => context.tr('Pro'),
+    MembershipPlan.ultra => context.tr('Ultra'),
+  };
   final expiresAt = snapshot.planExpiresAt;
-  if (expiresAt == null) return context.tr('Plus');
+  if (expiresAt == null) return planName;
   final date = MaterialLocalizations.of(context).formatShortDate(expiresAt);
-  return '${context.tr('Plus')}\n$date';
+  return '$planName\n$date';
 }
 
 class _ProfileFact extends StatelessWidget {
-  const _ProfileFact({required this.label, required this.value});
+  const _ProfileFact({
+    required this.label,
+    required this.value,
+    this.maxLines = 1,
+  });
 
   final String label;
   final String value;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -5788,7 +7646,7 @@ class _ProfileFact extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           value,
-          maxLines: 2,
+          maxLines: maxLines,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(
             context,
@@ -5800,9 +7658,14 @@ class _ProfileFact extends StatelessWidget {
 }
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({required this.themeController, super.key});
+  const SettingsPage({
+    required this.themeController,
+    required this.rewardsController,
+    super.key,
+  });
 
   final ThemeController themeController;
+  final RewardsController rewardsController;
 
   @override
   Widget build(BuildContext context) {
@@ -5956,6 +7819,28 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
+            _SettingsSectionTitle(context.tr('Device transfer')),
+            const SizedBox(height: 8),
+            AnimatedBuilder(
+              animation: DeviceTransferScope.of(context),
+              builder: (context, _) {
+                final transfer = DeviceTransferScope.of(context);
+                return _SettingsActionCard(
+                  icon: Icons.cloud_upload_outlined,
+                  title: context.tr('Back up for 10 days for changing device'),
+                  description: transfer.isBusy
+                      ? context.tr('Your backup is being prepared and uploaded.')
+                      : context.tr(
+                          'Temporarily save your filled habits, plans, calendars, graphs, and settings for your new phone.',
+                        ),
+                  onTap: () => _startDeviceTransferBackup(
+                    context,
+                    transfer,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
             _SettingsSectionTitle(context.tr('Privacy and policies')),
             const SizedBox(height: 8),
             _SettingsGroupCard(
@@ -6045,6 +7930,7 @@ class SettingsPage extends StatelessWidget {
     final hadSession = await api.logout();
     api.close();
     if (!context.mounted) return;
+    unawaited(DeviceTransferScope.of(context).refreshAvailability());
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -6054,6 +7940,74 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
       );
+  }
+
+  Future<void> _startDeviceTransferBackup(
+    BuildContext context,
+    DeviceTransferBackupController transfer,
+  ) async {
+    if (transfer.isBusy) return;
+    if (rewardsController.plan == MembershipPlan.free) {
+      await openPremiumPlan(
+        context,
+        controller: rewardsController,
+        plan: MembershipPlan.plus,
+      );
+      return;
+    }
+    final api = EmailAuthApi();
+    final email = await api.currentEmail();
+    api.close();
+    if (!context.mounted) return;
+    if (email == null) {
+      await showEmailLoginSheet(context);
+      if (!context.mounted) return;
+      final checkApi = EmailAuthApi();
+      final signedIn = await checkApi.currentEmail();
+      checkApi.close();
+      if (signedIn == null) return;
+    }
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(context.tr('Create a 10-day backup?')),
+            content: Text(
+              context.tr(
+                'Your current temporary backup will be replaced. The new backup automatically expires after 10 days.',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(context.tr('Cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(context.tr('Back up')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+    try {
+      await transfer.upload();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('Your 10-day backup is ready.'))),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr(
+              transfer.errorMessage ?? 'The backup could not be completed.',
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   void _openWelcomePreview(BuildContext context) {

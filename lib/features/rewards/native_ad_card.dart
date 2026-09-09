@@ -13,6 +13,8 @@ class NativeAdCard extends StatefulWidget {
 }
 
 class _NativeAdCardState extends State<NativeAdCard> {
+  static const _cardRadius = 24.0;
+
   NativeAd? _nativeAd;
   bool _loaded = false;
   int? _styleSignature;
@@ -73,7 +75,7 @@ class _NativeAdCardState extends State<NativeAdCard> {
       nativeTemplateStyle: NativeTemplateStyle(
         templateType: TemplateType.small,
         mainBackgroundColor: colors.surfaceContainerHigh,
-        cornerRadius: 24,
+        cornerRadius: _cardRadius,
         callToActionTextStyle: NativeTemplateTextStyle(
           textColor: colors.onPrimary,
           backgroundColor: colors.primary,
@@ -123,9 +125,8 @@ class _NativeAdCardState extends State<NativeAdCard> {
               child: Container(
                 width: double.infinity,
                 height: 112,
-                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(_cardRadius),
                   boxShadow: [
                     if (Theme.of(context).brightness == Brightness.light)
                       BoxShadow(
@@ -137,7 +138,17 @@ class _NativeAdCardState extends State<NativeAdCard> {
                       ),
                   ],
                 ),
-                child: AdWidget(ad: ad),
+                // Clip the platform-backed ad itself. Relying only on a
+                // decorated Container can leave the native view's bottom
+                // corners square on some Android/iOS composition modes.
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(_cardRadius),
+                  clipBehavior: Clip.antiAlias,
+                  child: ColoredBox(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    child: AdWidget(ad: ad),
+                  ),
+                ),
               ),
             ),
     );

@@ -44,6 +44,7 @@ class DriftReductionCalendarRepository implements ReductionCalendarRepository {
           id: row.id,
           nameKey: row.nameKey,
           category: row.category,
+          numericalTrackingEnabled: row.numericalTrackingEnabled,
         ),
     ];
   }
